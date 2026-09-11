@@ -396,6 +396,10 @@ export function BookIntakeScreen() {
             pageCount: best?.pageCount,
             publisher: best?.publisher,
             publishedDate: best?.publishedDate,
+            // Work-level facts. These are what a search row can honestly show
+            // when no specific edition has been resolved yet.
+            publishedYear: best?.publishedYear,
+            editionCount: work.editionCount,
             language: best?.language,
             source: best?.source ?? "google-books",
             sourceId: best?.editionKey ?? best?.googleBooksId,
@@ -486,9 +490,14 @@ export function BookIntakeScreen() {
     const insight = "Verify details before adding.";
     const source: NewBookInput["source"] = matchReturnMode === "isbn" ? "isbn" : "search";
     let input = bookMatchToNewBookInput(match, source);
-    // Spanish/translated editions often ship without a description — try the
-    // metadata enricher (other editions, work record) before staging.
-    if (!input.synopsis || input.synopsis.trim().length < 40) {
+    // Search rows carry work-level facts, not a resolved edition: Open Library
+    // results legitimately arrive with no ISBN, publisher or page count, and
+    // translated editions often ship without a description. Resolve the real
+    // edition before staging rather than showing the user a review screen full
+    // of blanks — this is the step that replaces the metadata we stopped
+    // fabricating.
+    const missingEditionFacts = !input.isbn || !input.publisher || !input.pages;
+    if (missingEditionFacts || !input.synopsis || input.synopsis.trim().length < 40) {
       setIsBusy(true);
       try { input = await enrichBookInput(input); } catch { /* keep original */ }
       finally { setIsBusy(false); }
@@ -780,18 +789,18 @@ export function BookIntakeScreen() {
 
       <View style={styles.metadataStrip}>
         <View style={styles.metadataItemNarrow}>
-          <Text style={styles.metadataLabel}>Pages</Text>
-          <Text style={styles.metadataValue}>{reviewBook.pages ?? "—"}</Text>
+          <Text style={styles.metadataLabel}>{t("review.pages")}</Text>
+          <Text style={styles.metadataValue}>{reviewBook.pages || "—"}</Text>
         </View>
         <View style={styles.metadataDivider} />
         <View style={styles.metadataItem}>
-          <Text style={styles.metadataLabel}>ISBN</Text>
-          <Text style={styles.metadataValue} numberOfLines={1}>{reviewBook.isbn ?? "Pending"}</Text>
+          <Text style={styles.metadataLabel}>{t("review.isbn")}</Text>
+          <Text style={styles.metadataValue} numberOfLines={1}>{reviewBook.isbn || "—"}</Text>
         </View>
         <View style={styles.metadataDivider} />
         <View style={styles.metadataItem}>
-          <Text style={styles.metadataLabel}>Publisher</Text>
-          <Text style={styles.metadataValue} numberOfLines={1}>{reviewBook.publisher ?? "Pending"}</Text>
+          <Text style={styles.metadataLabel}>{t("review.publisher")}</Text>
+          <Text style={styles.metadataValue} numberOfLines={1}>{reviewBook.publisher || "—"}</Text>
         </View>
       </View>
 

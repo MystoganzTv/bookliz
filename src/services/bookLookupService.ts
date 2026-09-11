@@ -42,6 +42,12 @@ export interface BookMatch {
   language?: string;
   publisher?: string;
   publishedDate?: string;
+  /**
+   * Year the WORK was first published — a work-level fact, unlike
+   * `publishedDate`, which belongs to one specific edition. Search results
+   * often know the former and nothing trustworthy about the latter.
+   */
+  publishedYear?: number;
   pageCount?: number;
   isbn10?: string;
   isbn13?: string;

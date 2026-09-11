@@ -234,3 +234,29 @@ export function compareMatches(
 
   return browseScoreForMatch(b) - browseScoreForMatch(a);
 }
+
+/**
+ * The one line of context under a search result.
+ *
+ * A search row used to show the edition's publication year and page count —
+ * except that for Open Library results those were work-level aggregates
+ * dressed up as edition data (an invented -01-01 date, the median page count
+ * across every edition). Dropping the fabrication left the row blank, which is
+ * honest but useless.
+ *
+ * So: show real edition data when we genuinely have it (Google Books usually
+ * does), and otherwise fall back to what IS true at work level — the year the
+ * work first appeared and how many editions exist. That is the more useful
+ * fact at this stage anyway: the user is picking a work here, and chooses the
+ * edition on the next screen.
+ */
+export function matchMetaLine(match: BookMatch, t: (key: string, vars?: Record<string, string | number>) => string): string | null {
+  if (match.pageCount) {
+    const year = match.publishedDate ? match.publishedDate.slice(0, 4) : null;
+    return [year, t("search.metaPages", { count: match.pageCount })].filter(Boolean).join(" · ");
+  }
+  const parts: string[] = [];
+  if (match.publishedYear) parts.push(t("search.metaFirstPublished", { year: match.publishedYear }));
+  if (match.editionCount && match.editionCount > 1) parts.push(t("search.metaEditions", { count: match.editionCount }));
+  return parts.length ? parts.join(" · ") : null;
+}

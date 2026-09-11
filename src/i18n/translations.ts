@@ -297,6 +297,9 @@ export const translations: Record<AppLocale, TranslationTree> = {
       coverOcrHint: "Cover OCR can also be connected later through `EXPO_PUBLIC_BOOKLIO_VISION_ENDPOINT` without redesigning this flow.",
     },
     search: {
+      metaPages: "{count} pages",
+      metaFirstPublished: "First published {year}",
+      metaEditions: "{count} editions",
       title: "Search for a book",
       subtitle: "Search by title, author, or series. Results appear as you type.",
       searching: "Checking Google Books & Open Library…",
@@ -331,6 +334,9 @@ export const translations: Record<AppLocale, TranslationTree> = {
       detectHint: "We'll detect whether you're searching by title, author, or series.",
     },
     review: {
+      pages: "Pages",
+      isbn: "ISBN",
+      publisher: "Publisher",
       eyebrow: "Review & edit",
       backToResults: "Back to results",
       refreshMetadata: "Refresh metadata",
@@ -1129,6 +1135,9 @@ export const translations: Record<AppLocale, TranslationTree> = {
       coverOcrHint: "Más adelante también se puede conectar OCR de portada mediante `EXPO_PUBLIC_BOOKLIO_VISION_ENDPOINT` sin rediseñar este flujo.",
     },
     search: {
+      metaPages: "{count} páginas",
+      metaFirstPublished: "Primera edición {year}",
+      metaEditions: "{count} ediciones",
       title: "Busca un libro",
       subtitle: "Busca por título, autor o saga. Los resultados aparecen mientras escribes.",
       searching: "Consultando Google Books y Open Library…",
@@ -1163,6 +1172,9 @@ export const translations: Record<AppLocale, TranslationTree> = {
       detectHint: "Detectaremos si buscas por título, autor o saga.",
     },
     review: {
+      pages: "Páginas",
+      isbn: "ISBN",
+      publisher: "Editorial",
       eyebrow: "Revisar y editar",
       backToResults: "Volver a resultados",
       refreshMetadata: "Actualizar metadata",

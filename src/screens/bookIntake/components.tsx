@@ -18,6 +18,7 @@ import {
   View,
 } from "react-native";
 import { BookMatch } from "../../services/bookLookupService";
+import { matchMetaLine } from "./matchLogic";
 import { fonts, radii, spacing } from "../../theme/theme";
 import { useColors, useTheme } from "../../theme/ThemeContext";
 import { BookEditionOption } from "../../utils/bookMetadata";
@@ -329,12 +330,14 @@ export function StarRating({ rating, count }: { rating: number; count?: number }
   );
 }
 
+
 /** Compact 2-col grid result — cover-first, with a + to add. */
 export function MatchGridCard({ match, onSelect }: { match: BookMatch; onSelect: () => void }) {
   const c = useColors();
   const { isDark } = useTheme();
   const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
-  const year = match.publishedDate ? match.publishedDate.slice(0, 4) : null;
+  const { t } = useI18n();
+  const meta = matchMetaLine(match, t);
 
   return (
     <ScalePressable accessibilityRole="button" style={styles.matchGridCard} onPress={onSelect} pressScale={0.95}>
@@ -352,7 +355,7 @@ export function MatchGridCard({ match, onSelect }: { match: BookMatch; onSelect:
       </View>
       <Text numberOfLines={2} style={styles.matchGridTitle}>{match.title}</Text>
       <Text numberOfLines={1} style={styles.matchGridAuthor}>{match.authors[0] ?? ""}</Text>
-      {year ? <Text style={styles.matchGridMeta}>{year}{match.pageCount ? ` · ${match.pageCount} pp` : ""}</Text> : null}
+      {meta ? <Text style={styles.matchGridMeta} numberOfLines={1}>{meta}</Text> : null}
     </ScalePressable>
   );
 }
@@ -395,7 +398,7 @@ export function MatchCard({
   const c = useColors();
   const { isDark } = useTheme();
   const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
-  const year = match.publishedDate ? match.publishedDate.slice(0, 4) : null;
+  const meta = matchMetaLine(match, t);
 
   return (
     <Pressable accessibilityRole="button" style={styles.matchCard} onPress={onSelect}>
@@ -434,10 +437,8 @@ export function MatchCard({
           </View>
         ) : null}
 
-        {/* Year · pages */}
-        <Text style={styles.matchMeta} numberOfLines={1}>
-          {[year, match.pageCount ? `${match.pageCount} pages` : null].filter(Boolean).join(" · ")}
-        </Text>
+        {/* Edition facts when known, work-level facts otherwise */}
+        {meta ? <Text style={styles.matchMeta} numberOfLines={1}>{meta}</Text> : null}
       </View>
 
       {/* Add button */}
