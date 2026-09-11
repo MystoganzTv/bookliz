@@ -6,7 +6,7 @@
  * via mocks rather than real HTTP calls.
  */
 
-import { scoreBookMatch, BookMatch } from "../services/bookLookupService";
+import { bookMatchToNewBookInput, scoreBookMatch, BookMatch } from "../services/bookLookupService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -180,5 +180,19 @@ describe("scoreBookMatch — completeness bonuses", () => {
     // Query has no isbn so both take the text path; isbn field bonus still applies
     const query = { title: "Book" };
     expect(scoreBookMatch(withIsbn, query)).toBeGreaterThan(scoreBookMatch(withoutIsbn, query));
+  });
+});
+
+// ─── bookMatchToNewBookInput — no fabricated language ─────────────────────────
+
+describe("bookMatchToNewBookInput", () => {
+  it("leaves language undefined when the match has none (never defaults to English)", () => {
+    const match: BookMatch = { ...makeMatch({ language: undefined }), score: 50, confidence: "medium" };
+    expect(bookMatchToNewBookInput(match).language).toBeUndefined();
+  });
+
+  it("passes a known language through", () => {
+    const match: BookMatch = { ...makeMatch({ language: "Spanish" }), score: 50, confidence: "medium" };
+    expect(bookMatchToNewBookInput(match).language).toBe("Spanish");
   });
 });

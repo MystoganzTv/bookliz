@@ -16,7 +16,7 @@ import * as Network from "expo-network";
 
 export const OFFLINE_QUEUE_KEY = "@bookliz/offlineQueue";
 const QUEUE_KEY = OFFLINE_QUEUE_KEY;
-const MAX_RETRIES = 5;
+export const MAX_RETRIES = 5;
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -121,7 +121,9 @@ export async function clearQueue(): Promise<void> {
 export async function isOnline(): Promise<boolean> {
   try {
     const state = await Network.getNetworkStateAsync();
-    return state.isInternetReachable === true && state.isConnected === true;
+    // `isInternetReachable` is `undefined` on several platforms while the OS is
+    // still probing; treating that as offline meant the queue never flushed.
+    return state.isConnected === true && state.isInternetReachable !== false;
   } catch {
     return false;
   }

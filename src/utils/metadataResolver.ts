@@ -8,8 +8,9 @@
  *      best candidate (synopsis: length × language match; cover: language +
  *      source quality; title: localized when a language is requested), instead
  *      of "first non-null source wins".
- *   3. CACHE — results are cached for 7 days (AsyncStorage), so re-fetching a
- *      book is instant and saves API quota.
+ *   3. CACHE — complete results are cached for 7 days (AsyncStorage), partial
+ *      ones (no synopsis) for 1 hour, and nothing is cached when a provider
+ *      was rate-limited or timed out during the lookup.
  *
  * `resolveBookMetadata` in utils/bookMetadata.ts delegates here, so every
  * caller (EditBook fetch, Find synopsis, enrichBookInput) gets this for free.
@@ -24,6 +25,7 @@ import {
   normalizeIsbn,
 } from "./bookMetadata";
 import { HOURS, readCache, writeCache } from "./discoverCache";
+import { FetchTimeoutError, RateLimitedError } from "./fetchWithTimeout";
 import { getTitleVariants } from "./knownWorks";
 import { logMergeRejection } from "./metadataMergePolicy";
 import { languageCode, languageDisplayName } from "./languageUtils";
@@ -49,7 +51,19 @@ type Candidate = BookMetadata & {
   _langMatch: boolean;
 };
 
+/** Full result (has a synopsis): 7 days. */
 const CACHE_TTL = 7 * 24 * HOURS;
+/** Partial result (no synopsis): 1 hour — long enough to dedupe a burst of
+ *  lookups, short enough that a provider hiccup doesn't pin a thin record. */
+const CACHE_TTL_PARTIAL = 1 * HOURS;
+/** Cache-key prefix. Bumped from "meta-" so pre-TTL envelopes are ignored. */
+const CACHE_PREFIX = "meta3";
+
+/** Cached value carries its own expiry — TTL is decided per entry at write time. */
+type CachedMetadata = { data: BookMetadata; expiresAt: number };
+
+const isTransientError = (err: unknown): boolean =>
+  err instanceof RateLimitedError || err instanceof FetchTimeoutError;
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -133,9 +147,19 @@ export async function resolveMetadata(input: ResolveInput): Promise<BookMetadata
   if (!cleanIsbn && !title) return undefined;
 
   // ── Cache ──────────────────────────────────────────────────────────────────
-  const cacheKey = `meta-${cleanIsbn || `${norm(title)}|${norm(author)}`}-${wantedCode ?? "any"}`;
-  const cached = await readCache<BookMetadata>(cacheKey, CACHE_TTL);
-  if (cached?.title) return cached;
+  const cacheKey = `${CACHE_PREFIX}-${cleanIsbn || `${norm(title)}|${norm(author)}`}-${wantedCode ?? "any"}`;
+  const cached = await readCache<CachedMetadata>(cacheKey, CACHE_TTL);
+  if (cached?.data?.title && typeof cached.expiresAt === "number" && cached.expiresAt > Date.now()) {
+    return cached.data;
+  }
+
+  // A job that failed because a provider was rate-limited or timed out makes
+  // the whole result "partial by accident" — such results must not be cached.
+  let transientFailure = false;
+  const noteFailure = (err: unknown): Candidate[] => {
+    if (isTransientError(err)) transientFailure = true;
+    return [];
+  };
 
   // ── Parallel fan-out ───────────────────────────────────────────────────────
   const authorPart = author ? ` inauthor:"${author}"` : "";
@@ -145,48 +169,52 @@ export async function resolveMetadata(input: ResolveInput): Promise<BookMetadata
     // GB by ISBN — when the user holds e.g. the Spanish edition, this single
     // call returns the localized title + description directly.
     jobs.push(
-      fetchByKeyword(`isbn:${cleanIsbn}`, 0, 5, undefined, false)
-        .then(({ books }) => tagGb(books, "gb-isbn", wantedLang)).catch(() => [])
+      fetchByKeyword(`isbn:${cleanIsbn}`, 0, 5, undefined, false, true)
+        .then(({ books }) => tagGb(books, "gb-isbn", wantedLang)).catch(noteFailure)
     );
     // OL by ISBN — best source for workKey/editionKey/publisher.
     jobs.push(
-      fetchBookMetadataByIsbn(cleanIsbn)
-        .then((meta) => tag(meta, "ol-isbn", wantedLang)).catch(() => [])
+      fetchBookMetadataByIsbn(cleanIsbn, { rethrowTransient: true })
+        .then((meta) => tag(meta, "ol-isbn", wantedLang)).catch(noteFailure)
     );
   }
 
   if (title) {
     // GB by title (+author), unrestricted — strongest general base.
     jobs.push(
-      fetchByKeyword(`intitle:"${title}"${authorPart}`, 0, 8, undefined, false)
-        .then(({ books }) => tagGb(books, "gb-title", wantedLang)).catch(() => [])
+      fetchByKeyword(`intitle:"${title}"${authorPart}`, 0, 8, undefined, false, true)
+        .then(({ books }) => tagGb(books, "gb-title", wantedLang)).catch(noteFailure)
     );
     // OL search — work-level data (workKey, series, author canonical name).
     jobs.push(
       fetchBookMetadataByTitleAuthor(title, author)
-        .then((meta) => tag(meta, "ol-search", wantedLang)).catch(() => [])
+        .then((meta) => tag(meta, "ol-search", wantedLang)).catch(noteFailure)
     );
 
     if (wantedCode) {
       // GB language-restricted — the original title sometimes matches
       // (e.g. "Red Rising" kept in French editions).
       jobs.push(
-        fetchByKeyword(`intitle:"${title}"${authorPart}`, 0, 8, wantedCode, false)
-          .then(({ books }) => tagGb(books, "gb-lang", wantedLang, 4, wantedCode)).catch(() => [])
+        fetchByKeyword(`intitle:"${title}"${authorPart}`, 0, 8, wantedCode, false, true)
+          .then(({ books }) => tagGb(books, "gb-lang", wantedLang, 4, wantedCode)).catch(noteFailure)
       );
       // knownWorks translated titles ("Alas de sangre" for "Fourth Wing"…).
       for (const variant of getTitleVariants(title)) {
         if (norm(variant) === norm(title)) continue;
         jobs.push(
-          fetchByKeyword(`intitle:"${variant}"${authorPart}`, 0, 6, wantedCode, false)
-            .then(({ books }) => tagGb(books, "gb-lang", wantedLang, 4, wantedCode)).catch(() => [])
+          fetchByKeyword(`intitle:"${variant}"${authorPart}`, 0, 6, wantedCode, false, true)
+            .then(({ books }) => tagGb(books, "gb-lang", wantedLang, 4, wantedCode)).catch(noteFailure)
         );
       }
     }
   }
 
   const settled = await Promise.allSettled(jobs);
-  const candidates: Candidate[] = settled.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+  const candidates: Candidate[] = settled.flatMap((r) => {
+    if (r.status === "fulfilled") return r.value;
+    if (isTransientError(r.reason)) transientFailure = true;
+    return [];
+  });
   if (!candidates.length) return undefined;
 
   // ── Field-level composition (STRICT language policy) ─────────────────────
@@ -277,10 +305,19 @@ export async function resolveMetadata(input: ResolveInput): Promise<BookMetadata
   if (strict && result.title) result.language = input.language;
 
   // Only cache successes. When a language was requested, only cache results
-  // that actually landed in that language — otherwise a transient miss (e.g.
-  // one timed-out call) would pin the wrong-language result for 7 days.
-  const cacheable = Boolean(result.title) && (!wantedLang || norm(result.language) === wantedLang);
-  if (cacheable) void writeCache(cacheKey, result);
+  // that actually landed in that language. Never cache a result assembled
+  // while a provider was rate-limited or timed out — it is partial by
+  // accident and would pin the gap for the whole TTL. A result without a
+  // synopsis is cached only briefly (it may simply not have been reachable).
+  const cacheable =
+    Boolean(result.title) &&
+    !transientFailure &&
+    (!wantedLang || norm(result.language) === wantedLang);
+  if (cacheable) {
+    const ttlMs = (result.synopsis?.trim().length ?? 0) > 0 ? CACHE_TTL : CACHE_TTL_PARTIAL;
+    const envelope: CachedMetadata = { data: result, expiresAt: Date.now() + ttlMs };
+    void writeCache(cacheKey, envelope);
+  }
   return result.title ? result : undefined;
 }
 

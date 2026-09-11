@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
-import { colors, fonts, radii, spacing } from "../theme/theme";
+import { AppColors, fonts, radii, spacing } from "../theme/theme";
+import { useColors } from "../theme/ThemeContext";
 
 const EMOJI_PICKS = ["📚", "⭐", "🌙", "🔥", "💎", "🧠", "🌿", "🎯", "✨", "🗺️", "🏔️", "❤️"];
 
@@ -15,6 +16,8 @@ type Props = {
 
 export function BookListSheet({ open, bookId, onClose }: Props) {
   const { t } = useI18n();
+  const c = useColors();
+  const styles = useMemo(() => createStyles(c), [c]);
   const { userLists, addBookToList, removeBookFromList, createUserList } = useBookliz();
   // Single-Modal view switching — avoids iOS nested-Modal freeze bug
   const [view, setView] = useState<"list" | "create">("list");
@@ -77,7 +80,7 @@ export function BookListSheet({ open, bookId, onClose }: Props) {
 
               {userLists.length === 0 ? (
                 <View style={styles.emptyHint}>
-                  <Ionicons name="bookmarks-outline" size={32} color={colors.muted} />
+                  <Ionicons name="bookmarks-outline" size={32} color={c.muted} />
                   <Text style={styles.emptyText}>{t("lists.noListsHint")}</Text>
                 </View>
               ) : (
@@ -94,7 +97,7 @@ export function BookListSheet({ open, bookId, onClose }: Props) {
                         <View style={styles.listInfo}>
                           <Text style={styles.listName}>{list.name}</Text>
                           <Text style={styles.listCount}>
-                            {list.bookIds.length} {list.bookIds.length === 1 ? "book" : "books"}
+                            {list.bookIds.length === 1 ? t("listSheet.bookCountOne") : t("listSheet.bookCount", { count: list.bookIds.length })}
                           </Text>
                         </View>
                         <View style={[styles.checkbox, isIn && styles.checkboxActive]}>
@@ -109,7 +112,7 @@ export function BookListSheet({ open, bookId, onClose }: Props) {
               {/* New list row — switches to create view inline */}
               <Pressable accessibilityRole="button" style={styles.newListRow} onPress={() => setView("create")}>
                 <View style={styles.newListIcon}>
-                  <Ionicons name="add" size={18} color={colors.teal} />
+                  <Ionicons name="add" size={18} color={c.teal} />
                 </View>
                 <Text style={styles.newListText}>{t("lists.newList")}</Text>
               </Pressable>
@@ -122,8 +125,8 @@ export function BookListSheet({ open, bookId, onClose }: Props) {
             /* ── Create view (inline — no second Modal) ─────────── */
             <>
               <Pressable accessibilityRole="button" style={styles.backRow} onPress={() => { Keyboard.dismiss(); setView("list"); }}>
-                <Ionicons name="chevron-back" size={16} color={colors.teal} />
-                <Text style={styles.backText}>Back</Text>
+                <Ionicons name="chevron-back" size={16} color={c.teal} />
+                <Text style={styles.backText}>{t("listSheet.back")}</Text>
               </Pressable>
 
               <Text style={styles.title}>{t("lists.createTitle")}</Text>
@@ -147,8 +150,8 @@ export function BookListSheet({ open, bookId, onClose }: Props) {
                 <TextInput
                   ref={inputRef}
                   style={styles.input}
-                  placeholder="List name"
-                  placeholderTextColor={colors.muted}
+                  placeholder={t("listSheet.listName")}
+                  placeholderTextColor={c.muted}
                   value={newName}
                   onChangeText={setNewName}
                   maxLength={40}
@@ -176,7 +179,8 @@ export function BookListSheet({ open, bookId, onClose }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: AppColors) {
+  return StyleSheet.create({
   overlay: {
     alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.55)",
@@ -184,7 +188,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end"
   },
   sheet: {
-    backgroundColor: colors.cream,
+    backgroundColor: c.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: "80%",
@@ -195,14 +199,14 @@ const styles = StyleSheet.create({
   },
   handle: {
     alignSelf: "center",
-    backgroundColor: colors.border,
+    backgroundColor: c.border,
     borderRadius: radii.pill,
     height: 4,
     marginBottom: spacing.lg,
     width: 40
   },
   title: {
-    color: colors.navy,
+    color: c.ink,
     fontFamily: fonts.display,
     fontSize: 22,
     fontWeight: "900",
@@ -214,7 +218,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xl
   },
   emptyText: {
-    color: colors.muted,
+    color: c.muted,
     fontFamily: fonts.body,
     fontSize: 14,
     textAlign: "center"
@@ -224,7 +228,7 @@ const styles = StyleSheet.create({
   },
   listRow: {
     alignItems: "center",
-    borderBottomColor: colors.border,
+    borderBottomColor: c.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     gap: spacing.sm,
@@ -237,20 +241,20 @@ const styles = StyleSheet.create({
     flex: 1
   },
   listName: {
-    color: colors.navy,
+    color: c.ink,
     fontFamily: fonts.body,
     fontSize: 15,
     fontWeight: "800"
   },
   listCount: {
-    color: colors.muted,
+    color: c.muted,
     fontFamily: fonts.bodyRegular,
     fontSize: 12,
     marginTop: 2
   },
   checkbox: {
     alignItems: "center",
-    borderColor: colors.border,
+    borderColor: c.border,
     borderRadius: 6,
     borderWidth: 2,
     height: 22,
@@ -258,8 +262,8 @@ const styles = StyleSheet.create({
     width: 22
   },
   checkboxActive: {
-    backgroundColor: colors.teal,
-    borderColor: colors.teal
+    backgroundColor: c.teal,
+    borderColor: c.teal
   },
   newListRow: {
     alignItems: "center",
@@ -270,8 +274,8 @@ const styles = StyleSheet.create({
   },
   newListIcon: {
     alignItems: "center",
-    backgroundColor: colors.teal + "18",
-    borderColor: colors.teal,
+    backgroundColor: c.teal + "18",
+    borderColor: c.teal,
     borderRadius: 6,
     borderWidth: 1.5,
     height: 34,
@@ -279,14 +283,14 @@ const styles = StyleSheet.create({
     width: 34
   },
   newListText: {
-    color: colors.teal,
+    color: c.teal,
     fontFamily: fonts.body,
     fontSize: 15,
     fontWeight: "800"
   },
   doneBtn: {
     alignItems: "center",
-    backgroundColor: colors.navy,
+    backgroundColor: c.teal,
     borderRadius: radii.pill,
     paddingVertical: 15
   },
@@ -308,7 +312,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm
   },
   backText: {
-    color: colors.teal,
+    color: c.teal,
     fontFamily: fonts.body,
     fontSize: 14,
     fontWeight: "800"
@@ -321,8 +325,8 @@ const styles = StyleSheet.create({
   },
   emojiChip: {
     alignItems: "center",
-    backgroundColor: colors.card,
-    borderColor: colors.border,
+    backgroundColor: c.surfaceAlt,
+    borderColor: c.border,
     borderRadius: radii.md,
     borderWidth: 2,
     height: 44,
@@ -330,16 +334,16 @@ const styles = StyleSheet.create({
     width: 44
   },
   emojiChipActive: {
-    backgroundColor: colors.teal + "18",
-    borderColor: colors.teal
+    backgroundColor: c.teal + "18",
+    borderColor: c.teal
   },
   emojiText: {
     fontSize: 22
   },
   inputWrap: {
     alignItems: "center",
-    backgroundColor: colors.card,
-    borderColor: colors.border,
+    backgroundColor: c.surfaceAlt,
+    borderColor: c.border,
     borderRadius: radii.md,
     borderWidth: 1,
     flexDirection: "row",
@@ -352,7 +356,7 @@ const styles = StyleSheet.create({
     fontSize: 22
   },
   input: {
-    color: colors.navy,
+    color: c.ink,
     flex: 1,
     fontFamily: fonts.body,
     fontSize: 16,
@@ -364,9 +368,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10
   },
   cancelInlineText: {
-    color: colors.muted,
+    color: c.muted,
     fontFamily: fonts.body,
     fontSize: 13,
     fontWeight: "900"
   }
 });
+}

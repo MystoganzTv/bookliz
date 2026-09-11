@@ -146,7 +146,7 @@ export function detectQueryIntent(query: string): "author" | "general" {
 
 /** Stable key for deduplicating editions */
 function editionKey(e: BookEdition): string {
-  return e.isbn13 ?? e.isbn10 ?? `${e.languageCode}-${e.publisher ?? "?"}-${e.publishedYear ?? "?"}`;
+  return e.isbn13 ?? e.isbn10 ?? `${e.languageCode ?? "?"}-${e.publisher ?? "?"}-${e.publishedYear ?? "?"}`;
 }
 
 /** Merge two editions: keep higher score, steal cover from the other */
@@ -155,11 +155,29 @@ function workLanguageOf(work: { bestEdition?: BookEdition; editions: BookEdition
   return work.bestEdition?.language ?? work.editions[0]?.language;
 }
 
+/**
+ * Language label tie-break for two records of the SAME edition (same ISBN):
+ * a KNOWN language always beats an unknown one; when both are known (or both
+ * unknown) Google Books wins — its `language` field is per-volume and far
+ * more reliable than Open Library's often-missing `languages[]`.
+ */
+function pickLanguageLabel(
+  a: BookEdition,
+  b: BookEdition
+): Pick<BookEdition, "language" | "languageCode"> {
+  const known = (e: BookEdition) => Boolean(e.languageCode || e.language);
+  const preferred = (x: BookEdition, y: BookEdition) =>
+    x.source === "google-books" ? x : y.source === "google-books" ? y : x;
+  const src = known(a) && !known(b) ? a : known(b) && !known(a) ? b : preferred(a, b);
+  return { language: src.language, languageCode: src.languageCode };
+}
+
 function mergeEditions(a: BookEdition, b: BookEdition): BookEdition {
   const winner = a.score >= b.score ? a : b;
   const loser = a.score >= b.score ? b : a;
   return {
     ...winner,
+    ...pickLanguageLabel(a, b),
     coverUrl: winner.coverUrl ?? loser.coverUrl,
     isbn13: winner.isbn13 ?? loser.isbn13,
     isbn10: winner.isbn10 ?? loser.isbn10,
@@ -187,20 +205,22 @@ function dedupeEditions(editions: BookEdition[]): BookEdition[] {
  * Group editions by language, prioritizing the 7 supported languages first.
  */
 export function groupEditionsByLanguage(editions: BookEdition[]): EditionGroup[] {
+  const UNKNOWN = "unknown";
   const byLang = new Map<string, BookEdition[]>();
   for (const e of editions) {
-    const existing = byLang.get(e.languageCode) ?? [];
+    const key = e.languageCode ?? UNKNOWN;
+    const existing = byLang.get(key) ?? [];
     existing.push(e);
-    byLang.set(e.languageCode, existing);
+    byLang.set(key, existing);
   }
 
   const groups: EditionGroup[] = [];
   for (const [code, eds] of byLang.entries()) {
     const sorted = [...eds].sort((a, b) => b.score - a.score);
-    const lang = normalizeLanguage(code);
+    const lang = code === UNKNOWN ? undefined : normalizeLanguage(code);
     groups.push({
       languageCode: code,
-      language: lang?.name ?? code,
+      language: lang?.name ?? (code === UNKNOWN ? "Unknown" : code),
       isPriority: isPriorityLanguage(code),
       editions: sorted,
       bestEdition: sorted[0]!,
@@ -257,8 +277,8 @@ function pickBestEdition(
       id: "empty",
       source: "open-library",
       title: "Unknown",
-      languageCode: "en",
-      language: "English",
+      languageCode: undefined,
+      language: undefined,
       score: 0,
     };
   }
@@ -279,7 +299,11 @@ function pickBestEdition(
     const completeB = (b.publisher ? 1 : 0) + (b.pageCount ? 1 : 0) + (b.publishedDate ? 1 : 0);
     const lpA = !allowLargePrint && isLargePrintEdition(a) ? -10 : 0;
     const lpB = !allowLargePrint && isLargePrintEdition(b) ? -10 : 0;
-    return (b.score + langB + coverB + completeB + lpB) - (a.score + langA + coverA + completeA + lpA);
+    // Tie-break: a KNOWN language beats an unknown one (never surface a
+    // language-less record over an equally good labelled one).
+    const knownA = a.languageCode ? 1 : 0;
+    const knownB = b.languageCode ? 1 : 0;
+    return (b.score + langB + coverB + completeB + lpB + knownB) - (a.score + langA + coverA + completeA + lpA + knownA);
   })[0]!;
 }
 
@@ -454,7 +478,27 @@ export async function lookupByIsbn(rawIsbn: string): Promise<WorkLookupResult> {
   const allEditions = dedupeEditions([...initialEditions, ...workEditions]);
 
   // ── Step 7: Build work ─────────────────────────────────────────────────────
-  const title = workMeta?.title ?? initialEditions[0]?.title ?? "Unknown";
+  // The scanned edition (OL + GB records merged by ISBN) is the physical book
+  // in the user's hands — its language decides which work-level fields apply.
+  const scannedEdition =
+    allEditions.find((e) => e.isbn13 === isbn13 || (isbn10 !== undefined && e.isbn10 === isbn10)) ??
+    initialEditions[0];
+  const scannedLanguage = scannedEdition?.language;
+
+  // OL work records describe the ORIGINAL work: title/subtitle/description are
+  // in the original language — in practice English (same assumption as
+  // ingestOLResult in lookupByQuery). A Spanish edition must never surface
+  // "Fourth Wing" + an English synopsis, so these fields pass the language
+  // policy first; when rejected, the scanned edition's own title is used and
+  // the description is left empty (empty = unknown) rather than leaked.
+  const workTitleAllowed = canUseFieldForLanguage("title", "English", scannedLanguage);
+  const workDescriptionAllowed = canUseFieldForLanguage("description", "English", scannedLanguage);
+
+  const title =
+    (workTitleAllowed ? workMeta?.title : undefined) ??
+    scannedEdition?.title ??
+    initialEditions[0]?.title ??
+    "Unknown";
 
   // Fill authors from catalog if APIs didn't return them
   const resolvedAuthors = authorNames.length
@@ -466,9 +510,9 @@ export async function lookupByIsbn(rawIsbn: string): Promise<WorkLookupResult> {
   const partialWork: Omit<BookWork, "score" | "confidence" | "bestEdition" | "editions"> = {
     workKey,
     title,
-    subtitle: workMeta?.subtitle,
+    subtitle: workTitleAllowed ? workMeta?.subtitle : scannedEdition?.subtitle,
     authors: resolvedAuthors,
-    description: workMeta?.description,
+    description: workDescriptionAllowed ? workMeta?.description : undefined,
     genres: workMeta?.genres ?? [],
     editionCount: allEditions.length,
     canonicalLanguageCode: allEditions[0]?.languageCode,
@@ -968,7 +1012,7 @@ export function workEditionToNewBookInput(
     genre: work.genres,
     publisher: edition.publisher,
     publishedDate: edition.publishedDate,
-    language: edition.language ?? "English",
+    language: edition.language,
     synopsis: work.description,
     coverImageUri: edition.coverUrl,
     workKey: work.workKey,

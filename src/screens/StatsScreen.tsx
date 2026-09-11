@@ -9,6 +9,7 @@ import { ReadingSession } from "../types/models";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
 import { useI18n } from "../i18n/LocalizationContext";
+import { localDateKey } from "../utils/dateUtils";
 
 type Tab = "books" | "pages" | "minutes";
 type StatsStyles = ReturnType<typeof createStyles>;
@@ -19,6 +20,8 @@ export function StatsScreen() {
   const dialog = useDialog();
   const styles = useMemo(() => createStyles(c), [c]);
   const { books, overallStats, userProfile, readingSessions } = useBookliz();
+  // Sessions logged from the app carry no rating (0); only show the tile when real ratings exist.
+  const hasSessionRatings = readingSessions.some((session) => (session.enjoymentRating ?? 0) > 0);
   const [activeTab, setActiveTab] = useState<Tab>("books");
 
   const unfinishedCount = books.filter((b) => b.userStatus.status === "dnf").length;
@@ -207,7 +210,9 @@ export function StatsScreen() {
       <View style={styles.chartCard}>
         <Text style={styles.sectionTitle}>{t("stats.habitLens")}</Text>
         <View style={styles.collectorGrid}>
-          <CollectorTile styles={styles} label={t("stats.enjoyment")} value={`${overallStats.averageSessionEnjoyment.toFixed(1)} / 10`} sub={t("stats.avgSessionRating")} accent={c.green} />
+          {hasSessionRatings ? (
+            <CollectorTile styles={styles} label={t("stats.enjoyment")} value={`${overallStats.averageSessionEnjoyment.toFixed(1)} / 10`} sub={t("stats.avgSessionRating")} accent={c.green} />
+          ) : null}
           <CollectorTile styles={styles} label={t("stats.sessionLength")} value={`${overallStats.averageMinutesPerSession}m`} sub={t("stats.avgSession")} accent={c.teal} />
           <CollectorTile styles={styles} label={t("stats.topPlace")} value={topLocation} sub={t("stats.whereYouRead")} accent={c.gold} />
           <CollectorTile styles={styles} label={t("stats.topFormat")} value={topFormat} sub={t("stats.dominantFormat")} accent={c.coral} />
@@ -388,7 +393,7 @@ function ReadingHeatmap({ sessions, c }: { sessions: ReadingSession[]; c: AppCol
     const start = new Date(today);
     start.setDate(start.getDate() - (WEEKS * 7 - 1 + dayOfWeek));
 
-    const todayStr = today.toISOString().slice(0, 10);
+    const todayStr = localDateKey(today);
     const labels: { label: string; col: number }[] = [];
     let lastMonth = -1;
     const grid: { mins: number; future: boolean }[][] = [];
@@ -397,7 +402,7 @@ function ReadingHeatmap({ sessions, c }: { sessions: ReadingSession[]; c: AppCol
     for (let w = 0; w < WEEKS; w++) {
       const week: { mins: number; future: boolean }[] = [];
       for (let d = 0; d < 7; d++) {
-        const ds = cur.toISOString().slice(0, 10);
+        const ds = localDateKey(cur);
         if (d === 0 && cur.getMonth() !== lastMonth) {
           labels.push({ label: cur.toLocaleDateString("en-US", { month: "short" }), col: w });
           lastMonth = cur.getMonth();

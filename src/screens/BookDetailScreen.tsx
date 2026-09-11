@@ -259,7 +259,7 @@ export function BookDetailScreen() {
               hapticLight();
               if (isRunning && timerBookId === book.id) {
                 const minutes = stopTimer();
-                navigation.navigate("AddReadingSession", { bookId: book.id, prefillMinutes: minutes } as any);
+                navigation.navigate("AddReadingSession", { bookId: book.id, prefillMinutes: minutes });
               } else {
                 startTimer(book.id);
               }

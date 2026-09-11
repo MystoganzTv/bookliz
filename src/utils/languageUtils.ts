@@ -124,10 +124,14 @@ export function normalizeLanguage(
   if (!raw) return undefined;
   const trimmed = raw.trim();
 
-  // 2-letter code
-  const lower2 = trimmed.toLowerCase().slice(0, 2);
-  if (trimmed.length <= 3 && LANG_CODE_TO_NAME[lower2]) {
-    return { code: lower2, name: LANG_CODE_TO_NAME[lower2]! };
+  // 2-letter ISO 639-1 code — ONLY for exactly-2-char input. Never take a
+  // 2-letter prefix of a 3-letter code: "est" (Estonian) is not "es", and
+  // "rum" (Romanian) is not "ru". Unknown 3-letter codes → undefined.
+  if (trimmed.length === 2) {
+    const lower2 = trimmed.toLowerCase();
+    return LANG_CODE_TO_NAME[lower2]
+      ? { code: lower2, name: LANG_CODE_TO_NAME[lower2]! }
+      : undefined;
   }
 
   // 3-letter code (e.g. "eng", "/languages/eng" from Open Library)
@@ -137,6 +141,8 @@ export function normalizeLanguage(
     if (code2) {
       return { code: code2, name: LANG_CODE_TO_NAME[code2] ?? code3 };
     }
+    // Known-length code but not in our map: unknown, never a guess.
+    if (trimmed.length === 3) return undefined;
   }
 
   // Display name (e.g. "English", "Spanish")

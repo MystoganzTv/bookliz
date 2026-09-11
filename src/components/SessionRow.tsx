@@ -32,7 +32,9 @@ export function SessionRow({ session, bookTitle, onPress }: SessionRowProps) {
         {contextLine ? <Text numberOfLines={1} style={styles.context}>{contextLine}</Text> : null}
         {session.notes.trim() ? <Text numberOfLines={2} style={styles.notes}>{session.notes.trim()}</Text> : null}
       </View>
-      <Text style={styles.rating}>{session.enjoymentRating}/10</Text>
+      {session.enjoymentRating > 0 ? (
+        <Text style={styles.rating}>{session.enjoymentRating}/10</Text>
+      ) : null}
     </Pressable>
   );
 }

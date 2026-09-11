@@ -24,6 +24,15 @@ describe("normalizeLanguage", () => {
     expect(normalizeLanguage("")).toBeUndefined();
     expect(normalizeLanguage(undefined)).toBeUndefined();
   });
+  it("never truncates a 3-letter code to a 2-letter prefix (est ≠ es, rum ≠ ru)", () => {
+    expect(normalizeLanguage("est")).toEqual({ code: "et", name: "Estonian" });
+    expect(normalizeLanguage("rum")).toEqual({ code: "ro", name: "Romanian" });
+    expect(normalizeLanguage("/languages/est")?.code).toBe("et");
+    // Unknown 3-letter codes are unknown — not a guess from their prefix.
+    expect(normalizeLanguage("esx")).toBeUndefined();
+    expect(normalizeLanguage("enm")).toBeUndefined();
+    expect(normalizeLanguage("/languages/enm")).toBeUndefined();
+  });
 });
 
 describe("isSameLanguage", () => {

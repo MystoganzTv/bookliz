@@ -1,18 +1,30 @@
 import React, { createContext, PropsWithChildren, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AppState } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { clearQueue, enqueue, hasPendingOperations, isOnline, OFFLINE_QUEUE_KEY } from "../utils/offlineQueue";
+import {
+  clearQueue,
+  enqueue,
+  getPendingOperations,
+  hasPendingOperations,
+  isOnline,
+  markRetried,
+  MAX_RETRIES,
+  OFFLINE_QUEUE_KEY
+} from "../utils/offlineQueue";
 import { authors as authorSeed, books as bookSeed, readingSessions as sessionSeed, series, userProfile } from "./mockData";
 import {
   BooklizRepository,
   createBooklizSnapshot,
+  CONFLICT_BACKUP_KEY,
   LOCAL_SNAPSHOT_KEY,
+  LOCAL_SYNC_MARKER_KEY,
+  LOCAL_SYNC_OWNER_KEY,
   LocalFirstBooklizRepository,
   PersistedBooklizState,
   RepositoryStatus
 } from "./booklizRepository";
 import { clearDiscoverCache } from "../utils/discoverCache";
-import { NOTIFICATION_PREFS_KEY } from "../utils/notificationService";
+import { cancelDailyReminder, NOTIFICATION_PREFS_KEY } from "../utils/notificationService";
 import { WHATS_NEW_KEY } from "../components/WhatsNewModal";
 import {
   Achievement,
@@ -34,6 +46,7 @@ import { buildBookSpecificRecommendations, buildGlobalRecommendations } from "..
 import { supabase } from "../lib/supabase";
 import { normalizeBookGenres } from "../utils/genres";
 import { languageCode } from "../utils/languageUtils";
+import { localDateKey } from "../utils/dateUtils";
 import { inferSeriesData } from "../utils/knownWorks";
 import { computeReadingIdentity, loadStoredIdentity, READING_IDENTITY_KEY, ReadingIdentity, storeIdentity } from "../utils/readingIdentity";
 
@@ -187,7 +200,14 @@ const migrateAchievements = (
  * publication date, series or genre. That is fabricated visible metadata, which
  * `metadataMergePolicy` exists to forbid.
  */
-const hydrateBooks = (books: Book[]) => books.map(normalizeReadState);
+const hydrateBooks = (books: Book[]) =>
+  books.map((book) =>
+    normalizeReadState(
+      !book.seriesId && book.seriesName?.trim()
+        ? { ...book, seriesId: buildSeriesId(book.seriesName) }
+        : book
+    )
+  );
 
 /** Coarse format family — print / digital / audio. Same book in a different
  * family is a separate copy, not a duplicate. */
@@ -224,7 +244,7 @@ const enrichProfileAchievements = (
   sessions: ReadingSession[],
   reviews: Review[]
 ): UserProfile => {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateKey();
   const completedBooks = books.filter((book) => book.userStatus.status === "read");
   const completedReadInstances = completedBooks.reduce(
     (sum, book) => sum + Math.max(1, book.userStatus.readCount ?? 1),
@@ -383,7 +403,8 @@ const enrichProfileAchievements = (
   };
 };
 
-const sameYear = (date: string, year: number) => new Date(date).getFullYear() === year;
+const sameYear = (date: string, year: number) =>
+  /^\d{4}-\d{2}-\d{2}/.test(date) ? Number(date.slice(0, 4)) === year : new Date(date).getFullYear() === year;
 
 const formatMonth = (date: string) => {
   const parsed = new Date(`${date}T00:00:00`);
@@ -463,7 +484,35 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-const buildAuthorId = (name: string) => `a-${slugify(name)}-${Date.now()}`;
+/** Stable series id derived from the series name, so books that share a
+ * series name group together (SeriesTracker, completion detection). */
+const buildSeriesId = (seriesName?: string): string | undefined => {
+  const slug = slugify((seriesName ?? "").trim());
+  return slug ? `series-${slug}` : undefined;
+};
+
+/**
+ * Unique id suffix. `Date.now()` alone collided whenever two records were
+ * created in the same millisecond (a batch import, a double tap), and the cloud
+ * upsert on id then silently swallowed one of them.
+ */
+const uniqueSuffix = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+const buildAuthorId = (name: string) => `a-${slugify(name)}-${uniqueSuffix()}`;
+
+/** Content-only identity of a snapshot — ignores `updatedAt` on purpose. */
+const snapshotFingerprint = (state: PersistedBooklizState): string =>
+  JSON.stringify([state.authors, state.books, state.readingSessions, state.reviews, state.userLists, state.userProfile]);
+
+/** Queue a single "full sync needed" marker; never stack duplicates. */
+const enqueueFullSyncOnce = async () => {
+  try {
+    if (await hasPendingOperations()) return;
+    await enqueue("upsert_profile", { reason: "full_sync_needed", timestamp: Date.now() });
+  } catch {
+    // Best effort — the AppState listener will try a full sync anyway.
+  }
+};
 
 const normalizeIsbn = (value?: string) => value?.replace(/[^0-9X]/gi, "").toUpperCase() ?? "";
 const normalizeTitle = (value?: string) => value?.trim().toLowerCase() ?? "";
@@ -482,7 +531,9 @@ const toSessionRecord = (session: NewReadingSessionInput): ReadingSession => {
 
   return {
     ...session,
-    id: `rs-${Date.now()}`,
+    id: `rs-${uniqueSuffix()}`,
+    difficulty: session.difficulty ?? "moderate",
+    enjoymentRating: session.enjoymentRating ?? 0, // 0 = not rated
     pagesRead,
     pagesPerHour
   };
@@ -495,6 +546,8 @@ const buildUpdatedSession = (sessionId: string, input: NewReadingSessionInput): 
   return {
     ...input,
     id: sessionId,
+    difficulty: input.difficulty ?? "moderate",
+    enjoymentRating: input.enjoymentRating ?? 0, // 0 = not rated
     pagesRead,
     pagesPerHour
   };
@@ -508,7 +561,14 @@ const syncBookWithSessions = (book: Book, sessions: ReadingSession[]) => {
   const sorted = [...sessions].sort((a, b) => a.date.localeCompare(b.date));
   const firstSession = sorted[0];
   const latestSession = sorted[sorted.length - 1];
-  const latestProgress = Math.min(100, Math.round((latestSession.endPage / (book.pages || 1)) * 100));
+  // Unknown page count: page-based sessions cannot say how far along the book
+  // is, so leave status/progress untouched. Audiobook sessions store percent
+  // (0-100) in endPage when the page count is unknown.
+  const progressBase = book.pages > 0 ? book.pages : latestSession.format === "audiobook" ? 100 : 0;
+  if (progressBase <= 0) {
+    return book;
+  }
+  const latestProgress = Math.min(100, Math.round((latestSession.endPage / progressBase) * 100));
   const completed = latestProgress >= 100;
 
   return normalizeReadState({
@@ -539,8 +599,9 @@ const buildOverallStats = (books: Book[], sessions: ReadingSession[], authors: A
   const pagesRead = sessions.reduce((sum, session) => sum + session.pagesRead, 0);
   const minutesRead = sessions.reduce((sum, session) => sum + session.minutesRead, 0);
   const totalSessions = sessions.length;
-  const averageSessionEnjoyment = totalSessions
-    ? Number((sessions.reduce((sum, session) => sum + session.enjoymentRating, 0) / totalSessions).toFixed(1))
+  const ratedSessions = sessions.filter((session) => typeof session.enjoymentRating === "number" && session.enjoymentRating > 0);
+  const averageSessionEnjoyment = ratedSessions.length
+    ? Number((ratedSessions.reduce((sum, session) => sum + session.enjoymentRating, 0) / ratedSessions.length).toFixed(1))
     : 0;
   const averageBookLength = booksTracked
     ? Math.round(books.reduce((sum, book) => sum + book.pages, 0) / booksTracked)
@@ -682,6 +743,34 @@ export function BooklizProvider({ children }: PropsWithChildren) {
   const repositoryRef = useRef<BooklizRepository>(new LocalFirstBooklizRepository());
   /** True while local state has changes the cloud has not seen yet. */
   const pendingRemoteRef = useRef(false);
+  /**
+   * Set when the repository could not read the local snapshot. The state below
+   * is then seed data standing in for a library we failed to see — writing it
+   * anywhere would destroy the real one. Every write path checks this.
+   * Cleared by `resetApp` / `clearLibrary`, where wiping is the actual intent.
+   */
+  const persistBlockedRef = useRef(false);
+  /**
+   * Set when `load()` kept the local snapshot over the cloud's. Without an
+   * explicit push the winning copy would sit on this device until the user
+   * happened to edit something — and until then the cloud, and any second
+   * device, would still be serving the older library.
+   */
+  const pushLocalAfterHydrationRef = useRef(false);
+  /**
+   * Fingerprints of the last state written locally / pushed to the cloud.
+   * `createBooklizSnapshot` stamps a fresh `updatedAt` on every call, so a
+   * persist with no real change still moved the local snapshot away from the
+   * sync marker — and the next launch then "won" the conflict with a copy
+   * that had no new work, pushing it over another device's edits. Comparing
+   * content, not timestamps, is what makes "nothing changed" mean nothing.
+   */
+  const lastLocalFingerprintRef = useRef<string | null>(null);
+  const lastRemoteFingerprintRef = useRef<string | null>(null);
+  /** Supabase user id the current in-memory library was loaded for. */
+  const lastAuthUidRef = useRef<string | null>(null);
+  /** Bumped to re-run the "push local after load" effect on account changes. */
+  const [pushTick, pushLocalAfterHydrationTick] = useState(0);
   const [authors, setAuthors] = useState<Author[]>(authorSeed);
   const [books, setBooks] = useState<Book[]>(() => bookSeed.map(normalizeReadState));
   const [readingSessions, setReadingSessions] = useState<ReadingSession[]>(sessionSeed);
@@ -735,60 +824,120 @@ export function BooklizProvider({ children }: PropsWithChildren) {
     return () => clearTimeout(timer);
   }, [hydrated, authors, books, readingSessions, reviews]);
 
+  /**
+   * Push a loaded snapshot into React state. Shared by first hydration and by
+   * the auth-change reload — they used to be two hand-copied blocks, and the
+   * copy for auth changes had silently dropped reviews and lists, so signing
+   * in on a second device kept `[]` for both and the next push pruned every
+   * review and list the user had in the cloud.
+   */
+  const applyLoadedSnapshot = async (parsed: PersistedBooklizState) => {
+    // ?? only falls back when the field is null/undefined (missing from old snapshots).
+    // An intentionally-empty [] after a reset is preserved as-is, preventing
+    // mock seed data from reappearing on the next launch.
+    setAuthors(parsed.authors ?? authorSeed);
+    setBooks(
+      parsed.books !== undefined
+        ? (parsed.books.length ? hydrateBooks(parsed.books) : [])
+        : bookSeed.map(normalizeReadState)
+    );
+    setReadingSessions(parsed.readingSessions ?? sessionSeed);
+    setReviews(Array.isArray(parsed.reviews) ? parsed.reviews : []);
+    setUserLists(Array.isArray(parsed.userLists) ? parsed.userLists : []);
+
+    if (parsed.userProfile?.id) {
+      const persistedAccount = await readPersistedConnectedAccount();
+      const migratedAchievements = migrateAchievements(
+        (parsed.userProfile.achievements as unknown as Record<string, unknown>[]) ?? [],
+        userProfile.achievements
+      );
+      // The connected account only FILLS BLANKS. It used to overwrite name and
+      // avatar on every launch and token refresh, so anything the user typed
+      // in "Edit profile" reverted to the Google/Apple values within the hour.
+      setProfile({
+        ...userProfile,
+        ...parsed.userProfile,
+        ...(persistedAccount
+          ? {
+              name: parsed.userProfile.name?.trim() || persistedAccount.name,
+              avatarInitials: buildInitials(
+                parsed.userProfile.name?.trim() || persistedAccount.name,
+                parsed.userProfile.email || persistedAccount.email
+              ),
+              avatarUri: parsed.userProfile.avatarUri || persistedAccount.picture,
+              email: parsed.userProfile.email || persistedAccount.email,
+              authProvider: parsed.userProfile.authProvider || persistedAccount.provider
+            }
+          : {}),
+        achievements: migratedAchievements
+      });
+    } else {
+      setProfile(userProfile);
+    }
+  };
+
+  /** Empty library — used when the disk copy belonged to another account. */
+  const applyEmptyLibrary = () => {
+    setAuthors([]);
+    setBooks([]);
+    setReadingSessions([]);
+    setReviews([]);
+    setUserLists([]);
+    setProfile(userProfile);
+    setReadingIdentity(null);
+  };
+
   useEffect(() => {
     let mounted = true;
 
     const hydrate = async () => {
       try {
         const snapshot = await repositoryRef.current.load();
+        const status = repositoryRef.current.getStatus();
         if (mounted) {
-          setRepositoryStatus(repositoryRef.current.getStatus());
+          setRepositoryStatus(status);
+        }
+        if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          lastAuthUidRef.current = data.session?.user?.id ?? null;
         }
 
-        if (!snapshot || !mounted) {
+        // The repository could not read local storage — which is NOT the same
+        // as there being nothing there. The state we are holding is seed data;
+        // if the persistence effects run they will write those seeds over a
+        // library that is most likely still on disk. Block every write until a
+        // future load succeeds. The next launch gets another chance.
+        if (status.localReadFailed) {
+          persistBlockedRef.current = true;
+          console.warn("[Booklio] Local snapshot unreadable — persistence disabled to protect existing data.");
+          // Also clear the seeds out of view. Presenting Le Guin and Sanderson
+          // as if they were the user's own library is its own kind of lie, and
+          // invites edits we have just decided we cannot save.
+          if (mounted) {
+            setAuthors([]);
+            setBooks([]);
+            setReadingSessions([]);
+          }
           return;
         }
 
-        const parsed = snapshot as PersistedBooklizState;
-        // ?? only falls back when the field is null/undefined (missing from old snapshots).
-        // An intentionally-empty [] after a reset is preserved as-is, preventing
-        // mock seed data from reappearing on the next launch.
-        setAuthors(parsed.authors ?? authorSeed);
-        setBooks(
-          parsed.books !== undefined
-            ? (parsed.books.length ? hydrateBooks(parsed.books) : [])
-            : bookSeed.map(normalizeReadState)
-        );
-        setReadingSessions(parsed.readingSessions ?? sessionSeed);
-        if (Array.isArray(parsed.reviews)) {
-          setReviews(parsed.reviews);
+        // The local snapshot won the conflict: it holds work the cloud never
+        // received. Queue the upload so the other device sees it too.
+        if (status.localAheadOfRemote) {
+          pushLocalAfterHydrationRef.current = true;
         }
-        if (Array.isArray(parsed.userLists)) {
-          setUserLists(parsed.userLists);
+
+        if (!mounted) return;
+
+        if (!snapshot) {
+          // Another account's library was on disk and has been set aside: this
+          // user starts empty, not with the demo seeds (which would be pushed
+          // to their account as if they were theirs).
+          if (status.localBelongedToOtherUser) applyEmptyLibrary();
+          return;
         }
-        if (parsed.userProfile?.id) {
-          const persistedAccount = await readPersistedConnectedAccount();
-          const migratedAchievements = migrateAchievements(
-            (parsed.userProfile.achievements as unknown as Record<string, unknown>[]) ?? [],
-            userProfile.achievements
-          );
-          setProfile({
-            ...userProfile,
-            ...parsed.userProfile,
-            ...(persistedAccount
-              ? {
-                  name: persistedAccount.name,
-                  avatarInitials: buildInitials(persistedAccount.name, persistedAccount.email),
-                  avatarUri: persistedAccount.picture,
-                  email: persistedAccount.email,
-                  authProvider: persistedAccount.provider
-                }
-              : {}),
-            achievements: migratedAchievements
-          });
-        } else {
-          setProfile(userProfile);
-        }
+
+        await applyLoadedSnapshot(snapshot as PersistedBooklizState);
         // Onboarding flag (stored separately from the main library snapshot)
         const onboardingFlag = await AsyncStorage.getItem(ONBOARDING_KEY);
         if (mounted && onboardingFlag === "true") {
@@ -818,16 +967,29 @@ export function BooklizProvider({ children }: PropsWithChildren) {
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
         void (async () => {
+          if (persistBlockedRef.current) return;
           const online = await isOnline();
           if (!online) return;
           const pending = await hasPendingOperations();
           if (!pending) return;
           try {
-            await repositoryRef.current.save(createBooklizSnapshot(latestStateRef.current));
-            await clearQueue();
-            if (__DEV__) console.log("[Booklio] Offline queue flushed via full Supabase sync.");
+            const result = await repositoryRef.current.save(createBooklizSnapshot(latestStateRef.current));
+            if (result?.pushedToRemote) {
+              lastRemoteFingerprintRef.current = snapshotFingerprint(latestStateRef.current);
+              pendingRemoteRef.current = false;
+              await clearQueue();
+              if (__DEV__) console.log("[Booklio] Offline queue flushed via full Supabase sync.");
+            }
           } catch (err) {
             console.warn("[Booklio] Could not flush offline queue", err);
+            // Count the attempt. A permanently failing push used to retry on
+            // every foreground forever; after MAX_RETRIES the marker is dropped
+            // and the next real edit re-queues it.
+            const message = err instanceof Error ? err.message : String(err);
+            const ops = await getPendingOperations();
+            await Promise.all(ops.map((op) => markRetried(op.id, message)));
+            const exhausted = ops.length > 0 && ops.every((op) => op.retries + 1 >= MAX_RETRIES);
+            if (exhausted) await clearQueue();
           }
         })();
       }
@@ -840,51 +1002,52 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    const subscription = supabase.auth.onAuthStateChange(async (event) => {
+    const subscription = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!["SIGNED_IN", "SIGNED_OUT", "INITIAL_SESSION", "TOKEN_REFRESHED"].includes(event)) {
         return;
       }
 
-      try {
-        const snapshot = await repositoryRef.current.load();
-        setRepositoryStatus(repositoryRef.current.getStatus());
+      // Only a change of WHO is signed in warrants reloading the library.
+      // INITIAL_SESSION fires right after subscribing (we just hydrated for
+      // that very session) and TOKEN_REFRESHED fires hourly; both used to
+      // replace the whole state with a fresh load — discarding edits made in
+      // the last 600 ms and, via new array identities, triggering a full
+      // upload of six tables for no change at all.
+      const uid = session?.user?.id ?? null;
+      if (uid === lastAuthUidRef.current) {
+        return;
+      }
+      lastAuthUidRef.current = uid;
 
-        if (!snapshot) {
+      try {
+        // Whatever we hold was loaded for the previous account. Do not let a
+        // pending flush push it under the new one while `load()` runs.
+        pendingRemoteRef.current = false;
+
+        const snapshot = await repositoryRef.current.load();
+        const status = repositoryRef.current.getStatus();
+        setRepositoryStatus(status);
+
+        if (status.localReadFailed) {
+          persistBlockedRef.current = true;
           return;
         }
 
-        const parsed = snapshot as PersistedBooklizState;
-        // ?? only falls back when the field is null/undefined (missing from old snapshots).
-        // An intentionally-empty [] after a reset is preserved as-is, preventing
-        // mock seed data from reappearing on the next launch.
-        setAuthors(parsed.authors ?? authorSeed);
-        setBooks(
-          parsed.books !== undefined
-            ? (parsed.books.length ? hydrateBooks(parsed.books) : [])
-            : bookSeed.map(normalizeReadState)
-        );
-        setReadingSessions(parsed.readingSessions ?? sessionSeed);
+        // A successful read means we can see the library again — the state we
+        // are about to set IS the user's data, so writing is safe once more.
+        persistBlockedRef.current = false;
 
-        if (parsed.userProfile?.id) {
-          const persistedAccount = await readPersistedConnectedAccount();
-          const migratedAchievements = migrateAchievements(
-            (parsed.userProfile.achievements as unknown as Record<string, unknown>[]) ?? [],
-            userProfile.achievements
-          );
-          setProfile({
-            ...userProfile,
-            ...parsed.userProfile,
-            ...(persistedAccount
-              ? {
-                  name: persistedAccount.name,
-                  avatarInitials: buildInitials(persistedAccount.name, persistedAccount.email),
-                  avatarUri: persistedAccount.picture,
-                  email: persistedAccount.email,
-                  authProvider: persistedAccount.provider
-                }
-              : {}),
-            achievements: migratedAchievements
-          });
+        if (!snapshot) {
+          if (status.localBelongedToOtherUser) applyEmptyLibrary();
+          return;
+        }
+
+        await applyLoadedSnapshot(snapshot as PersistedBooklizState);
+        if (status.localAheadOfRemote) {
+          // Same reasoning as at startup: the disk copy has work the cloud
+          // never saw; push it now rather than when the user next edits.
+          pushLocalAfterHydrationRef.current = true;
+          pushLocalAfterHydrationTick((tick) => tick + 1);
         }
       } catch (error) {
         console.warn("Booklio could not refresh after auth change", error);
@@ -910,24 +1073,63 @@ export function BooklizProvider({ children }: PropsWithChildren) {
   //            upload, and is force-flushed when the app leaves the foreground
   //            so a session never ends with unsynced work.
 
-  /** Write the current state to disk, optionally skipping the cloud round trip. */
-  const persistNow = useRef<(localOnly: boolean) => Promise<void>>(async () => {});
-  persistNow.current = async (localOnly: boolean) => {
-    try {
-      await repositoryRef.current.save(createBooklizSnapshot(latestStateRef.current), { localOnly });
-      setRepositoryStatus(repositoryRef.current.getStatus());
+  /**
+   * Write the current state to disk, optionally skipping the cloud round trip.
+   * `force` bypasses the "nothing changed" short-circuit — used when the disk
+   * copy won a conflict and must reach the cloud even though, from this
+   * process's point of view, no edit happened.
+   */
+  const persistNow = useRef<(localOnly: boolean, force?: boolean) => Promise<void>>(async () => {});
+  persistNow.current = async (localOnly: boolean, force = false) => {
+    // We failed to read the library at startup. Anything we hold in memory is a
+    // stand-in, not the user's data — writing it would be the destructive act.
+    if (persistBlockedRef.current) return;
+
+    const fingerprint = snapshotFingerprint(latestStateRef.current);
+    const unchanged = localOnly
+      ? fingerprint === lastLocalFingerprintRef.current
+      : fingerprint === lastRemoteFingerprintRef.current;
+    if (unchanged && !force) {
       if (!localOnly) pendingRemoteRef.current = false;
+      return;
+    }
+
+    try {
+      const result = await repositoryRef.current.save(createBooklizSnapshot(latestStateRef.current), { localOnly });
+      setRepositoryStatus(repositoryRef.current.getStatus());
+      lastLocalFingerprintRef.current = fingerprint;
+      if (!localOnly) {
+        pendingRemoteRef.current = false;
+        if (result?.pushedToRemote) lastRemoteFingerprintRef.current = fingerprint;
+      }
     } catch (error) {
       console.warn("Booklio could not persist local library", error);
       if (!localOnly) {
         // Queue a full sync marker so the AppState listener retries when back online.
         // AsyncStorage was already written successfully — this only covers the
-        // Supabase / remote sync portion that failed.
-        void enqueue("upsert_profile", { reason: "full_sync_needed", timestamp: Date.now() });
+        // Supabase / remote sync portion that failed. One marker is enough:
+        // an hour offline used to leave hundreds of identical entries.
+        void enqueueFullSyncOnce();
       }
       setRepositoryStatus(repositoryRef.current.getStatus());
     }
   };
+
+  // Seed the fingerprints with the freshly hydrated state. The persistence
+  // effects below fire as soon as `hydrated` flips, and without this they
+  // would rewrite an unchanged library with a new `updatedAt` on every launch.
+  useEffect(() => {
+    if (!hydrated) return;
+    const fingerprint = snapshotFingerprint(latestStateRef.current);
+    lastLocalFingerprintRef.current = fingerprint;
+    // If the disk copy is ahead of the cloud, the remote fingerprint must
+    // NOT match — the explicit push below handles that case with `force`.
+    if (!pushLocalAfterHydrationRef.current) {
+      lastRemoteFingerprintRef.current = fingerprint;
+    }
+    // Only on the hydration edge: later state changes are real edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
 
   // Local snapshot — short debounce so typing in a form is one write, not thirty.
   useEffect(() => {
@@ -944,6 +1146,16 @@ export function BooklizProvider({ children }: PropsWithChildren) {
     const timer = setTimeout(() => void persistNow.current(false), REMOTE_SYNC_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [authors, books, hydrated, readingSessions, resolvedProfile, reviews, userLists]);
+
+  // Local snapshot beat the cloud's at startup — push it now rather than
+  // waiting for the user to happen to edit something. Declared after the
+  // effect that refreshes `latestStateRef`, so the ref already holds the
+  // hydrated library by the time this runs.
+  useEffect(() => {
+    if (!hydrated || !pushLocalAfterHydrationRef.current) return;
+    pushLocalAfterHydrationRef.current = false;
+    void persistNow.current(false, true);
+  }, [hydrated, pushTick]);
 
   // Leaving the foreground is the last reliable moment to sync — the OS may
   // suspend or kill us afterwards. Flush both tiers immediately, debounce be damned.
@@ -1157,6 +1369,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
           title: input.title.trim() || existingBook.title,
           authorId,
           seriesName: input.seriesName ?? existingBook.seriesName,
+          seriesId: buildSeriesId(input.seriesName ?? existingBook.seriesName) ?? existingBook.seriesId,
           seriesNumber: input.seriesNumber ?? existingBook.seriesNumber,
           coAuthorNames: coAuthorNames.length ? coAuthorNames : existingBook.coAuthorNames,
           coAuthorIds: coAuthorIds.length ? coAuthorIds : existingBook.coAuthorIds,
@@ -1174,7 +1387,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
           tags: Array.from(new Set([...(existingBook.tags ?? []), ...(input.tags ?? [])])),
           workKey: input.workKey ?? existingBook.workKey,
           editionKey: input.editionKey ?? existingBook.editionKey,
-          languageCode: input.languageCode ?? existingBook.languageCode,
+          languageCode: input.languageCode ?? (input.language ? languageCode(input.language) : undefined) ?? existingBook.languageCode,
           userStatus: {
             ...existingBook.userStatus,
             ownership: input.ownership ?? existingBook.userStatus.ownership,
@@ -1198,10 +1411,11 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       const seriesNumber = input.seriesNumber ?? inferredSeries?.seriesOrder;
 
       const book: Book = {
-        id: `b-${slugify(input.title || "captured-book")}-${Date.now()}`,
+        id: `b-${slugify(input.title || "captured-book")}-${uniqueSuffix()}`,
         title: input.title.trim() || "Untitled Book",
         authorId,
         seriesName,
+        seriesId: buildSeriesId(seriesName),
         seriesNumber,
         coAuthorNames: coAuthorNames.length ? coAuthorNames : undefined,
         coAuthorIds: coAuthorIds.length ? coAuthorIds : undefined,
@@ -1219,7 +1433,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
         isBestseller: input.isBestseller,
         workKey: input.workKey,
         editionKey: input.editionKey,
-        languageCode: input.languageCode,
+        languageCode: input.languageCode ?? languageCode(input.language ?? "English"),
         tags: input.tags ?? [],
           userStatus: {
             status: "want-to-read",
@@ -1246,7 +1460,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
     };
 
     const updateBookStatus = (bookId: string, newStatus: CoreTrackingStatus, rating?: number) => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = localDateKey();
 
       // Detect series completion: if this book is the last unread book in a series
       if (newStatus === "read") {
@@ -1260,7 +1474,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
             const saga = series.find((s) => s.id === targetBook.seriesId);
             setSeriesJustCompleted({
               seriesId: targetBook.seriesId,
-              seriesName: saga?.name ?? "Series",
+              seriesName: saga?.name ?? targetBook.seriesName ?? "Series",
             });
           }
         }
@@ -1359,6 +1573,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
             format: input.format,
             coverImageUri: input.coverImageUri?.trim() || undefined,
             seriesName: input.seriesName?.trim() || undefined,
+            seriesId: buildSeriesId(input.seriesName),
             seriesNumber: input.seriesNumber,
             isBestseller: input.isBestseller,
             isSequel: input.seriesNumber !== undefined ? input.seriesNumber > 1 : input.isSequel,
@@ -1402,8 +1617,8 @@ export function BooklizProvider({ children }: PropsWithChildren) {
     const addReview = (input: Omit<Review, "id" | "createdAt">): Review => {
       const review: Review = {
         ...input,
-        id: `rev-${Date.now()}`,
-        createdAt: new Date().toISOString().slice(0, 10)
+        id: `rev-${uniqueSuffix()}`,
+        createdAt: localDateKey()
       };
       setReviews((prev) => [review, ...prev.filter((r) => r.bookId !== input.bookId)]);
       return review;
@@ -1421,7 +1636,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
 
     const createUserList = (name: string, emoji?: string): UserList => {
       const now = new Date().toISOString();
-      const list: UserList = { id: `list-${Date.now()}`, name: name.trim(), emoji, bookIds: [], createdAt: now, updatedAt: now };
+      const list: UserList = { id: `list-${uniqueSuffix()}`, name: name.trim(), emoji, bookIds: [], createdAt: now, updatedAt: now };
       setUserLists((prev) => [...prev, list]);
       return list;
     };
@@ -1477,6 +1692,9 @@ export function BooklizProvider({ children }: PropsWithChildren) {
     };
 
     const resetApp = async () => {
+      // 0. Wiping is the whole point here, so an earlier read failure no longer
+      //    has anything to protect. Lift the block or the reset cannot persist.
+      persistBlockedRef.current = false;
       // 1. Prevent the persist effect from re-saving while we wipe
       setHydrated(false);
       // 2. Reset all React state FIRST so the persist snapshot is empty
@@ -1495,6 +1713,12 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       //    otherwise replay into whichever account signs in next.
       await AsyncStorage.multiRemove([
         LOCAL_SNAPSHOT_KEY,
+        // The sync marker and the conflict backup describe the snapshot we are
+        // deleting. Left behind, the marker would make the fresh empty library
+        // look "ahead of the cloud" and push it over the next account's data.
+        LOCAL_SYNC_MARKER_KEY,
+        LOCAL_SYNC_OWNER_KEY,
+        CONFLICT_BACKUP_KEY,
         ONBOARDING_KEY,
         READING_IDENTITY_KEY,
         OFFLINE_QUEUE_KEY,
@@ -1504,18 +1728,53 @@ export function BooklizProvider({ children }: PropsWithChildren) {
         "bookliz_google_account"
       ]);
       await clearDiscoverCache();
+      try {
+        await cancelDailyReminder();
+      } catch (_) { /* notifications may be unavailable in this build */ }
       // Theme and locale are device preferences, not account data — kept on purpose.
-      // 4. Sign out from Supabase if active
+      // 4. Erase the account server-side, then sign out. "Delete account" used
+      //    to wipe only this phone: the privacy policy promises server erasure
+      //    and App Review requires it. `booklio_delete_account()` is a
+      //    SECURITY DEFINER RPC that removes the six tables' rows and the
+      //    auth.users row (see supabase/migrations/20260911120000). If the RPC
+      //    is missing (migration not applied yet) fall back to deleting the
+      //    rows we can reach under RLS so no library is left behind.
       try {
         const { supabase: sb } = await import("../lib/supabase");
-        if (sb) await sb.auth.signOut();
+        if (sb) {
+          const { data } = await sb.auth.getSession();
+          const uid = data.session?.user?.id;
+          if (uid) {
+            const { error } = await sb.rpc("booklio_delete_account");
+            if (error) {
+              console.warn("[Booklio] booklio_delete_account RPC failed, deleting rows directly", error.message);
+              for (const table of [
+                "booklio_user_lists",
+                "booklio_reviews",
+                "booklio_reading_sessions",
+                "booklio_books",
+                "booklio_authors",
+                "booklio_profiles"
+              ]) {
+                await sb.from(table).delete().eq("user_id", uid);
+              }
+            }
+          }
+          await sb.auth.signOut();
+        }
       } catch (_) { /* ignore */ }
+      lastAuthUidRef.current = null;
+      lastLocalFingerprintRef.current = null;
+      lastRemoteFingerprintRef.current = null;
       // 5. Re-enable persistence (with clean state)
       setHydrated(true);
     };
 
     /** Clear all library data (books, sessions, reviews, lists) but keep account + settings. */
     const clearLibrary = async () => {
+      // Same reasoning as resetApp: an explicit wipe overrides the read-failure
+      // block, because there is no longer any data we are trying to preserve.
+      persistBlockedRef.current = false;
       setHydrated(false);
       setAuthors([]);
       setBooks([]);

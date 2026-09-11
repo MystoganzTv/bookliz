@@ -27,6 +27,39 @@ export type RepositoryStatus = {
   lastError?: string;
   remoteEnabled: boolean;
   cloudSignedIn: boolean;
+  /**
+   * True when the local snapshot could not be READ — as distinct from "there
+   * is none". The difference matters enormously: `load()` returns `null` for
+   * both, and a consumer that treats them alike will answer an unreadable
+   * library with seed data and then persist those seeds over the real one.
+   *
+   * When this is true the caller does not know what the user has. It must not
+   * write anything until a later load succeeds.
+   */
+  localReadFailed: boolean;
+  /**
+   * True when `load()` kept the LOCAL snapshot because it held work the cloud
+   * had never seen. The caller should push it up promptly — otherwise the
+   * winning side sits on one device until the user happens to edit again.
+   */
+  localAheadOfRemote: boolean;
+  /**
+   * Set when a conflict was resolved by discarding one side, which is then in
+   * `CONFLICT_BACKUP_KEY`. Surfaced so the UI can offer a way back.
+   */
+  conflictBackupAt?: string;
+  /**
+   * True when `load()` found a local snapshot that belongs to a DIFFERENT
+   * signed-in user than the current one and set it aside (in
+   * `CONFLICT_BACKUP_KEY`). The caller must start from the cloud copy — or,
+   * when there is none, from an empty library — never from what was on disk.
+   */
+  localBelongedToOtherUser: boolean;
+};
+
+export type SaveResult = {
+  /** True only when the snapshot genuinely reached the cloud. */
+  pushedToRemote: boolean;
 };
 
 export type SaveOptions = {
@@ -43,7 +76,7 @@ export type SaveOptions = {
 
 export interface BooklizRepository {
   load(): Promise<BooklizSnapshot | null>;
-  save(snapshot: BooklizSnapshot, options?: SaveOptions): Promise<void>;
+  save(snapshot: BooklizSnapshot, options?: SaveOptions): Promise<SaveResult>;
   getStatus(): RepositoryStatus;
 }
 
@@ -59,6 +92,44 @@ export const LOCAL_SNAPSHOT_KEY = "booklio:v2";
 const STORAGE_KEY = LOCAL_SNAPSHOT_KEY;
 const SNAPSHOT_VERSION = 2;
 
+/**
+ * `updatedAt` of the last snapshot this device successfully pushed to the cloud.
+ *
+ * This is what makes "does the local snapshot have unsynced work?" answerable
+ * after a restart: local is dirty when its `updatedAt` differs from this marker.
+ *
+ * Note both values are written by the SAME device clock, so the comparison
+ * never crosses clocks. That is the whole reason this is a marker and not a
+ * local-vs-server timestamp comparison — a phone whose clock is a day slow
+ * would otherwise lose every edit it ever made.
+ */
+export const LOCAL_SYNC_MARKER_KEY = "booklio:v2:lastRemoteSync";
+
+/**
+ * Where the snapshot that LOST a conflict is parked before being replaced.
+ *
+ * Snapshot-level resolution has to discard one side. On a single device the
+ * loser is always a stale copy, but across two devices it can hold real work
+ * that only ever existed there. Keeping the last discarded snapshot means that
+ * case is recoverable instead of silent.
+ */
+export const CONFLICT_BACKUP_KEY = "booklio:v2:conflictBackup";
+
+/**
+ * Supabase user id that the local snapshot + sync marker belong to.
+ *
+ * Neither the snapshot nor the marker used to carry an owner, so signing out
+ * of account A and into account B on the same phone made A's library look
+ * like "unsynced local work" — which was then uploaded to B and pruned B's
+ * own rows. With an owner recorded, a mismatch means "this is somebody
+ * else's library": park it, forget the marker, start from B's cloud copy.
+ * Absent (never pushed) → the local copy is unowned and may be adopted.
+ */
+export const LOCAL_SYNC_OWNER_KEY = "booklio:v2:syncOwner";
+
+/** Upper bound of ids per `not in (...)` prune request — keeps URLs under PostgREST/proxy limits. */
+const PRUNE_CHUNK = 150;
+
 type RemotePayload = {
   snapshot?: BooklizSnapshot | null;
 };
@@ -67,8 +138,14 @@ const createBaseStatus = (remoteEnabled: boolean): RepositoryStatus => ({
   mode: remoteEnabled ? "remote-cache" : "local-cache",
   syncState: "idle",
   remoteEnabled,
-  cloudSignedIn: false
+  cloudSignedIn: false,
+  localReadFailed: false,
+  localAheadOfRemote: false,
+  localBelongedToOtherUser: false
 });
+
+const messageOf = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
 
 export class LocalFirstBooklizRepository implements BooklizRepository {
   private status: RepositoryStatus;
@@ -81,79 +158,247 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     this.status = createBaseStatus(Boolean(this.remoteBaseUrl || isSupabaseConfigured));
   }
 
+  /**
+   * Read the library, preferring the cloud but never depending on it.
+   *
+   * The three legs each get their own `try`. They used to share one, which
+   * meant a dropped connection in the FIRST leg skipped the local read
+   * entirely and returned `null` — indistinguishable, to the caller, from a
+   * fresh install. The provider answered that with mock seed data and its
+   * persistence effect then wrote the seeds over the real library on disk.
+   * A flaky network became permanent data loss.
+   *
+   * So: remote failures are recorded and swallowed, and the local snapshot is
+   * always consulted. Only a failure of the local read itself is unrecoverable,
+   * and that one is flagged as `localReadFailed` so callers can refuse to write.
+   */
   async load() {
-    this.status = { ...this.status, syncState: "loading", lastError: undefined };
+    this.status = {
+      ...this.status,
+      syncState: "loading",
+      lastError: undefined,
+      localReadFailed: false,
+      localBelongedToOtherUser: false
+    };
 
+    let remoteError: string | undefined;
+    let localClearedForOtherUser = false;
+
+    // ── Leg 1: Supabase. Best effort. ───────────────────────────────────────
     try {
       if (supabase) {
         const userId = await this.getSupabaseUserId();
         this.status = { ...this.status, cloudSignedIn: Boolean(userId) };
-        const supabaseSnapshot = await this.loadSupabase();
+
+        // Whose library is on disk? If it was pushed by a different account,
+        // it must not be adopted (nor pushed) by this one.
+        if (userId) {
+          const owner = await this.readSyncOwner();
+          if (owner && owner !== userId) {
+            localClearedForOtherUser = await this.quarantineForeignLocal();
+          }
+        }
+
+        const supabaseSnapshot = await this.loadSupabase(userId);
         if (supabaseSnapshot) {
-          await this.storage.setItem(this.storageKey, JSON.stringify(supabaseSnapshot));
-          this.status = {
-            ...this.status,
-            syncState: "synced",
-            lastLoadedAt: new Date().toISOString(),
-            lastSavedAt: supabaseSnapshot.updatedAt,
-            lastError: undefined
-          };
-          return supabaseSnapshot;
+          const resolved = await this.resolveAgainstLocal(supabaseSnapshot);
+          if (userId) await this.writeSyncOwner(userId);
+          this.status = { ...this.status, localBelongedToOtherUser: localClearedForOtherUser };
+          return resolved;
         }
       }
+    } catch (error) {
+      remoteError = messageOf(error, "Supabase load failed.");
+    }
 
+    // ── Leg 2: generic remote API. Best effort. ─────────────────────────────
+    try {
       if (this.remoteBaseUrl) {
         const remoteSnapshot = await this.loadRemote();
         if (remoteSnapshot) {
-          await this.storage.setItem(this.storageKey, JSON.stringify(remoteSnapshot));
-          this.status = {
-            ...this.status,
-            syncState: "synced",
-            lastLoadedAt: new Date().toISOString(),
-            lastSavedAt: remoteSnapshot.updatedAt,
-            lastError: undefined
-          };
-          return remoteSnapshot;
+          return await this.resolveAgainstLocal(remoteSnapshot);
         }
       }
+    } catch (error) {
+      remoteError = messageOf(error, "Remote load failed.");
+    }
 
+    // ── Leg 3: the local snapshot. The source of truth when offline. ────────
+    try {
       const raw = await this.storage.getItem(this.storageKey);
-      if (!raw) {
-        this.status = {
-          ...this.status,
-          syncState: "synced",
-          lastLoadedAt: new Date().toISOString(),
-          lastError: undefined
-        };
-        return null;
-      }
+      // A missing key is a genuine fresh install — `null` here is an answer,
+      // not a failure, and the caller may safely seed.
+      const snapshot = raw
+        ? normalizeSnapshot(JSON.parse(raw) as Partial<BooklizSnapshot> | PersistedBooklizState)
+        : null;
 
-      const parsed = JSON.parse(raw) as Partial<BooklizSnapshot> | PersistedBooklizState;
-      const snapshot = normalizeSnapshot(parsed);
-      if (!snapshot) {
-        this.status = {
-          ...this.status,
-          syncState: "synced",
-          lastLoadedAt: new Date().toISOString(),
-          lastError: undefined
-        };
-        return null;
-      }
+      this.status = {
+        ...this.status,
+        // The library loaded; the cloud leg may still have failed, and the UI
+        // should say so rather than claim everything is in sync.
+        syncState: remoteError ? "error" : "synced",
+        lastLoadedAt: new Date().toISOString(),
+        ...(snapshot ? { lastSavedAt: snapshot.updatedAt } : {}),
+        lastError: remoteError,
+        localReadFailed: false,
+        localBelongedToOtherUser: localClearedForOtherUser
+      };
+      return snapshot;
+    } catch (error) {
+      // Unreadable storage or corrupt JSON. There may well be a real library
+      // sitting on disk — we simply cannot see it. Say so loudly enough that
+      // the caller knows not to overwrite it.
+      this.status = {
+        ...this.status,
+        syncState: "error",
+        lastError: messageOf(error, "Failed to read the local Booklio snapshot."),
+        localReadFailed: true
+      };
+      return null;
+    }
+  }
+
+  /**
+   * Decide between a snapshot just fetched from the cloud and the one on disk.
+   *
+   * The cloud used to win unconditionally. That is correct exactly when the
+   * local copy is a stale mirror, and wrong whenever it is not: edit offline,
+   * relaunch with signal, and the older cloud snapshot overwrote everything
+   * done in between.
+   *
+   * The test for "not stale" is the sync marker — the `updatedAt` this device
+   * last pushed successfully. If the local snapshot has moved past it, there is
+   * work up here the cloud never received, and it wins.
+   *
+   * The losing snapshot is parked in `CONFLICT_BACKUP_KEY` first. Resolving at
+   * snapshot level means one side is always dropped, and on a second device
+   * that side can hold real work; a backup makes that recoverable rather than
+   * silent. Per-record merge is the only thing that avoids the drop entirely,
+   * and it needs per-record timestamps the local snapshot does not carry yet.
+   */
+  private async resolveAgainstLocal(remote: BooklizSnapshot): Promise<BooklizSnapshot> {
+    const local = await this.readLocalSnapshot();
+    const marker = await this.readSyncMarker();
+    // No local copy at all → nothing to weigh the cloud against.
+    // No marker → this device has never pushed, so it cannot be "ahead".
+    const localHasUnsyncedWork = Boolean(local && marker && local.updatedAt !== marker);
+
+    if (localHasUnsyncedWork) {
+      const backupAt = await this.backupSnapshot(remote);
       this.status = {
         ...this.status,
         syncState: "synced",
         lastLoadedAt: new Date().toISOString(),
-        lastSavedAt: snapshot.updatedAt,
-        lastError: undefined
+        lastSavedAt: local!.updatedAt,
+        lastError: undefined,
+        localReadFailed: false,
+        localAheadOfRemote: true,
+        conflictBackupAt: backupAt
       };
-      return snapshot;
-    } catch (error) {
-      this.status = {
-        ...this.status,
-        syncState: "error",
-        lastError: error instanceof Error ? error.message : "Failed to load Booklio data."
-      };
+      return local!;
+    }
+
+    // Local is a faithful mirror of what we last pushed (or there is none):
+    // the cloud is authoritative and may legitimately carry another device's work.
+    const backupAt = local && local.updatedAt !== remote.updatedAt
+      ? await this.backupSnapshot(local)
+      : this.status.conflictBackupAt;
+
+    await this.storage.setItem(this.storageKey, JSON.stringify(remote));
+    // The local copy now equals what the cloud holds, so it is by definition
+    // in sync — record that, or the very next load would call it "ahead".
+    await this.writeSyncMarker(remote.updatedAt);
+
+    this.status = {
+      ...this.status,
+      syncState: "synced",
+      lastLoadedAt: new Date().toISOString(),
+      lastSavedAt: remote.updatedAt,
+      lastError: undefined,
+      localReadFailed: false,
+      localAheadOfRemote: false,
+      conflictBackupAt: backupAt
+    };
+    return remote;
+  }
+
+  /** Read + normalise the on-disk snapshot. Throws if storage is unreadable. */
+  private async readLocalSnapshot(): Promise<BooklizSnapshot | null> {
+    const raw = await this.storage.getItem(this.storageKey);
+    if (!raw) return null;
+    return normalizeSnapshot(JSON.parse(raw) as Partial<BooklizSnapshot> | PersistedBooklizState);
+  }
+
+  private async readSyncMarker(): Promise<string | null> {
+    try {
+      return await this.storage.getItem(LOCAL_SYNC_MARKER_KEY);
+    } catch {
+      // Marker unreadable → treat as "never synced". That biases towards
+      // keeping the cloud copy, which is the non-destructive default here.
       return null;
+    }
+  }
+
+  private async writeSyncMarker(updatedAt: string): Promise<void> {
+    try {
+      await this.storage.setItem(LOCAL_SYNC_MARKER_KEY, updatedAt);
+    } catch {
+      // A missing marker only costs us a redundant upload later.
+    }
+  }
+
+  private async readSyncOwner(): Promise<string | null> {
+    try {
+      return await this.storage.getItem(LOCAL_SYNC_OWNER_KEY);
+    } catch {
+      return null;
+    }
+  }
+
+  private async writeSyncOwner(userId: string): Promise<void> {
+    try {
+      await this.storage.setItem(LOCAL_SYNC_OWNER_KEY, userId);
+    } catch {
+      // Without an owner the next load is merely more conservative.
+    }
+  }
+
+  /**
+   * The snapshot on disk was pushed by another account. Park it in the
+   * conflict backup, drop the marker (it described that other account's
+   * pushes) and remove the snapshot so the remaining legs start clean.
+   * Returns true when something was actually set aside.
+   */
+  private async quarantineForeignLocal(): Promise<boolean> {
+    let local: BooklizSnapshot | null = null;
+    try {
+      local = await this.readLocalSnapshot();
+    } catch {
+      // Unreadable — nothing we can move; leg 3 will report localReadFailed.
+      return false;
+    }
+    if (local) {
+      await this.backupSnapshot(local);
+    }
+    try {
+      await this.storage.removeItem(this.storageKey);
+      await this.storage.removeItem(LOCAL_SYNC_MARKER_KEY);
+      await this.storage.removeItem(LOCAL_SYNC_OWNER_KEY);
+    } catch {
+      // Best effort; the marker check below still refuses to push it.
+    }
+    return Boolean(local);
+  }
+
+  /** Park a snapshot that is about to be discarded. Returns when it was parked. */
+  private async backupSnapshot(snapshot: BooklizSnapshot): Promise<string | undefined> {
+    const at = new Date().toISOString();
+    try {
+      await this.storage.setItem(CONFLICT_BACKUP_KEY, JSON.stringify({ backedUpAt: at, snapshot }));
+      return at;
+    } catch {
+      // Best effort — failing to back up must not block the load.
+      return undefined;
     }
   }
 
@@ -167,22 +412,35 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
       }
       await this.storage.setItem(this.storageKey, JSON.stringify(normalized));
 
+      let pushedToRemote = false;
       if (!options.localOnly) {
         if (supabase) {
           const userId = await this.getSupabaseUserId();
           this.status = { ...this.status, cloudSignedIn: Boolean(userId) };
-          await this.saveSupabase(normalized);
+          pushedToRemote = await this.saveSupabase(normalized);
         } else if (this.remoteBaseUrl) {
           await this.saveRemote(normalized);
+          pushedToRemote = true;
         }
+      }
+
+      // Only a snapshot the cloud actually received may move the marker. A
+      // local-only write, or a save while signed out, leaves this device ahead
+      // — which is precisely what the next load needs to know.
+      if (pushedToRemote) {
+        await this.writeSyncMarker(normalized.updatedAt);
+        const userId = await this.getSupabaseUserId();
+        if (userId) await this.writeSyncOwner(userId);
       }
 
       this.status = {
         ...this.status,
         syncState: "synced",
         lastSavedAt: normalized.updatedAt,
+        ...(pushedToRemote ? { localAheadOfRemote: false } : {}),
         lastError: undefined
       };
+      return { pushedToRemote };
     } catch (error) {
       this.status = {
         ...this.status,
@@ -229,10 +487,8 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     }
   }
 
-  private async loadSupabase() {
+  private async loadSupabase(userId: string | null) {
     if (!supabase) return null;
-
-    const userId = await this.getSupabaseUserId();
     if (!userId) {
       return null;
     }
@@ -255,6 +511,16 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
       return null;
     }
 
+    // A profile row is written LAST in `saveSupabase`, stamped with
+    // `snapshot_pushed_at`. A row without the stamp AND without any child rows
+    // is what an interrupted push (or a pre-stamp client that failed midway)
+    // leaves behind. It is not "the cloud is empty" — treating it that way
+    // made the loader replace a full local library with nothing.
+    const childRows = (authorRows?.length ?? 0) + (bookRows?.length ?? 0) + (sessionRows?.length ?? 0);
+    if (!profileRow.snapshot_pushed_at && childRows === 0) {
+      return null;
+    }
+
     return normalizeSnapshot({
       version: SNAPSHOT_VERSION,
       updatedAt: profileRow.updated_at ?? new Date().toISOString(),
@@ -267,11 +533,14 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     });
   }
 
-  private async saveSupabase(snapshot: BooklizSnapshot) {
-    if (!supabase) return;
+  /** Returns true only if the snapshot genuinely reached Supabase. */
+  private async saveSupabase(snapshot: BooklizSnapshot): Promise<boolean> {
+    if (!supabase) return false;
 
     const userId = await this.getSupabaseUserId();
-    if (!userId) return;
+    // Signed out: there is nowhere to push. Reporting success here would move
+    // the sync marker and make this device look up to date when it is not.
+    if (!userId) return false;
 
     // ─── Strategy: upsert-first, then prune orphans ───────────────────────────
     //
@@ -286,16 +555,16 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     // If step 2 fails, we have stale rows in Supabase but zero missing data.
     // The next successful save will clean them up.
 
-    // Profile — one row per user, upsert on user_id
-    const { error: profileError } = await supabase
-      .from("booklio_profiles")
-      .upsert(mapProfileToRow(userId, snapshot.userProfile), { onConflict: "user_id" });
-    if (profileError) throw new Error(`Supabase profile sync failed: ${profileError.message}`);
+    // Every child table has primary key (user_id, id). Postgres needs the
+    // ON CONFLICT target to match a unique index EXACTLY, so `onConflict: "id"`
+    // alone raised 42P10 on every upsert — the cloud never received a single
+    // author, book or session.
+    const CHILD_CONFLICT = "user_id,id";
 
     // Authors
     const authorPayload = snapshot.authors.map((a) => mapAuthorToRow(userId, a));
     if (authorPayload.length) {
-      const { error } = await supabase.from("booklio_authors").upsert(authorPayload, { onConflict: "id" });
+      const { error } = await supabase.from("booklio_authors").upsert(authorPayload, { onConflict: CHILD_CONFLICT });
       if (error) throw new Error(`Supabase author sync failed: ${error.message}`);
     }
     await pruneOrphans("booklio_authors", userId, snapshot.authors.map((a) => a.id));
@@ -303,7 +572,7 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     // Books
     const bookPayload = snapshot.books.map((b) => mapBookToRow(userId, b));
     if (bookPayload.length) {
-      const { error } = await supabase.from("booklio_books").upsert(bookPayload, { onConflict: "id" });
+      const { error } = await supabase.from("booklio_books").upsert(bookPayload, { onConflict: CHILD_CONFLICT });
       if (error) throw new Error(`Supabase book sync failed: ${error.message}`);
     }
     await pruneOrphans("booklio_books", userId, snapshot.books.map((b) => b.id));
@@ -311,7 +580,7 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     // Reading sessions
     const sessionPayload = snapshot.readingSessions.map((s) => mapReadingSessionToRow(userId, s));
     if (sessionPayload.length) {
-      const { error } = await supabase.from("booklio_reading_sessions").upsert(sessionPayload, { onConflict: "id" });
+      const { error } = await supabase.from("booklio_reading_sessions").upsert(sessionPayload, { onConflict: CHILD_CONFLICT });
       if (error) throw new Error(`Supabase reading session sync failed: ${error.message}`);
     }
     await pruneOrphans("booklio_reading_sessions", userId, snapshot.readingSessions.map((s) => s.id));
@@ -319,7 +588,7 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     // Reviews
     const reviewPayload = (snapshot.reviews ?? []).map((r) => mapReviewToRow(userId, r));
     if (reviewPayload.length) {
-      const { error } = await supabase.from("booklio_reviews").upsert(reviewPayload, { onConflict: "id" });
+      const { error } = await supabase.from("booklio_reviews").upsert(reviewPayload, { onConflict: CHILD_CONFLICT });
       if (error) throw new Error(`Supabase review sync failed: ${error.message}`);
     }
     await pruneOrphans("booklio_reviews", userId, (snapshot.reviews ?? []).map((r) => r.id));
@@ -327,10 +596,24 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     // User lists
     const listPayload = (snapshot.userLists ?? []).map((l) => mapUserListToRow(userId, l));
     if (listPayload.length) {
-      const { error } = await supabase.from("booklio_user_lists").upsert(listPayload, { onConflict: "id" });
+      const { error } = await supabase.from("booklio_user_lists").upsert(listPayload, { onConflict: CHILD_CONFLICT });
       if (error) throw new Error(`Supabase user list sync failed: ${error.message}`);
     }
     await pruneOrphans("booklio_user_lists", userId, (snapshot.userLists ?? []).map((l) => l.id));
+
+    // Profile — one row per user, written LAST and stamped. The stamp is the
+    // "push completed" marker `loadSupabase` looks for: if anything above
+    // failed we never get here, the profile keeps its previous stamp (or has
+    // none), and a half-uploaded library is never mistaken for a whole one.
+    const { error: profileError } = await supabase
+      .from("booklio_profiles")
+      .upsert(
+        { ...mapProfileToRow(userId, snapshot.userProfile), snapshot_pushed_at: new Date().toISOString() },
+        { onConflict: "user_id" }
+      );
+    if (profileError) throw new Error(`Supabase profile sync failed: ${profileError.message}`);
+
+    return true;
   }
 
   private async getSupabaseUserId() {
@@ -378,9 +661,26 @@ async function pruneOrphans(table: string, userId: string, keepIds: string[]): P
   if (!supabase) return;
   try {
     if (keepIds.length === 0) {
-      await supabase.from(table).delete().eq("user_id", userId);
-    } else {
-      await supabase.from(table).delete().eq("user_id", userId).not("id", "in", `(${keepIds.join(",")})`);
+      const { error } = await supabase.from(table).delete().eq("user_id", userId);
+      if (error && __DEV__) console.warn(`[Booklio] prune ${table} failed: ${error.message}`);
+      return;
+    }
+    // The id list travels in the query string. A few hundred `b-<slug>-<ts>`
+    // ids overflow URL limits and PostgREST answers 414 — silently, because
+    // supabase-js returns errors rather than throwing them. So: fetch the
+    // remote ids (cheap, one column) and delete only the actual orphans, in
+    // small batches.
+    const { data: remoteRows, error: listError } = await supabase.from(table).select("id").eq("user_id", userId);
+    if (listError) {
+      if (__DEV__) console.warn(`[Booklio] prune ${table} could not list ids: ${listError.message}`);
+      return;
+    }
+    const keep = new Set(keepIds);
+    const orphans = (remoteRows ?? []).map((row: { id: string }) => row.id).filter((id) => !keep.has(id));
+    for (let i = 0; i < orphans.length; i += PRUNE_CHUNK) {
+      const chunk = orphans.slice(i, i + PRUNE_CHUNK);
+      const { error } = await supabase.from(table).delete().eq("user_id", userId).in("id", chunk);
+      if (error && __DEV__) console.warn(`[Booklio] prune ${table} failed: ${error.message}`);
     }
   } catch {
     // Non-fatal: stale orphan rows will be pruned on the next successful save.
@@ -405,6 +705,8 @@ type ProfileRow = {
   top_book_ids: string[] | null;
   achievements: UserProfile["achievements"] | null;
   updated_at?: string | null;
+  /** Stamped by the client at the end of a complete push — see `saveSupabase`. */
+  snapshot_pushed_at?: string | null;
 };
 
 type AuthorRow = {

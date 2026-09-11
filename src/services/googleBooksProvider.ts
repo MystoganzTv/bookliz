@@ -13,7 +13,12 @@ import { BookEdition, BookWork, EditionFormat } from "../types/bookMetadata";
 import { normalizeLanguage } from "../utils/languageUtils";
 import { normalizeBookGenres } from "../utils/genres";
 import { scoreEdition, ScoringQuery } from "./bookMatchScorer";
-import { fetchWithTimeout } from "../utils/fetchWithTimeout";
+import {
+  fetchWithTimeout,
+  FetchTimeoutError,
+  RateLimitedError,
+  RATE_LIMIT_COOLDOWN_MS,
+} from "../utils/fetchWithTimeout";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -142,8 +147,9 @@ function volumeToEdition(
     source: "google-books",
     title: info.title ?? "Untitled",
     subtitle: info.subtitle,
-    languageCode: lang?.code ?? "en",
-    language: lang?.name ?? "English",
+    // Unknown language stays unknown — never a fabricated "English" label.
+    languageCode: lang?.code,
+    language: lang?.name,
     publisher: info.publisher,
     publishedDate: info.publishedDate,
     publishedYear,
@@ -173,7 +179,9 @@ export function volumeToWork(vol: GBVolume, query: ScoringQuery): {
     authors: info.authors ?? [],
     description: info.description,
     genres: normalizeBookGenres(info.categories, info.description),
-    seriesName: seriesVol ? `Series ${seriesVol.seriesId ?? ""}` : undefined,
+    // Google only exposes an opaque seriesId — never fabricate a visible name
+    // from it ("Series abc123"). The real name is filled by knownWorks later.
+    seriesName: undefined,
     seriesOrder: seriesVol?.orderNumber,
     canonicalLanguageCode: edition.languageCode,
     canonicalLanguage: edition.language,
@@ -326,7 +334,13 @@ export async function fetchByKeyword(
   /** ISO 639-1 code (e.g. "fr") — restricts results to that language. */
   langRestrict?: string,
   /** Set false for metadata lookups where a missing thumbnail shouldn't disqualify. */
-  requireCover = true
+  requireCover = true,
+  /**
+   * Set true to let RateLimitedError / FetchTimeoutError (and an HTTP 429)
+   * propagate instead of degrading to an empty result. Callers that cache
+   * results need to tell "no data" apart from "couldn't ask right now".
+   */
+  rethrowTransient = false
 ): Promise<{ books: GenreBookResult[]; totalItems: number }> {
   try {
     const langParam = langRestrict ? `&langRestrict=${encodeURIComponent(langRestrict)}` : "";
@@ -334,6 +348,9 @@ export async function fetchByKeyword(
     const res = await fetchWithTimeout(url);
     if (!res.ok) {
       if (__DEV__) console.log("[GB] keyword HTTP " + res.status + (res.status === 429 ? " - QUOTA/RATE LIMITED" : ""));
+      if (rethrowTransient && res.status === 429) {
+        throw new RateLimitedError("www.googleapis.com", RATE_LIMIT_COOLDOWN_MS);
+      }
       return { books: [], totalItems: 0 };
     }
     const data = (await res.json()) as GBResponse;
@@ -366,7 +383,10 @@ export async function fetchByKeyword(
       });
 
     return { books, totalItems: data.totalItems ?? 0 };
-  } catch {
+  } catch (err) {
+    if (rethrowTransient && (err instanceof RateLimitedError || err instanceof FetchTimeoutError)) {
+      throw err;
+    }
     return { books: [], totalItems: 0 };
   }
 }

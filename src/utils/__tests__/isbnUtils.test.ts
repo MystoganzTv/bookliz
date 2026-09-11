@@ -53,6 +53,19 @@ describe("parseIsbn", () => {
     expect(parseIsbn("hello world")).toBeNull();
     expect(parseIsbn("12345")).toBeNull();
   });
+  it("rejects non-book EAN/UPC codes even with a valid checksum", () => {
+    // Coca-Cola UPC-A: valid EAN checksum, not a book.
+    expect(parseIsbn("036000291452")).toBeNull();
+    expect(parseIsbn("0036000291452")).toBeNull();
+    // Valid EAN-13 outside the 978/979 Bookland range.
+    expect(parseIsbn("4006381333931")).toBeNull();
+    expect(isValidIsbn("036000291452")).toBe(false);
+  });
+  it("still accepts 978 and 979 ISBN-13s", () => {
+    expect(parseIsbn("9780439023528")?.isbn13).toBe("9780439023528"); // Mockingjay
+    expect(parseIsbn("9791032311424")?.isbn13).toBe("9791032311424"); // 979, no ISBN-10
+    expect(parseIsbn("9791032311424")?.isbn10).toBeUndefined();
+  });
 });
 
 describe("isValidIsbn", () => {

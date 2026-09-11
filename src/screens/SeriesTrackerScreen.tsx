@@ -38,8 +38,8 @@ export function SeriesTrackerScreen() {
     () =>
       [...sagaBooks].sort((a, b) =>
         order === "reading"
-          ? (a.sagaOrder ?? 99) - (b.sagaOrder ?? 99)
-          : (a.releaseOrder ?? 99) - (b.releaseOrder ?? 99)
+          ? (a.sagaOrder ?? a.seriesNumber ?? 99) - (b.sagaOrder ?? b.seriesNumber ?? 99)
+          : (a.releaseOrder ?? a.seriesNumber ?? 99) - (b.releaseOrder ?? b.seriesNumber ?? 99)
       ),
     [order, sagaBooks]
   );
@@ -57,7 +57,7 @@ export function SeriesTrackerScreen() {
     <Screen>
       <View style={styles.hero}>
         <Text style={styles.eyebrow}>{t("series.eyebrow")}</Text>
-        <Text style={styles.title}>{saga?.name ?? t("series.defaultTitle")}</Text>
+        <Text style={styles.title}>{saga?.name ?? sagaBooks[0]?.seriesName ?? t("series.defaultTitle")}</Text>
         {saga?.description ? <Text style={styles.subtitle}>{saga.description}</Text> : null}
 
         <View style={styles.progressHeader}>
@@ -144,7 +144,7 @@ export function SeriesTrackerScreen() {
                 <View style={styles.queueCopy}>
                   <Text style={styles.queueTitle}>{book.title}</Text>
                   <Text style={styles.queueMeta}>
-                    {order === "reading" ? `${t("series.readingOrder")} ${book.sagaOrder ?? "—"}` : `${t("series.published")} ${book.publishedDate.slice(0, 4)}`}
+                    {order === "reading" ? `${t("series.readingOrder")} ${book.sagaOrder ?? book.seriesNumber ?? "—"}` : `${t("series.published")} ${book.publishedDate.slice(0, 4)}`}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={c.muted} />
@@ -239,7 +239,7 @@ function SagaRoadmapRow({
   const c = useColors();
   const { t } = useI18n();
   const styles = useMemo(() => createStyles(c), [c]);
-  const orderValue = order === "reading" ? book.sagaOrder : book.releaseOrder;
+  const orderValue = order === "reading" ? (book.sagaOrder ?? book.seriesNumber) : (book.releaseOrder ?? book.seriesNumber);
 
   return (
     <Pressable accessibilityRole="button" style={styles.roadmapRow} onPress={onPress}>
@@ -247,10 +247,10 @@ function SagaRoadmapRow({
       <View style={styles.roadmapCopy}>
         <View style={styles.orderBadgeRow}>
           <View style={styles.orderBadge}>
-            <Text style={styles.orderBadgeText}>{t("series.readNum")}{book.sagaOrder ?? "—"}</Text>
+            <Text style={styles.orderBadgeText}>{t("series.readNum")}{book.sagaOrder ?? book.seriesNumber ?? "—"}</Text>
           </View>
           <View style={[styles.orderBadge, styles.orderBadgeAlt]}>
-            <Text style={[styles.orderBadgeText, styles.orderBadgeTextAlt]}>{t("series.releaseNum")}{book.releaseOrder ?? "—"}</Text>
+            <Text style={[styles.orderBadgeText, styles.orderBadgeTextAlt]}>{t("series.releaseNum")}{book.releaseOrder ?? book.seriesNumber ?? "—"}</Text>
           </View>
         </View>
         <Text style={styles.bookTitle}>{book.title}</Text>

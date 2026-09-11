@@ -44,7 +44,7 @@ export async function analyzeBookPhoto(input: {
 }): Promise<BookPhotoIntakeResult> {
   const detectedIsbn = await scanIsbnFromImage(input.uri);
   if (detectedIsbn) {
-    const metadata = await resolveBookMetadata({ isbn: detectedIsbn });
+    const metadata = await resolveIsbnMetadataInEditionLanguage(detectedIsbn);
     if (metadata) {
       const draft = metadataToBookInput(metadata, "photo", { coverImageUri: input.uri });
       return {
@@ -64,8 +64,9 @@ export async function analyzeBookPhoto(input: {
         authorName: "Author to identify",
         isbn: detectedIsbn,
         genre: ["Uncategorized"],
-        language: "English",
-        synopsis: "Bookliz detected an ISBN from the photo, but the edition still needs metadata.",
+        // Unknown stays unknown: no fabricated language, no placeholder synopsis.
+        language: undefined,
+        synopsis: undefined,
         coverImageUri: input.uri,
         source: "photo",
         ownership: "owned"
@@ -84,7 +85,9 @@ export async function analyzeBookPhoto(input: {
     const metadata = await resolveBookMetadata({
       isbn: providerResult.isbn,
       title: providerResult.title,
-      authorName: providerResult.authorName
+      authorName: providerResult.authorName,
+      // Lock enrichment to the language the provider read off the cover.
+      language: providerResult.language
     });
 
     const providerDraft = {
@@ -94,8 +97,8 @@ export async function analyzeBookPhoto(input: {
       genre: providerResult.genre ?? ["Uncategorized"],
       publisher: providerResult.publisher,
       publishedDate: providerResult.publishedDate,
-      language: providerResult.language ?? "English",
-      synopsis: providerResult.synopsis ?? "Metadata inferred from a photo by the configured vision provider.",
+      language: providerResult.language,
+      synopsis: providerResult.synopsis,
       coverImageUri: input.uri,
       source: "photo" as const,
       ownership: "owned" as const
@@ -118,7 +121,7 @@ export async function analyzeBookPhoto(input: {
       title: "Book from photo",
       authorName: "Needs identification",
       genre: ["Uncategorized"],
-      language: "English",
+      language: undefined,
       synopsis:
         Platform.OS === "ios"
           ? "Bookliz saved your photo, but iPhone photo ISBN scanning is limited. Try the live ISBN scanner or add a title, then refresh metadata."
@@ -131,6 +134,23 @@ export async function analyzeBookPhoto(input: {
     matched: false,
     notes: buildFallbackNotes()
   };
+}
+
+/**
+ * Two-step ISBN resolution that keeps the result language-locked.
+ *
+ * A bare `resolveBookMetadata({ isbn })` runs the resolver in non-strict mode,
+ * which may compose fields from editions in different languages (e.g. a
+ * Spanish edition with an English synopsis). So: first learn the language of
+ * the scanned edition from the ISBN-exact candidates, then re-run the resolver
+ * strictly in that language and use THAT result. When no language can be
+ * learned we keep the non-strict result (nothing to lock on).
+ */
+async function resolveIsbnMetadataInEditionLanguage(isbn: string) {
+  const discovery = await resolveBookMetadata({ isbn });
+  const language = discovery?.language?.trim();
+  if (!language) return discovery;
+  return resolveBookMetadata({ isbn, language });
 }
 
 async function scanIsbnFromImage(uri: string) {

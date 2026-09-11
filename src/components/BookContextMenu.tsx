@@ -5,6 +5,7 @@ import { BookCover } from "./BookCover";
 import { Book, CoreTrackingStatus } from "../types/models";
 import { AppColors, colors, fonts, radii, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
+import { useI18n } from "../i18n/LocalizationContext";
 
 type ActionItem = {
   key: string;
@@ -44,6 +45,7 @@ export function BookContextMenu({
   onRemove,
 }: Props) {
   const c = useColors();
+  const { t } = useI18n();
   const styles = useMemo(() => createStyles(c), [c]);
 
   if (!book) return null;
@@ -55,23 +57,23 @@ export function BookContextMenu({
   const actionGroups: ActionItem[][] = [
     // Group 1 — navigation
     [
-      { key: "details",  label: "Title Details",      icon: "book-outline" },
-      { key: "series",   label: "More in series",     icon: "layers-outline",   hidden: !hasSeries },
+      { key: "details",  label: t("contextMenu.details"),   icon: "book-outline" },
+      { key: "series",   label: t("contextMenu.series"),    icon: "layers-outline",   hidden: !hasSeries },
       { key: "author",   label: authorName,           icon: "person-outline",   hidden: !onViewAuthor },
     ],
     // Group 2 — status & tracking
     [
-      { key: "status",   label: "Update status",      icon: "swap-horizontal-outline" },
-      { key: "session",  label: "Log a reading session", icon: "time-outline",   hidden: !isReading },
+      { key: "status",   label: t("contextMenu.status"),    icon: "swap-horizontal-outline" },
+      { key: "session",  label: t("contextMenu.session"),   icon: "time-outline",   hidden: !isReading },
     ],
     // Group 3 — organisation
     [
-      { key: "list",     label: "Add to list",        icon: "bookmark-outline" },
-      { key: "buy",      label: "Get on Amazon",      icon: "cart-outline" },
+      { key: "list",     label: t("contextMenu.addToList"), icon: "bookmark-outline" },
+      { key: "buy",      label: t("contextMenu.buy"),       icon: "cart-outline" },
     ],
     // Group 4 — destructive
     [
-      { key: "remove",   label: "Remove from library", icon: "trash-outline",   destructive: true },
+      { key: "remove",   label: t("contextMenu.remove"),    icon: "trash-outline",   destructive: true },
     ],
   ];
 
@@ -108,7 +110,7 @@ export function BookContextMenu({
               <Text numberOfLines={1} style={styles.headerAuthor}>{authorName}</Text>
               {book.seriesName && (
                 <Text numberOfLines={1} style={styles.headerSeries}>
-                  {book.seriesNumber ? `Book ${book.seriesNumber} · ` : ""}{book.seriesName}
+                  {book.seriesNumber ? `${t("bookDetail.seriesBookN", { number: book.seriesNumber })} · ` : ""}{book.seriesName}
                 </Text>
               )}
             </View>

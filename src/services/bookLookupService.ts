@@ -374,7 +374,8 @@ async function normalizeOLEdition(
     title: data.title ?? "Untitled",
     subtitle: data.subtitle,
     authors: authorName ? [authorName] : [],
-    language: lang3(data.languages?.[0]?.key) ?? "English",
+    // Unknown language stays unknown — never a fabricated "English" label.
+    language: lang3(data.languages?.[0]?.key),
     publisher: data.publishers?.[0],
     publishedDate: data.publish_date,
     pageCount: data.number_of_pages,
@@ -626,7 +627,7 @@ export function bookMatchToNewBookInput(
     genre: match.genres,
     publisher: match.publisher,
     publishedDate: match.publishedDate,
-    language: match.language ?? "English",
+    language: match.language,
     synopsis: match.description,
     coverImageUri: match.coverUrl,
     workKey: match.workKey,

@@ -1,22 +1,23 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { CoreTrackingStatus } from "../types/models";
-import { colors, fonts, radii, spacing } from "../theme/theme";
+import { AppColors, fonts, radii, spacing } from "../theme/theme";
+import { useColors } from "../theme/ThemeContext";
 import { useI18n } from "../i18n/LocalizationContext";
 
 type StatusOption = {
   value: CoreTrackingStatus;
-  label: string;
+  labelKey: string;
   icon: keyof typeof Ionicons.glyphMap;
-  color: string;
+  color: keyof AppColors;
 };
 
 const STATUS_OPTIONS: StatusOption[] = [
-  { value: "want-to-read", label: "Want to read", icon: "bookmark-outline",         color: colors.muted  },
-  { value: "reading",      label: "Reading",      icon: "book-outline",              color: colors.teal   },
-  { value: "read",         label: "Read",         icon: "checkmark-circle-outline",  color: colors.green  },
-  { value: "wishlist",     label: "Wishlist",     icon: "heart-outline",             color: colors.coral  }
+  { value: "want-to-read", labelKey: "statusSheet.wantToRead", icon: "bookmark-outline",         color: "muted" },
+  { value: "reading",      labelKey: "statusSheet.reading",    icon: "book-outline",              color: "teal"  },
+  { value: "read",         labelKey: "statusSheet.read",       icon: "checkmark-circle-outline",  color: "green" },
+  { value: "wishlist",     labelKey: "statusSheet.wishlist",   icon: "heart-outline",             color: "coral" }
 ];
 
 type Props = {
@@ -29,6 +30,8 @@ type Props = {
 
 export function BookStatusSheet({ open, currentStatus, currentRating, onSave, onClose }: Props) {
   const { t } = useI18n();
+  const c = useColors();
+  const styles = useMemo(() => createStyles(c), [c]);
   const [status, setStatus] = useState<CoreTrackingStatus>(currentStatus);
   const [rating, setRating] = useState<number | undefined>(currentRating);
 
@@ -52,21 +55,22 @@ export function BookStatusSheet({ open, currentStatus, currentRating, onSave, on
 
         <View style={styles.sheet}>
           <View style={styles.handle} />
-          <Text style={styles.sheetTitle}>Update status</Text>
+          <Text style={styles.sheetTitle}>{t("statusSheet.title")}</Text>
 
           {/* Status grid */}
           <View style={styles.statusGrid}>
             {STATUS_OPTIONS.map((opt) => {
               const active = status === opt.value;
+              const optColor = c[opt.color];
               return (
                 <Pressable accessibilityRole="button"
                   key={opt.value}
-                  style={[styles.statusOption, active && { borderColor: opt.color, backgroundColor: `${opt.color}18` }]}
+                  style={[styles.statusOption, active && { borderColor: optColor, backgroundColor: `${optColor}18` }]}
                   onPress={() => setStatus(opt.value)}
                 >
-                  <Ionicons name={opt.icon} size={24} color={active ? opt.color : colors.muted} />
-                  <Text style={[styles.statusLabel, active && { color: opt.color }]}>
-                    {opt.label}
+                  <Ionicons name={opt.icon} size={24} color={active ? optColor : c.muted} />
+                  <Text style={[styles.statusLabel, active && { color: optColor }]}>
+                    {t(opt.labelKey)}
                   </Text>
                 </Pressable>
               );
@@ -76,7 +80,7 @@ export function BookStatusSheet({ open, currentStatus, currentRating, onSave, on
           {/* Star rating — only when Read */}
           {status === "read" && (
             <View style={styles.ratingSection}>
-              <Text style={styles.ratingLabel}>Your rating</Text>
+              <Text style={styles.ratingLabel}>{t("statusSheet.yourRating")}</Text>
               <View style={styles.stars}>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Pressable
@@ -89,7 +93,7 @@ export function BookStatusSheet({ open, currentStatus, currentRating, onSave, on
                     <Ionicons
                       name={rating !== undefined && rating >= star ? "star" : "star-outline"}
                       size={34}
-                      color={rating !== undefined && rating >= star ? colors.gold : colors.border}
+                      color={rating !== undefined && rating >= star ? c.gold : c.border}
                     />
                   </Pressable>
                 ))}
@@ -98,7 +102,7 @@ export function BookStatusSheet({ open, currentStatus, currentRating, onSave, on
           )}
 
           <Pressable accessibilityRole="button" style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Save</Text>
+            <Text style={styles.saveButtonText}>{t("common.save")}</Text>
           </Pressable>
         </View>
       </View>
@@ -106,7 +110,8 @@ export function BookStatusSheet({ open, currentStatus, currentRating, onSave, on
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: AppColors) {
+  return StyleSheet.create({
   overlay: {
     alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -114,7 +119,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end"
   },
   sheet: {
-    backgroundColor: colors.cream,
+    backgroundColor: c.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: 44,
@@ -124,14 +129,14 @@ const styles = StyleSheet.create({
   },
   handle: {
     alignSelf: "center",
-    backgroundColor: colors.border,
+    backgroundColor: c.border,
     borderRadius: radii.pill,
     height: 4,
     marginBottom: spacing.lg,
     width: 40
   },
   sheetTitle: {
-    color: colors.navy,
+    color: c.ink,
     fontFamily: fonts.display,
     fontSize: 24,
     fontWeight: "900",
@@ -145,8 +150,8 @@ const styles = StyleSheet.create({
   },
   statusOption: {
     alignItems: "center",
-    backgroundColor: colors.card,
-    borderColor: colors.border,
+    backgroundColor: c.surfaceAlt,
+    borderColor: c.border,
     borderRadius: radii.md,
     borderWidth: 2,
     flex: 1,
@@ -155,7 +160,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md
   },
   statusLabel: {
-    color: colors.muted,
+    color: c.muted,
     fontFamily: fonts.body,
     fontSize: 12,
     fontWeight: "900",
@@ -165,7 +170,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md
   },
   ratingLabel: {
-    color: colors.muted,
+    color: c.muted,
     fontFamily: fonts.body,
     fontSize: 11,
     fontWeight: "900",
@@ -179,15 +184,16 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     alignItems: "center",
-    backgroundColor: colors.navy,
+    backgroundColor: c.teal,
     borderRadius: radii.pill,
     marginTop: spacing.sm,
     paddingVertical: 15
   },
   saveButtonText: {
-    color: colors.card,
+    color: "#FFFFFF",
     fontFamily: fonts.body,
     fontSize: 14,
     fontWeight: "900"
   }
 });
+}

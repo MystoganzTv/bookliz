@@ -43,10 +43,13 @@ export interface BookEdition {
   /** Title in this edition's language (may differ from canonical work title) */
   title: string;
   subtitle?: string;
-  /** ISO 639-1 two-letter code, e.g. "en", "es" */
-  languageCode: string;
-  /** Display name, e.g. "English", "Spanish" */
-  language: string;
+  /**
+   * ISO 639-1 two-letter code, e.g. "en", "es".
+   * `undefined` when the provider did not report a language — never guessed.
+   */
+  languageCode?: string;
+  /** Display name, e.g. "English", "Spanish". `undefined` when unknown. */
+  language?: string;
   publisher?: string;
   publishedDate?: string;
   publishedYear?: number;

@@ -13,6 +13,7 @@ import { RootStackParamList } from "../navigation/types";
 import { useColors, useTheme } from "../theme/ThemeContext";
 import { NewReadingSessionInput, ReadingFormat } from "../types/models";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
+import { localDateKey, parseDateKey } from "../utils/dateUtils";
 
 const QUICK_MINUTES = [15, 30, 45, 60, 90, 120];
 const LOCATION_PRESETS = ["Home", "Cafe", "Library"];
@@ -35,7 +36,7 @@ export function AddReadingSessionScreen() {
   const { addReadingSession, books, deleteReadingSession, getBook, getAuthor, getReadingSession, readingSessions, updateBookFormat, updateReadingSession } = useBookliz();
   const editingSession = route.params?.sessionId ? getReadingSession(route.params.sessionId) : undefined;
   const isEditing = Boolean(editingSession);
-  const today = new Date().toISOString().split("T")[0];
+  const today = localDateKey();
 
   const preferredBookId =
     editingSession?.bookId ??
@@ -46,7 +47,11 @@ export function AddReadingSessionScreen() {
   const [bookId, setBookId] = useState(preferredBookId);
   const selectedBook = getBook(bookId);
 
+  const hasPageCount = (selectedBook?.pages ?? 0) > 0;
   const totalPages = selectedBook?.pages || 1; // 0 = unknown page count
+  // Audiobook progress is stored in pages when the book has a page count and as
+  // a 0-100 percentage (endPage = percent) when it does not.
+  const audioBase = selectedBook?.pages || 100;
 
   // ── Page mode (Physical / Kindle) ────────────────────────────────────
   const lastPage = editingSession
@@ -69,11 +74,11 @@ export function AddReadingSessionScreen() {
 
   // ── Audiobook mode ────────────────────────────────────────────────────
   const lastPct = editingSession && selectedBook
-    ? Math.round((Math.max(0, editingSession.startPage - 1) / (selectedBook.pages || 1)) * 100)
+    ? Math.round((Math.max(0, editingSession.startPage - 1) / audioBase) * 100)
     : selectedBook?.userStatus.progressPercent ?? 0;
   const [currentPct, setCurrentPct] = useState(
     editingSession && selectedBook
-      ? Math.min(100, Math.round((editingSession.endPage / (selectedBook.pages || 1)) * 100))
+      ? Math.min(100, Math.round((editingSession.endPage / audioBase) * 100))
       : lastPct
   );
   const gainedPct = Math.max(0, currentPct - lastPct);
@@ -84,14 +89,21 @@ export function AddReadingSessionScreen() {
   const [pctInputOpen, setPctInputOpen] = useState(false);
   const [pctInputText, setPctInputText] = useState(String(
     editingSession && selectedBook
-      ? Math.min(100, Math.round((editingSession.endPage / (selectedBook.pages || 1)) * 100))
+      ? Math.min(100, Math.round((editingSession.endPage / audioBase) * 100))
       : lastPct
   ));
 
   // ── Shared ────────────────────────────────────────────────────────────
+  // Minutes handed over by the reading timer (stop → log session).
+  const prefillMinutes =
+    typeof route.params?.prefillMinutes === "number" && Number.isFinite(route.params.prefillMinutes)
+      ? Math.max(1, Math.round(route.params.prefillMinutes))
+      : undefined;
   const [minutes, setMinutes] = useState(45);
-  const [customMinutes, setCustomMinutes] = useState(editingSession ? String(editingSession.minutesRead) : "");
-  const [useCustom, setUseCustom] = useState(Boolean(editingSession));
+  const [customMinutes, setCustomMinutes] = useState(
+    editingSession ? String(editingSession.minutesRead) : prefillMinutes !== undefined ? String(prefillMinutes) : ""
+  );
+  const [useCustom, setUseCustom] = useState(Boolean(editingSession) || prefillMinutes !== undefined);
   const [format, setFormat] = useState<ReadingFormat>(editingSession?.format ?? selectedBook?.format ?? "physical");
   const recentLocations = useMemo(
     () =>
@@ -157,25 +169,38 @@ export function AddReadingSessionScreen() {
       dialog.alert(t("logSession.noLocation"), t("logSession.noLocationBody"));
       return;
     }
+    const trimmedDate = date.trim();
+    const parsedDate = parseDateKey(trimmedDate);
+    if (!parsedDate || trimmedDate > today) {
+      dialog.alert(t("session.checkTitle"), t("session.invalidDate"));
+      return;
+    }
+    if (!(effectiveMinutes > 0)) {
+      dialog.alert(t("session.checkTitle"), t("session.invalidMinutes"));
+      return;
+    }
+    if (!isAudiobook && !hasPageCount) {
+      dialog.alert(t("session.checkTitle"), t("session.needsPageCount"));
+      return;
+    }
 
     if (isAudiobook) {
       if (gainedPct === 0) {
         dialog.alert(t("logSession.noProgress"), t("logSession.noProgressBody"));
         return;
       }
-      const startPage = Math.min(totalPages, Math.round((lastPct / 100) * totalPages) + 1);
-      const endPage = Math.round((currentPct / 100) * totalPages);
+      const startPage = Math.min(audioBase, Math.round((lastPct / 100) * audioBase) + 1);
+      const endPage = Math.round((currentPct / 100) * audioBase);
       const sessionInput: NewReadingSessionInput = {
         bookId,
-        date,
+        date: trimmedDate,
         startPage,
         endPage,
         minutesRead: effectiveMinutes,
         location: effectiveLocation,
         mood: "—",
         format,
-        notes: note.trim(),
-        difficulty: "moderate", enjoymentRating: 7
+        notes: note.trim()
       };
       if (editingSession) {
         updateReadingSession(editingSession.id, sessionInput);
@@ -200,15 +225,14 @@ export function AddReadingSessionScreen() {
     }
     const sessionInput: NewReadingSessionInput = {
       bookId,
-      date,
+      date: trimmedDate,
       startPage: lastPage + 1,
       endPage: currentPage,
       minutesRead: effectiveMinutes,
       location: effectiveLocation,
       mood: "—",
       format,
-      notes: note.trim(),
-      difficulty: "moderate", enjoymentRating: 7
+      notes: note.trim()
     };
     if (editingSession) {
       updateReadingSession(editingSession.id, sessionInput);
@@ -432,6 +456,9 @@ export function AddReadingSessionScreen() {
           </View>
           {pagesRead > 0 && (
             <Text style={styles.pagesReadPill}>+{pagesRead} {t("logSession.pagesFrom")}</Text>
+          )}
+          {!hasPageCount && (
+            <Text style={styles.pageCountHint}>{t("session.needsPageCount")}</Text>
           )}
         </View>
       )}
@@ -804,6 +831,15 @@ function createStyles(c: AppColors, isDark: boolean) {
     marginTop: spacing.md,
     paddingHorizontal: spacing.md,
     paddingVertical: 6
+  },
+  pageCountHint: {
+    color: c.coral,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: "700",
+    lineHeight: 17,
+    marginTop: spacing.sm,
+    textAlign: "center"
   },
   minutesCard: {
     backgroundColor: c.surface,

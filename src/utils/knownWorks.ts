@@ -272,7 +272,7 @@ export const KNOWN_SERIES: KnownSeries[] = [
       {
         order: 1,
         titles: ["The Hunger Games", "Los juegos del hambre"],
-        isbns: ["9780439023481", "9780439023528", "9788427200449"],
+        isbns: ["9780439023481", "9788427200449"],
         year: 2008,
       },
       {

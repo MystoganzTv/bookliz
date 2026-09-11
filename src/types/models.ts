@@ -231,8 +231,12 @@ export interface UpdateBookInput {
 
 export type NewReadingSessionInput = Omit<
   ReadingSession,
-  "id" | "pagesRead" | "pagesPerHour"
->;
+  "id" | "pagesRead" | "pagesPerHour" | "difficulty" | "enjoymentRating"
+> & {
+  difficulty?: DifficultyLevel;
+  /** 1-10 when the reader rated the session; omitted/0 = not rated (never fabricated). */
+  enjoymentRating?: number;
+};
 
 export interface NewBookInput {
   title: string;

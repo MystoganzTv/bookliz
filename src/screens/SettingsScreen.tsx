@@ -211,21 +211,21 @@ export function SettingsScreen() {
         <Text style={styles.dangerTitle}>{t("settings.dangerTitle")}</Text>
         <Text style={styles.dangerBody}>{t("settings.dangerBody")}</Text>
 
-        {/* Clear demo data — lighter action, keeps account */}
+        {/* Clear library — lighter action, keeps account + profile */}
         <Pressable accessibilityRole="button"
           style={styles.clearDemoButton}
           onPress={() =>
             dialog.confirm({
-              title: "Clear library data?",
-              body: "This removes all books, reading sessions, and lists. Your account and settings stay intact.",
-              confirmLabel: "Clear",
+              title: t("settings.clearLibraryTitle"),
+              body: t("settings.clearLibraryBody"),
+              confirmLabel: t("settings.clearLibraryConfirm"),
               destructive: true,
               onConfirm: () => { void clearLibrary(); },
             })
           }
         >
-          <Ionicons name="refresh-outline" size={16} color={c.muted} />
-          <Text style={styles.clearDemoButtonText}>Clear demo data</Text>
+          <Ionicons name="trash-outline" size={16} color={c.muted} />
+          <Text style={styles.clearDemoButtonText}>{t("settings.clearLibrary")}</Text>
         </Pressable>
 
         <Pressable accessibilityRole="button"

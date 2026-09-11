@@ -246,10 +246,10 @@ describe("workEditionToNewBookInput", () => {
     expect(input.language).toBe("English");
   });
 
-  test("falls back language to 'English' when edition has none", () => {
-    const editionNoLang = makeEdition({ language: undefined });
+  test("leaves language undefined when edition has none (never fabricates 'English')", () => {
+    const editionNoLang = makeEdition({ language: undefined, languageCode: undefined });
     const input = workEditionToNewBookInput(work, editionNoLang, "isbn");
-    expect(input.language).toBe("English");
+    expect(input.language).toBeUndefined();
   });
 
   test("maps synopsis from work description", () => {
@@ -391,6 +391,71 @@ describe("lookupByIsbn", () => {
     expect(langs).toContain("en");
     expect(langs).toContain("es");
     expect(langs).toContain("fr");
+  });
+
+  test("Spanish edition by ISBN: never takes the OL work's English title/synopsis", async () => {
+    const isbn = "9788408281153"; // Alas de sangre (Planeta)
+    olFetchEditionByIsbn.mockResolvedValue({
+      edition: makeEdition({
+        id: "ol-es", source: "open-library", isbn13: isbn,
+        title: "Alas de sangre", languageCode: "es", language: "Spanish", score: 100,
+      }),
+      workKey: "/works/OL1W",
+      authorKeys: ["/authors/OL1A"],
+    });
+    gbFetchByIsbn.mockResolvedValue([]);
+    olFetchWork.mockResolvedValue({
+      title: "Fourth Wing",
+      subtitle: "The Empyrean, Book 1",
+      description: "Twenty-year-old Violet Sorrengail was supposed to enter the Scribe Quadrant...",
+      genres: ["Fantasy"],
+      authorKeys: ["/authors/OL1A"],
+    });
+    olFetchWorkEditions.mockResolvedValue([]);
+    olResolveAuthors.mockResolvedValue(["Rebecca Yarros"]);
+
+    const result = await lookupByIsbn(isbn);
+    expect(result.work!.title).toBe("Alas de sangre");
+    expect(result.work!.subtitle).toBeUndefined();
+    expect(result.work!.description).toBeUndefined(); // empty = unknown, never leaked
+    expect(result.work!.bestEdition.language).toBe("Spanish");
+    expect(result.work!.genres).toEqual(["Fantasy"]); // structural data still flows
+  });
+
+  test("English edition by ISBN keeps the OL work title and description", async () => {
+    const isbn = "9781649374042";
+    olFetchEditionByIsbn.mockResolvedValue({
+      edition: makeEdition({ id: "ol-en", isbn13: isbn, title: "Fourth Wing", languageCode: "en", language: "English", score: 100 }),
+      workKey: "/works/OL1W",
+      authorKeys: [],
+    });
+    gbFetchByIsbn.mockResolvedValue([]);
+    olFetchWork.mockResolvedValue({ title: "Fourth Wing", description: "Violet Sorrengail...", genres: [], authorKeys: [] });
+    olFetchWorkEditions.mockResolvedValue([]);
+    olResolveAuthors.mockResolvedValue([]);
+
+    const result = await lookupByIsbn(isbn);
+    expect(result.work!.title).toBe("Fourth Wing");
+    expect(result.work!.description).toBe("Violet Sorrengail...");
+  });
+
+  test("same-ISBN merge: a KNOWN language label beats an unknown one (GB wins ties)", async () => {
+    const isbn = "9788408281153";
+    olFetchEditionByIsbn.mockResolvedValue({
+      // OL record has no language at all (common) but the higher score.
+      edition: makeEdition({ id: "ol-1", source: "open-library", isbn13: isbn, languageCode: undefined, language: undefined, score: 100 }),
+      workKey: undefined,
+      authorKeys: [],
+    });
+    gbFetchByIsbn.mockResolvedValue([
+      makeEdition({ id: "gb-1", source: "google-books", isbn13: isbn, languageCode: "es", language: "Spanish", score: 90 }),
+    ]);
+
+    const result = await lookupByIsbn(isbn);
+    expect(result.flatEditions).toHaveLength(1);
+    expect(result.flatEditions[0]!.score).toBe(100);          // OL still wins the record…
+    expect(result.flatEditions[0]!.languageCode).toBe("es");  // …but the language comes from GB
+    expect(result.flatEditions[0]!.language).toBe("Spanish");
   });
 
   test("handles provider rejection gracefully", async () => {

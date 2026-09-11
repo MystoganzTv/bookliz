@@ -1,5 +1,10 @@
 import { NewBookInput } from "../types/models";
-import { fetchWithTimeout } from "./fetchWithTimeout";
+import {
+  fetchWithTimeout,
+  FetchTimeoutError,
+  RateLimitedError,
+  RATE_LIMIT_COOLDOWN_MS,
+} from "./fetchWithTimeout";
 import { openLibraryUrl } from "./openLibrary";
 
 export type SearchMode = "general" | "author";
@@ -349,7 +354,8 @@ async function mapEditionRecordToMetadata(
       genre: normalizeBookGenres(data.subjects?.slice(0, 8)),
       publisher: data.publishers?.[0],
       publishedDate: data.publish_date,
-      language: mapLanguageKey(data.languages?.[0]?.key) ?? "English",
+      // Unknown language stays unknown — never a fabricated "English" label.
+      language: mapLanguageKey(data.languages?.[0]?.key),
       synopsis: readDescription(data.description),
       coverImageUri: coverUrl(data.covers?.[0]),
       workKey,
@@ -362,16 +368,32 @@ async function mapEditionRecordToMetadata(
   );
 }
 
-export async function fetchBookMetadataByIsbn(isbn: string): Promise<BookMetadata | undefined> {
+export async function fetchBookMetadataByIsbn(
+  isbn: string,
+  /**
+   * `rethrowTransient`: let RateLimitedError / FetchTimeoutError (and HTTP 429)
+   * propagate instead of returning undefined, so a caching caller can tell
+   * "no record" apart from "couldn't ask right now".
+   */
+  opts: { rethrowTransient?: boolean } = {}
+): Promise<BookMetadata | undefined> {
   const cleanIsbn = normalizeIsbn(isbn);
   if (cleanIsbn.length < 10) return undefined;
 
   try {
     const response = await fetchWithTimeout(openLibraryUrl(`/isbn/${cleanIsbn}.json`));
-    if (!response.ok) return undefined;
+    if (!response.ok) {
+      if (opts.rethrowTransient && response.status === 429) {
+        throw new RateLimitedError("openlibrary.org", RATE_LIMIT_COOLDOWN_MS);
+      }
+      return undefined;
+    }
     const data = (await response.json()) as OpenLibraryIsbnResponse;
     return await mapEditionRecordToMetadata(data, cleanIsbn);
-  } catch {
+  } catch (err) {
+    if (opts.rethrowTransient && (err instanceof RateLimitedError || err instanceof FetchTimeoutError)) {
+      throw err;
+    }
     return undefined;
   }
 }
@@ -559,8 +581,10 @@ export function metadataToBookInput(
     genre: normalizeBookGenres(metadata.genre),
     publisher: metadata.publisher,
     publishedDate: metadata.publishedDate,
-    language: metadata.language ?? "English",
-    synopsis: metadata.synopsis ?? "Metadata imported from Open Library.",
+    // Unknown stays unknown: no fabricated language label and no placeholder
+    // synopsis (empty = unknown is the app convention).
+    language: metadata.language,
+    synopsis: metadata.synopsis,
     coverImageUri: metadata.coverImageUri,
     format: metadata.format,
     workKey: metadata.workKey,
@@ -667,7 +691,7 @@ function mapSearchDocToBookInput(doc: OpenLibrarySearchDoc): NewBookInput {
     genre: normalizeBookGenres(doc.subject?.slice(0, 8)),
     publisher: doc.publisher?.[0],
     publishedDate: doc.first_publish_year ? `${doc.first_publish_year}-01-01` : undefined,
-    language: mapSearchLanguage(doc.language) ?? "English",
+    language: mapSearchLanguage(doc.language),
     synopsis: undefined,
     coverImageUri: coverUrl(doc.cover_i),
     workKey: doc.key?.startsWith("/works/") ? doc.key : undefined,

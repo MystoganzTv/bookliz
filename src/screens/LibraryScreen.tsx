@@ -7,6 +7,7 @@ import { Badge } from "../components/Badge";
 import { BooklizDialog } from "../components/BooklizDialog";
 import { BookCover, FormatBadge, isMutedBook } from "../components/BookCover";
 import { BookContextMenu } from "../components/BookContextMenu";
+import { BookListSheet } from "../components/BookListSheet";
 import { BookStatusSheet } from "../components/BookStatusSheet";
 import { FilterChip } from "../components/FilterChip";
 import { FilterSheet, FilterState, DEFAULT_FILTERS, activeFilterCount, FORMAT_GROUPS } from "../components/FilterSheet";
@@ -18,6 +19,7 @@ import { Book } from "../types/models";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useColors, useTheme } from "../theme/ThemeContext";
 import { normalizeBookGenres } from "../utils/genres";
+import { languageCode } from "../utils/languageUtils";
 import { CreateListSheet } from "../components/CreateListSheet";
 import { ScalePressable } from "../components/ScalePressable";
 
@@ -53,6 +55,7 @@ export function LibraryScreen() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [contextBook, setContextBook] = useState<{ book: Book; authorName: string } | null>(null);
   const [statusSheetBook, setStatusSheetBook] = useState<Book | null>(null);
+  const [listSheetBookId, setListSheetBookId] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
 
   const openAmazon = (book: Book, authorName: string) => {
@@ -177,7 +180,7 @@ export function LibraryScreen() {
       .filter((book) => {
         if (advFilters.languages.size === 0) return true;
         // Match against languageCode (ISO 639-1) or language string
-        const code = book.languageCode?.toLowerCase() ?? book.language?.slice(0, 2).toLowerCase();
+        const code = book.languageCode?.toLowerCase() ?? languageCode(book.language);
         return code ? advFilters.languages.has(code as never) : false;
       })
       .sort((a, b) => {
@@ -412,8 +415,11 @@ export function LibraryScreen() {
           setRenamingList(null);
         }}
         onDelete={() => {
-          if (renamingList) setDeleteListTarget({ id: renamingList.id, name: renamingList.name });
+          const target = renamingList ? { id: renamingList.id, name: renamingList.name } : null;
+          // Close the rename sheet first — a Modal opening while another closes
+          // never shows on iOS.
           setRenamingList(null);
+          if (target) setTimeout(() => setDeleteListTarget(target), 350);
         }}
         onClose={() => setRenamingList(null)}
       />
@@ -470,7 +476,9 @@ export function LibraryScreen() {
             ? () => navigation.navigate("AuthorBooks", { authorId: contextBook.book.authorId, authorName: contextBook.authorName })
             : undefined
         }
-        onAddToList={() => setCreateListOpen(true)}
+        onAddToList={() => {
+          if (contextBook) setListSheetBookId(contextBook.book.id);
+        }}
         onBuy={() => {
           if (!contextBook) return;
           openAmazon(contextBook.book, contextBook.authorName);
@@ -479,6 +487,15 @@ export function LibraryScreen() {
           if (contextBook) setDeleteTarget({ id: contextBook.book.id, title: contextBook.book.title });
         }}
       />
+
+      {/* Add-to-list sheet triggered from context menu */}
+      {listSheetBookId ? (
+        <BookListSheet
+          open={Boolean(listSheetBookId)}
+          bookId={listSheetBookId}
+          onClose={() => setListSheetBookId(null)}
+        />
+      ) : null}
 
       {/* Status sheet triggered from context menu */}
       {statusSheetBook && (

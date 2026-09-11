@@ -101,10 +101,16 @@ describe("normalizeLanguage", () => {
     expect(normalizeLanguage("chi")).toEqual({ code: "zh", name: "Chinese" });
   });
 
-  test("recognises 3-letter code uppercase ENG via 2-letter prefix match", () => {
-    // "ENG" → lower2 = "en", trimmed.length (3) <= 3, LANG_CODE_TO_NAME["en"] exists
-    // → matched by the 2-letter branch, returns English
+  test("recognises 3-letter code uppercase ENG via the 3-letter map", () => {
+    // "ENG" → lowercased "eng" → LANG3_TO_LANG2 → "en". The 2-letter branch
+    // only fires for exactly-2-char input (never a prefix of a 3-letter code).
     expect(normalizeLanguage("ENG")).toEqual({ code: "en", name: "English" });
+  });
+
+  test("does not mistake 3-letter codes for their 2-letter prefix", () => {
+    expect(normalizeLanguage("est")).toEqual({ code: "et", name: "Estonian" });
+    expect(normalizeLanguage("rum")).toEqual({ code: "ro", name: "Romanian" });
+    expect(normalizeLanguage("esx")).toBeUndefined();
   });
 
   // ── Open Library "/languages/xxx" format ─────────────────────────────────

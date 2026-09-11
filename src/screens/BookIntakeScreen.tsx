@@ -159,6 +159,7 @@ export function BookIntakeScreen() {
   const [editionsWorkKey, setEditionsWorkKey] = useState<string | undefined>();
   // Debounce: prevents re-processing the same barcode within 2 s
   const lastScanRef = useRef<number>(0);
+  const notIsbnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialSearchRequestRef = useRef<string | null>(null);
   // Live search: debounce timer + sequence guard so a stale (slower) response
   // can never overwrite the results of a newer query.
@@ -500,12 +501,26 @@ export function BookIntakeScreen() {
    */
   const handleBarcode = ({ data }: BarcodeScanningResult) => {
     const now = Date.now();
-    if (now - lastScanRef.current < 2000) return; // debounce
+    if (now - lastScanRef.current < 2000) return; // debounce — camera keeps scanning
 
     const parsed = parseIsbn(data);
-    if (!parsed) return; // not a valid book ISBN — ignore
+    if (!parsed) {
+      // Not a book ISBN (QR, retail UPC…): say so briefly and keep the camera
+      // live instead of locking the scanner forever.
+      lastScanRef.current = now;
+      setScanFeedback(t("scan.notIsbn"));
+      if (notIsbnTimerRef.current) clearTimeout(notIsbnTimerRef.current);
+      notIsbnTimerRef.current = setTimeout(() => {
+        notIsbnTimerRef.current = null;
+        setScanFeedback((current) => (current === t("scan.notIsbn") ? null : current));
+      }, 1500);
+      return;
+    }
 
     lastScanRef.current = now;
+    setScanned(true); // lock only once we have a real ISBN — prevents re-fire while lookup runs
+    hapticLight(); // barcode caught
+    setScanFeedback(t("scan.searching"));
     void lookupAndShowMatches(parsed.isbn13, "isbn", "isbn");
   };
 
@@ -1303,12 +1318,7 @@ export function BookIntakeScreen() {
             autofocus="on"
             enableTorch={torchOn}
             zoom={scanZoom}
-            onBarcodeScanned={scanned ? undefined : (result) => {
-              setScanned(true); // lock immediately — prevents re-fire while lookup runs
-              hapticLight(); // barcode caught
-              setScanFeedback("Barcode found — searching…");
-              handleBarcode(result);
-            }}
+            onBarcodeScanned={scanned ? undefined : handleBarcode}
             barcodeScannerSettings={{ barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "qr"] }}
           />
         )}

@@ -171,10 +171,15 @@ export function EditBookScreen() {
 
   /** Blocked tap on a series sibling — explain instead of applying. */
   const explainSiblingBlocked = () => {
-    dialog.alert(
-      t("editBook.editionSiblingBlockedTitle"),
-      t("editBook.editionSiblingBlockedBody")
-    );
+    // The root dialog renders under a screen Modal — close the picker first,
+    // then show the explanation once the sheet has animated out.
+    setEditionSheet(null);
+    setTimeout(() => {
+      dialog.alert(
+        t("editBook.editionSiblingBlockedTitle"),
+        t("editBook.editionSiblingBlockedBody")
+      );
+    }, 350);
   };
 
   const applyEditionCandidate = (candidate: GenreBookResult, lang: string) => {

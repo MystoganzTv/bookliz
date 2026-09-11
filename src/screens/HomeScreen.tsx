@@ -23,6 +23,7 @@ import {
 } from "../services/recommendationEngine";
 import { buildUserTasteProfile } from "../services/userTasteProfile";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
+import { HOURS, readCache, writeCache } from "../utils/discoverCache";
 import { useColors, useTheme } from "../theme/ThemeContext";
 
 const booklizLogoLight = require("../../assets/brand/bookliz-logo.png");
@@ -87,6 +88,15 @@ function useGenreSuggestions(
   return suggestions;
 }
 
+/** Short, stable id for a cache key (djb2) — keeps AsyncStorage keys compact. */
+function shortHash(value: string): string {
+  let hash = 5381;
+  for (let i = 0; i < value.length; i++) {
+    hash = ((hash << 5) + hash + value.charCodeAt(i)) | 0;
+  }
+  return (hash >>> 0).toString(36);
+}
+
 export function HomeScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList & MainTabParamList>>();
   const c = useColors();
@@ -134,42 +144,78 @@ export function HomeScreen() {
   const [loadingPersonalized, setLoadingPersonalized] = useState(false);
   const [personalizedNetworkError, setPersonalizedNetworkError] = useState(false);
 
+  // Stable identity of what we would fetch. `tasteProfile` is a fresh object on
+  // every library/session change (logging a session, toggling a status…), which
+  // used to refetch remote recommendations each time. Only the taste signals
+  // that drive the queries matter here.
+  const personalizedKey = useMemo(() => {
+    if (!shouldShowPersonalizedDiscovery) return "";
+    return JSON.stringify({
+      specs: recommendationSpecs.map((spec) => `${spec.id}:${spec.query}`).sort(),
+      genres: tasteProfile.topGenres.slice(0, 5).map((g) => g.genre).sort(),
+      authors: tasteProfile.topAuthors.slice(0, 5).map((a) => a.author).sort(),
+      series: tasteProfile.topSeries.slice(0, 3).map((s) => s.series).sort(),
+      languages: tasteProfile.preferredLanguages.slice(0, 2).map((l) => l.language).sort(),
+    });
+  }, [recommendationSpecs, shouldShowPersonalizedDiscovery, tasteProfile]);
+  // Latest inputs for the fetch, read at fetch time without re-triggering it.
+  const personalizedInputsRef = useRef({ tasteProfile, libraryIndex, recommendationSpecs });
+  personalizedInputsRef.current = { tasteProfile, libraryIndex, recommendationSpecs };
+  const hasPersonalizedSectionsRef = useRef(false);
+  hasPersonalizedSectionsRef.current = personalizedSections.length > 0;
+
   useEffect(() => {
     let cancelled = false;
     setPersonalizedNetworkError(false);
 
-    if (!shouldShowPersonalizedDiscovery) {
+    if (!personalizedKey) {
       setPersonalizedSections([]);
       setLoadingPersonalized(false);
       return;
     }
 
-    setLoadingPersonalized(true);
+    const cacheKey = `home-recs-${shortHash(personalizedKey)}`;
+    const { tasteProfile: profile, libraryIndex: index, recommendationSpecs: specs } = personalizedInputsRef.current;
 
-    buildPersonalizedRecommendationSections(tasteProfile, libraryIndex, {
-      specs: recommendationSpecs,
-      fetchLimit: 40,
-      booksPerSection: 5,
-      minBooksPerSection: 2,
-    })
-      .then((sections) => {
+    const load = async () => {
+      const cached = await readCache<PersonalizedRecommendationSection[]>(cacheKey, 12 * HOURS);
+      if (cancelled) return;
+      if (cached?.length) {
+        setPersonalizedSections(cached);
+        setLoadingPersonalized(false);
+        return;
+      }
+
+      // Keep whatever is already on screen while refreshing — only show the
+      // spinner when there is nothing to show yet.
+      if (!hasPersonalizedSectionsRef.current) setLoadingPersonalized(true);
+
+      try {
+        const sections = await buildPersonalizedRecommendationSections(profile, index, {
+          specs,
+          fetchLimit: 40,
+          booksPerSection: 5,
+          minBooksPerSection: 2,
+        });
         if (cancelled) return;
-        setPersonalizedSections(sections.slice(0, 2));
-      })
-      .catch(() => {
+        const top = sections.slice(0, 2);
+        setPersonalizedSections(top);
+        if (top.length) void writeCache(cacheKey, top);
+      } catch {
         if (cancelled) return;
         setPersonalizedSections([]);
         setPersonalizedNetworkError(true);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLoadingPersonalized(false);
-      });
+      } finally {
+        if (!cancelled) setLoadingPersonalized(false);
+      }
+    };
+
+    void load();
 
     return () => {
       cancelled = true;
     };
-  }, [libraryIndex, recommendationSpecs, shouldShowPersonalizedDiscovery, tasteProfile]);
+  }, [personalizedKey]);
 
   function openCatalog(query: string, title: string, browseKey?: string) {
     navigation.navigate("GenreBrowse", {
@@ -298,7 +344,7 @@ export function HomeScreen() {
                 onPress={() => {
                   if (timerIsForContinue) {
                     const mins = stopTimer();
-                    navigation.navigate("AddReadingSession", { bookId: continueBook.id, prefillMinutes: mins } as any);
+                    navigation.navigate("AddReadingSession", { bookId: continueBook.id, prefillMinutes: mins });
                   } else {
                     startTimer(continueBook.id);
                   }

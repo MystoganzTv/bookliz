@@ -35,7 +35,7 @@ export function FloatingTimer() {
     navigation.navigate("AddReadingSession", {
       bookId,
       prefillMinutes: minutes,
-    } as any);
+    });
   };
 
   const handleDiscard = () => reset();

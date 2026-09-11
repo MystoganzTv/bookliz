@@ -239,6 +239,9 @@ Vale la pena registrarlo, porque marca dónde **no** hace falta gastar esfuerzo:
 
 | Id | Qué se hizo |
 |---|---|
+| P0-A *(rev. 2026-08-10)* | `load()` tenía las tres rutas en un solo `try`: si fallaba Supabase, el snapshot local no se leía nunca y devolvía `null`, que el provider interpretaba como instalación nueva → seeds → sobrescritura de la biblioteca real a los 600 ms. Ahora cada ruta tiene su `try`, el fallback local se ejecuta siempre, y `RepositoryStatus.localReadFailed` distingue "no hay nada" de "no pude leer". Si falla la lectura local, `persistBlockedRef` bloquea toda escritura. 6 tests nuevos |
+| P1-A *(rev. 2026-08-10)* | `expo install --fix`: `expo-haptics` 56.0.3 → 15.0.8 (era un salto de major a un SDK futuro, colado por `legacy-peer-deps`), `jest-expo` → 54.0.17, `expo` → ~54.0.36. Sin cambios de código: el wrapper solo usa APIs estables |
+| P0-B *(rev. 2026-08-10)* | La nube ganaba siempre y las ediciones offline se perdían al reabrir. Resolución por marcador de sincronización (`LOCAL_SYNC_MARKER_KEY`), no por comparación de fechas: los dos valores los escribe el mismo reloj. El snapshot perdedor se aparca en `CONFLICT_BACKUP_KEY`. 10 tests nuevos. Queda abierto P0-B2 (fusión por registro para multi-dispositivo) |
 | P0-2 | `mergeSeedBookMetadata` eliminada → `hydrateBooks`. Los seeds ya no tienen autoridad sobre la biblioteca real |
 | P0-4 | Logging `[IDENTITY_TRIGGER]` borrado |
 | P1-1 | `src/components/ErrorBoundary.tsx` nuevo, envuelve el árbol en `App.tsx`. Sin tema ni i18n a propósito: si un provider es lo que crashea, el fallback no puede depender de él |
@@ -263,6 +266,7 @@ Eliminado junto con sus cuatro `books.filter`.
 
 | Id | Qué falta | Quién |
 |---|---|---|
+| P0-B2 *(rev. 2026-08-10)* | Fusión por registro. Con dos dispositivos editando antes de sincronizar, la resolución por snapshot descarta un lado entero (queda en `CONFLICT_BACKUP_KEY`, recuperable pero no aplicado). Requiere `updatedAt` por registro en el snapshot local + tombstones para borrados + migración a v3 | Siguiente sesión |
 | P0-1 | Google Sign-In iOS: crear el cliente OAuth de iOS en Google Cloud Console y sustituir `TU_IOS_CLIENT_ID` / `TU_REVERSED_IOS_CLIENT_ID` | **Tú** — no puedo generar credenciales |
 | P0-3 | Elegir fuente única de versión. Sugerencia: `expo-application` → `nativeApplicationVersion` en runtime, para que `WhatsNewModal` no pueda desincronizarse del binario | **Tú** |
 | P2-2 | Unificar los dos `recommendationEngine.ts` | Siguiente sesión |

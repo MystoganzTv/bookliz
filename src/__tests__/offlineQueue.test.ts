@@ -330,6 +330,13 @@ describe("isOnline", () => {
     expect(await isOnline()).toBe(false);
   });
 
+  it("returns true when connected and reachability is still unknown", async () => {
+    // `isInternetReachable` is undefined on several platforms until the OS
+    // finishes probing. Treating "unknown" as offline kept the queue stuck.
+    mockGetNetwork.mockResolvedValue({ isConnected: true, isInternetReachable: undefined, type: "wifi" } as unknown as NetworkState);
+    expect(await isOnline()).toBe(true);
+  });
+
   it("returns false when getNetworkStateAsync throws", async () => {
     mockGetNetwork.mockRejectedValue(new Error("native module unavailable"));
     expect(await isOnline()).toBe(false);

@@ -86,7 +86,10 @@ export interface ParsedIsbn {
 export function parseIsbn(raw: string): ParsedIsbn | null {
   const clean = cleanIsbn(raw);
 
-  if (clean.length === 13 && validateIsbn13(clean)) {
+  // A 13-digit code is an ISBN only inside the "Bookland" EAN range (978/979).
+  // Any other EAN-13/UPC with a valid checksum (groceries, toys…) is NOT a book
+  // and must never be looked up as one.
+  if (clean.length === 13 && isBooklandPrefix(clean) && validateIsbn13(clean)) {
     const isbn10 = isbn13ToIsbn10(clean) ?? undefined;
     return { isbn13: clean, isbn10, raw: clean };
   }
@@ -97,16 +100,23 @@ export function parseIsbn(raw: string): ParsedIsbn | null {
     return { isbn13, isbn10: clean, raw: clean };
   }
 
-  // EAN-13 from UPC-A scanner (12 digits → prepend "0" → re-check as ISBN-13)
+  // 12-digit UPC-A from a scanner: zero-padding to EAN-13 yields a "0…" code,
+  // which can never carry the 978/979 Bookland prefix — so it is never an ISBN.
+  // The same Bookland requirement applies here; kept explicit for clarity.
   if (clean.length === 12) {
     const candidate = "0" + clean;
-    if (validateIsbn13(candidate)) {
+    if (isBooklandPrefix(candidate) && validateIsbn13(candidate)) {
       const isbn10 = isbn13ToIsbn10(candidate) ?? undefined;
       return { isbn13: candidate, isbn10, raw: clean };
     }
   }
 
   return null;
+}
+
+/** True when a 13-digit code sits in the ISBN ("Bookland") EAN range. */
+function isBooklandPrefix(isbn13: string): boolean {
+  return isbn13.startsWith("978") || isbn13.startsWith("979");
 }
 
 /** Quick check — is this a valid ISBN-10 or ISBN-13? */

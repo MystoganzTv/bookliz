@@ -130,7 +130,9 @@ function editionRawToPartial(
   const isbn13 = raw.isbn_13?.[0] ?? (raw.isbn_10?.[0] ? undefined : fallbackIsbn);
   const isbn10 = raw.isbn_10?.[0];
   const langKey = raw.languages?.[0]?.key;
-  const lang = normalizeLanguage(langKey) ?? { code: "en", name: "English" };
+  // No language on the record → unknown. Never default to English: a Spanish
+  // edition mislabelled "English" would leak English metadata into it.
+  const lang = normalizeLanguage(langKey);
   const publishedYear = parsePublishedYear(raw.publish_date);
 
   return {
@@ -141,8 +143,8 @@ function editionRawToPartial(
     source: "open-library",
     title: raw.title ?? "Untitled",
     subtitle: raw.subtitle,
-    languageCode: lang.code,
-    language: lang.name,
+    languageCode: lang?.code,
+    language: lang?.name,
     publisher: raw.publishers?.[0],
     publishedDate: raw.publish_date,
     publishedYear,
@@ -295,7 +297,8 @@ export async function fetchWorksByQuery(
       .filter((doc) => doc.title && doc.author_name?.length)
       .map((doc) => {
         const isbn13 = doc.isbn?.find((x) => x.length === 13);
-        const lang = normalizeLanguage(doc.language?.[0]) ?? { code: "en", name: "English" };
+        // Unknown language stays unknown (no fabricated "English").
+        const lang = normalizeLanguage(doc.language?.[0]);
 
         const bestEdition: Omit<BookEdition, "score"> = {
           id: `ol:${doc.key ?? doc.title}`,
@@ -303,8 +306,8 @@ export async function fetchWorksByQuery(
           editionKey: undefined,
           source: "open-library",
           title: doc.title ?? "Untitled",
-          languageCode: lang.code,
-          language: lang.name,
+          languageCode: lang?.code,
+          language: lang?.name,
           publisher: doc.publisher?.[0],
           publishedDate: doc.first_publish_year
             ? `${doc.first_publish_year}-01-01`
@@ -321,8 +324,8 @@ export async function fetchWorksByQuery(
           authors: doc.author_name ?? [],
           genres: normalizeBookGenres(doc.subject?.slice(0, 8)),
           editionCount: doc.edition_count,
-          canonicalLanguageCode: lang.code,
-          canonicalLanguage: lang.name,
+          canonicalLanguageCode: lang?.code,
+          canonicalLanguage: lang?.name,
         };
 
         return { doc, partialWork, bestEdition };

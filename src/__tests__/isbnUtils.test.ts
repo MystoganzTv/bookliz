@@ -212,16 +212,23 @@ describe("parseIsbn", () => {
     expect(parseIsbn("")).toBeNull();
   });
 
-  it("handles 12-digit UPC-A input by prepending 0", () => {
-    // Test that a 12-digit string gets the "0" prepend path without crashing.
-    // If prepending "0" produces a valid ISBN-13, result is non-null.
+  it("rejects 12-digit UPC-A input (zero-padded EAN can never be Bookland 978/979)", () => {
     const upc12 = "780306406157"; // dropping leading "9" from 9780306406157
-    const result = parseIsbn(upc12);
-    // If returned, the isbn13 must be valid
-    if (result) {
-      expect(validateIsbn13(result.isbn13)).toBe(true);
-    }
-    // (result may be null if the prepend doesn't produce a valid check digit — that's fine)
+    expect(parseIsbn(upc12)).toBeNull();
+    // A real product UPC with a valid checksum is not a book either.
+    expect(parseIsbn("036000291452")).toBeNull();
+  });
+
+  it("rejects a checksum-valid EAN-13 outside the 978/979 range", () => {
+    expect(validateIsbn13("4006381333931")).toBe(true); // checksum math is fine…
+    expect(parseIsbn("4006381333931")).toBeNull();      // …but it is not an ISBN
+    expect(isValidIsbn("4006381333931")).toBe(false);
+  });
+
+  it("accepts 979-prefixed ISBN-13 (no ISBN-10 equivalent)", () => {
+    const result = parseIsbn("9791032311424");
+    expect(result?.isbn13).toBe("9791032311424");
+    expect(result?.isbn10).toBeUndefined();
   });
 });
 

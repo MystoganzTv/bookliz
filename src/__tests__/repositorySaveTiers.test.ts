@@ -127,6 +127,6 @@ describe("save() — full sync", () => {
     }) as unknown as typeof fetch;
     const repo = new LocalFirstBooklizRepository(AsyncStorage, LOCAL_SNAPSHOT_KEY, REMOTE);
 
-    await expect(repo.save(snapshot(), { localOnly: true })).resolves.toBeUndefined();
+    await expect(repo.save(snapshot(), { localOnly: true })).resolves.toEqual({ pushedToRemote: false });
   });
 });

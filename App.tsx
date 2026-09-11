@@ -28,7 +28,7 @@ function Root() {
 }
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontsError] = useFonts({
     Lora_700Bold,
     Nunito_400Regular,
     Nunito_600SemiBold,
@@ -37,7 +37,8 @@ export default function App() {
     Nunito_900Black
   });
 
-  if (!fontsLoaded) return null;
+  // A font failure must not leave the app blank forever — fall back to system fonts.
+  if (!fontsLoaded && !fontsError) return null;
 
   return (
     <ErrorBoundary>
