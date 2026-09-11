@@ -23,6 +23,7 @@ import {
   PersistedBooklizState,
   RepositoryStatus
 } from "./booklizRepository";
+import type { ConflictBackup } from "./booklizRepository";
 import { clearDiscoverCache } from "../utils/discoverCache";
 import { cancelDailyReminder, NOTIFICATION_PREFS_KEY } from "../utils/notificationService";
 import { WHATS_NEW_KEY } from "../components/WhatsNewModal";
@@ -106,6 +107,19 @@ type OverallStats = {
   mostActiveDays: { label: string; value: number }[];
 };
 
+/**
+ * What the UI needs to describe the parked conflict backup without holding the
+ * whole snapshot in React state: when it was set aside and how much is in it,
+ * so the user can judge before replacing anything.
+ */
+export type ConflictBackupInfo = {
+  backedUpAt: string;
+  /** `updatedAt` of the backed-up library — when it was last edited. */
+  updatedAt: string;
+  bookCount: number;
+  sessionCount: number;
+};
+
 type BooklizContextValue = {
   authors: Author[];
   books: Book[];
@@ -116,6 +130,20 @@ type BooklizContextValue = {
   series: typeof series;
   userProfile: UserProfile;
   repositoryStatus: RepositoryStatus;
+  /**
+   * The snapshot a sync conflict discarded, if one is still parked. Null when
+   * there is nothing to recover — the UI shows the recovery row only then.
+   */
+  conflictBackup: ConflictBackupInfo | null;
+  /**
+   * Replace the in-memory library with the parked snapshot and persist it.
+   * The library being replaced is parked FIRST, so this is itself reversible.
+   * Rejects (without changing anything) when the backup cannot be read or the
+   * safety copy cannot be written — callers must surface the failure.
+   */
+  restoreConflictBackup: () => Promise<void>;
+  /** Forget the parked snapshot. Does not touch the current library. */
+  discardConflictBackup: () => Promise<void>;
   onboardingComplete: boolean;
   completeOnboarding: (name: string, genres: string[]) => Promise<void>;
   resetApp: () => Promise<void>;
@@ -781,6 +809,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [repositoryStatus, setRepositoryStatus] = useState<RepositoryStatus>(repositoryRef.current.getStatus());
   const [seriesJustCompleted, setSeriesJustCompleted] = useState<{ seriesId: string; seriesName: string } | null>(null);
+  const [conflictBackup, setConflictBackup] = useState<ConflictBackupInfo | null>(null);
   const [readingIdentity, setReadingIdentity] = useState<ReadingIdentity | null>(null);
   const resolvedProfile = useMemo(
     () => enrichProfileAchievements(profile, books, readingSessions, reviews),
@@ -876,6 +905,33 @@ export function BooklizProvider({ children }: PropsWithChildren) {
     }
   };
 
+  /**
+   * Re-read the parked conflict backup into `conflictBackup`.
+   *
+   * Deliberately tolerant: a storage error here must not break hydration, and
+   * "we cannot see a backup" is shown as "there is none" rather than as a row
+   * that would fail the moment it was tapped. The restore path re-reads the
+   * backup itself and does NOT rely on this state.
+   */
+  const refreshConflictBackup = async () => {
+    try {
+      const backup: ConflictBackup | null = await repositoryRef.current.readConflictBackup();
+      setConflictBackup(
+        backup
+          ? {
+              backedUpAt: backup.backedUpAt,
+              updatedAt: backup.snapshot.updatedAt,
+              bookCount: backup.snapshot.books.length,
+              sessionCount: backup.snapshot.readingSessions.length
+            }
+          : null
+      );
+    } catch (error) {
+      console.warn("[Booklio] Could not read the conflict backup", error);
+      setConflictBackup(null);
+    }
+  };
+
   /** Empty library — used when the disk copy belonged to another account. */
   const applyEmptyLibrary = () => {
     setAuthors([]);
@@ -948,6 +1004,9 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       } finally {
         if (mounted) {
           setRepositoryStatus(repositoryRef.current.getStatus());
+          // A conflict resolved during this very load may have parked a
+          // snapshot; surface it so Settings can offer it back.
+          void refreshConflictBackup();
           setHydrated(true);
         }
       }
@@ -1027,6 +1086,9 @@ export function BooklizProvider({ children }: PropsWithChildren) {
         const snapshot = await repositoryRef.current.load();
         const status = repositoryRef.current.getStatus();
         setRepositoryStatus(status);
+        // Signing in/out can quarantine the previous account's library into the
+        // backup slot, so what is recoverable changes here too.
+        void refreshConflictBackup();
 
         if (status.localReadFailed) {
           persistBlockedRef.current = true;
@@ -1706,6 +1768,9 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       setProfile(userProfile);
       setOnboardingComplete(false);
       setReadingIdentity(null);
+      // The parked snapshot is wiped below with everything else; drop the row
+      // that offers it, or Settings would keep advertising a copy that is gone.
+      setConflictBackup(null);
       // 3. Wipe AsyncStorage.
       //    Everything derived from the previous reader must go, not just the
       //    library snapshot: the reading identity IS the taste vector that
@@ -1801,6 +1866,68 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       setHydrated(true);
     };
 
+    /**
+     * Put the parked snapshot back, and park the library it replaces.
+     *
+     * Order matters and every step can refuse:
+     *   1. Re-read the backup. Nothing is touched until we hold a whole,
+     *      parseable snapshot — the cached `conflictBackup` metadata is not
+     *      enough to restore from, and may be stale.
+     *   2. Write the CURRENT library into the same slot. This throws if it
+     *      fails, and we stop, because a restore you cannot undo would be the
+     *      very data loss this feature exists to prevent.
+     *   3. Only then replace React state and persist.
+     *
+     * Persisting goes through `persistNow` via the same "push after hydration"
+     * effect the conflict path uses: it runs after `latestStateRef` has caught
+     * up with the restored state, and its `force` flag bypasses the
+     * "nothing changed" short-circuit — the fingerprints still describe the
+     * library we just replaced, so without `force` the restore would be
+     * written locally but treated as a no-op for the cloud.
+     */
+    const restoreConflictBackup = async () => {
+      const backup = await repositoryRef.current.readConflictBackup();
+      if (!backup) {
+        // Someone else cleared it, or it is unreadable. Say so — silently
+        // doing nothing would look like a successful restore.
+        setConflictBackup(null);
+        throw new Error("There is no recoverable copy to restore.");
+      }
+
+      // Step 2 — the safety copy. Throws on failure; we never get to step 3.
+      await repositoryRef.current.writeConflictBackup(createBooklizSnapshot(latestStateRef.current));
+
+      // `persistBlockedRef` protects a library we failed to READ, by refusing
+      // to write the seed data standing in for it. Here the user is explicitly
+      // asking us to write a snapshot that came off disk, so there is nothing
+      // left to protect — and leaving the block set would drop the restore.
+      persistBlockedRef.current = false;
+
+      try {
+        await applyLoadedSnapshot(backup.snapshot as PersistedBooklizState);
+      } finally {
+        // Whatever landed in React state must reach disk deterministically —
+        // including after a mid-way failure, where leaving it to the 600 ms
+        // debounce would be the only thing standing between a half-applied
+        // restore and a lost one. The copy it replaced is already parked, so
+        // this is safe either way; the error still propagates to the caller.
+        pushLocalAfterHydrationRef.current = true;
+        pushLocalAfterHydrationTick((tick) => tick + 1);
+
+        // The slot now holds the pre-restore library — refresh the row so it
+        // describes what going back would actually give you.
+        await refreshConflictBackup();
+        setRepositoryStatus(repositoryRef.current.getStatus());
+      }
+    };
+
+    /** Forget the parked snapshot. The current library is not touched. */
+    const discardConflictBackup = async () => {
+      await repositoryRef.current.clearConflictBackup();
+      setConflictBackup(null);
+      setRepositoryStatus(repositoryRef.current.getStatus());
+    };
+
     const connectIdentityAccount = async (account: ConnectedAccount) => {
       await persistConnectedAccount(account);
       setProfile((current) => ({
@@ -1833,6 +1960,9 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       series,
       userProfile: resolvedProfile,
       repositoryStatus,
+      conflictBackup,
+      restoreConflictBackup,
+      discardConflictBackup,
       onboardingComplete,
       completeOnboarding,
       resetApp,
@@ -1870,7 +2000,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       clearSeriesCompletion: () => setSeriesJustCompleted(null),
       readingIdentity
     };
-  }, [authors, books, onboardingComplete, readingSessions, readingIdentity, repositoryStatus, resolvedProfile, reviews, seriesJustCompleted, userLists]);
+  }, [authors, books, conflictBackup, onboardingComplete, readingSessions, readingIdentity, repositoryStatus, resolvedProfile, reviews, seriesJustCompleted, userLists]);
 
   if (!hydrated) return null;
 

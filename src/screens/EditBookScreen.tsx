@@ -49,6 +49,7 @@ import {
   GroupedEditionCandidates,
 } from "../utils/editionMatchValidation";
 import { isSameLanguage } from "../utils/languageUtils";
+import { normalizeBookGenres } from "../utils/genres";
 import { GenreBookResult } from "../services/googleBooksProvider";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -78,6 +79,11 @@ const STATUS_OPTIONS: { value: CoreTrackingStatus; labelKey: string }[] = [
   { value: "want-to-buy",      labelKey: "editBook.statusBuy" },
   { value: "dnf",              labelKey: "editBook.statusDnf" },
   { value: "upcoming-release", labelKey: "editBook.statusUpcoming" },
+];
+
+const OWNERSHIP_OPTIONS: { value: OwnershipStatus; labelKey: string }[] = [
+  { value: "owned",     labelKey: "editBook.ownershipOwned" },
+  { value: "not-owned", labelKey: "editBook.ownershipNotOwned" },
 ];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -224,6 +230,32 @@ export function EditBookScreen() {
     }
   };
 
+  // ── status ↔ wishlist / wantToBuy flags ────────────────────────────────────
+  // `status` is ONE of seven mutually exclusive tracking states, while
+  // `wishlist` and `wantToBuy` are independent booleans that the rest of the app
+  // reads directly (Library's "Wishlist" filter, the Home collector counters,
+  // the taste profile scoring). Until now, picking the "Wishlist" status here
+  // left both flags untouched, so a book could be wishlist-status with
+  // `wishlist: false` and never show up in the wishlist filter.
+  //
+  // Decision: turn the MATCHING flag ON when that status is picked, and never
+  // turn a flag OFF automatically.
+  //   · Turning on is what the user just asked for, and it happens in front of
+  //     them — the flag chips live directly under the status row, so they can
+  //     see the change and undo it.
+  //   · Turning off automatically would silently destroy user data: a book can
+  //     legitimately be "reading" and still be on the want-to-buy list (a nicer
+  //     edition), or "read" and still wished for as a gift copy.
+  //   · We deliberately do NOT force `ownership` to "not-owned" the way
+  //     BooklizContext's quick status sheet does — ownership is now an explicit
+  //     control on this very screen, and overriding a choice the user just made
+  //     two cards above would be the most surprising behaviour of all.
+  const selectStatus = (next: CoreTrackingStatus) => {
+    setStatus(next);
+    if (next === "wishlist")     setWishlist(true);
+    if (next === "want-to-buy")  setWantToBuy(true);
+  };
+
   // ── fetch metadata ─────────────────────────────────────────────────────────
   const fetchInfo = async () => {
     if (!canFetchMetadata({ isbn, title, authorName })) {
@@ -310,14 +342,21 @@ export function EditBookScreen() {
   const onSave = () => {
     updateBook(book.id, {
       title, authorName, synopsis,
-      genre: genres,
+      // Hand-typed genres go through exactly the same normalizer as imported
+      // metadata, so the manual path can't inject labels the rest of the app
+      // rejects (generic catch-alls like "Fiction" / "Ficción" / "General" /
+      // "Novela" are dropped and never count as a real genre).
+      genre: normalizeBookGenres(genres),
       // Empty form field = unknown (0). Falling back to book.pages here would
       // re-inherit the previous edition's page count after an edition switch.
       pages: parseNum(pages) ?? 0,
       publishedDate, publisher, language, isbn, format, coverImageUri,
       editionKey,
       seriesName, seriesNumber: parseNum(seriesNumber),
-      isBestseller, isSequel, tags,
+      isBestseller, isSequel,
+      // Tags are the user's own words: trimmed and de-blanked, never normalized
+      // or filtered against a vocabulary the way genres are.
+      tags: tags.map((tag) => tag.trim()).filter(Boolean),
       status, ownership, wishlist, wantToBuy,
       rating: rating > 0 ? rating : undefined,
       personalRanking: parseNum(personalRanking),
@@ -433,12 +472,50 @@ export function EditBookScreen() {
               key={opt.value}
               label={t(opt.labelKey)}
               active={status === opt.value}
-              onPress={() => setStatus(opt.value)}
+              onPress={() => selectStatus(opt.value)}
               styles={styles}
               c={c}
             />
           ))}
         </View>
+      </FieldCard>
+
+      {/* ══ OWNERSHIP ════════════════════════════════════════════════════════ */}
+      <FieldCard icon="home-outline" label={t("editBook.labelOwnership")} c={c} styles={styles}>
+        <View style={styles.toggleRow}>
+          {OWNERSHIP_OPTIONS.map((opt) => (
+            <ToggleChip
+              key={opt.value}
+              label={t(opt.labelKey)}
+              active={ownership === opt.value}
+              onPress={() => setOwnership(opt.value)}
+              styles={styles}
+              c={c}
+            />
+          ))}
+        </View>
+      </FieldCard>
+
+      {/* ══ WISHLIST / WANT-TO-BUY FLAGS ═════════════════════════════════════ */}
+      {/* Independent of `status` — see selectStatus() above. */}
+      <FieldCard icon="heart-outline" label={t("editBook.labelWishlistFlags")} c={c} styles={styles}>
+        <View style={styles.toggleRow}>
+          <ToggleChip
+            label={t("editBook.toggleWishlist")}
+            active={wishlist}
+            onPress={() => setWishlist((v) => !v)}
+            styles={styles}
+            c={c}
+          />
+          <ToggleChip
+            label={t("editBook.toggleWantToBuy")}
+            active={wantToBuy}
+            onPress={() => setWantToBuy((v) => !v)}
+            styles={styles}
+            c={c}
+          />
+        </View>
+        <Text style={styles.langHint}>{t("editBook.wishlistHint")}</Text>
       </FieldCard>
 
       {/* ══ DETAILS ══════════════════════════════════════════════════════════ */}
@@ -575,6 +652,28 @@ export function EditBookScreen() {
 
       <FieldCard icon="image-outline" label={t("editBook.labelCover")} c={c} styles={styles}>
         <PlainInput value={coverImageUri} onChangeText={setCoverImageUri} placeholder="https://…" autoCapitalize="none" styles={styles} c={c} />
+      </FieldCard>
+
+      {/* ══ GENRES & TAGS ════════════════════════════════════════════════════ */}
+      <FieldCard icon="pricetags-outline" label={t("editBook.labelGenres")} c={c} styles={styles}>
+        <ChipEditor
+          chips={genres}
+          onChipsChange={setGenres}
+          placeholder={t("editBook.genrePlaceholder")}
+          styles={styles}
+          c={c}
+        />
+        <Text style={styles.langHint}>{t("editBook.genreHint")}</Text>
+      </FieldCard>
+
+      <FieldCard icon="bookmarks-outline" label={t("editBook.labelTags")} c={c} styles={styles}>
+        <ChipEditor
+          chips={tags}
+          onChipsChange={setTags}
+          placeholder={t("editBook.tagPlaceholder")}
+          styles={styles}
+          c={c}
+        />
       </FieldCard>
 
       {/* ══ NOTES & QUOTES ═══════════════════════════════════════════════════ */}

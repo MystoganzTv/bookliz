@@ -21,7 +21,16 @@ import {
 export function SettingsScreen() {
   const { colors: c, isDark, toggleTheme } = useTheme();
   const { locale, setLocale, t } = useI18n();
-  const { resetApp, clearLibrary, userProfile } = useBookliz();
+  const {
+    resetApp,
+    clearLibrary,
+    userProfile,
+    books,
+    readingSessions,
+    conflictBackup,
+    restoreConflictBackup,
+    discardConflictBackup,
+  } = useBookliz();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const dialog = useDialog();
   const styles = useMemo(() => createStyles(c), [c]);
@@ -42,6 +51,34 @@ export function SettingsScreen() {
 
   const themeTitle = isDark ? t("settings.themeDarkTitle") : t("settings.themeLightTitle");
   const themeBody = isDark ? t("settings.themeDarkBody") : t("settings.themeLightBody");
+
+  // ── Recovered copy (a snapshot a sync conflict had to set aside) ─────────
+  const backupDate = conflictBackup ? formatBackupDate(conflictBackup.backedUpAt, locale) : "";
+
+  const handleRestoreBackup = useCallback(async () => {
+    try {
+      await restoreConflictBackup();
+      dialog.alert(t("backup.restoredTitle"), t("backup.restoredBody"));
+    } catch (error) {
+      // Never let a failed restore look like a successful one: nothing was
+      // replaced, and the user needs to know why.
+      dialog.alert(
+        t("backup.failedTitle"),
+        t("backup.failedBody", { error: error instanceof Error ? error.message : String(error) })
+      );
+    }
+  }, [dialog, restoreConflictBackup, t]);
+
+  const handleDiscardBackup = useCallback(async () => {
+    try {
+      await discardConflictBackup();
+    } catch (error) {
+      dialog.alert(
+        t("backup.discardFailedTitle"),
+        t("backup.failedBody", { error: error instanceof Error ? error.message : String(error) })
+      );
+    }
+  }, [dialog, discardConflictBackup, t]);
 
   return (
     <Screen>
@@ -206,6 +243,77 @@ export function SettingsScreen() {
         </Pressable>
       </View>
 
+      {/* ── Recovered copy ────────────────────────────────────────────────
+          Only rendered when a snapshot is actually parked. Sync conflicts are
+          resolved at snapshot level, so one side is always discarded; this is
+          the way back to it. */}
+      {conflictBackup ? (
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionIconWrap}>
+              <Ionicons name="archive-outline" size={18} color={c.tealDark} />
+            </View>
+            <View style={styles.sectionCopy}>
+              <Text style={styles.sectionTitle}>{t("backup.title")}</Text>
+              <Text style={styles.sectionBody}>{t("backup.body")}</Text>
+            </View>
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            style={styles.settingRow}
+            onPress={() =>
+              dialog.confirm({
+                title: t("backup.restoreTitle"),
+                body: t("backup.restoreBody", {
+                  date: backupDate,
+                  books: conflictBackup.bookCount,
+                  sessions: conflictBackup.sessionCount,
+                  currentBooks: books.length,
+                  currentSessions: readingSessions.length,
+                }),
+                confirmLabel: t("backup.restoreConfirm"),
+                destructive: true,
+                onConfirm: () => {
+                  void handleRestoreBackup();
+                },
+              })
+            }
+          >
+            <View style={styles.settingCopy}>
+              <Text style={styles.settingTitle}>{t("backup.restore")}</Text>
+              <Text style={styles.settingSub}>
+                {t("backup.summary", {
+                  date: backupDate,
+                  books: conflictBackup.bookCount,
+                  sessions: conflictBackup.sessionCount,
+                })}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={14} color={c.muted} />
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            style={styles.backupDiscardRow}
+            onPress={() =>
+              dialog.confirm({
+                title: t("backup.discardTitle"),
+                body: t("backup.discardBody", { date: backupDate }),
+                confirmLabel: t("backup.discardConfirm"),
+                destructive: true,
+                onConfirm: () => {
+                  void handleDiscardBackup();
+                },
+              })
+            }
+          >
+            <Ionicons name="close-circle-outline" size={15} color={c.muted} />
+            <Text style={styles.backupDiscardText}>{t("backup.discard")}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       <View style={styles.dangerSection}>
         <Text style={styles.dangerEyebrow}>{t("settings.dangerEyebrow")}</Text>
         <Text style={styles.dangerTitle}>{t("settings.dangerTitle")}</Text>
@@ -246,6 +354,22 @@ export function SettingsScreen() {
       </View>
     </Screen>
   );
+}
+
+/**
+ * Same approach as ProfileScreen's sync timestamp: format in the ACTIVE locale
+ * rather than a hardcoded en-US, and keep the time — two backups on the same
+ * day are otherwise indistinguishable.
+ */
+function formatBackupDate(timestamp: string, locale: string) {
+  const parsed = new Date(timestamp);
+  if (Number.isNaN(parsed.getTime())) return timestamp;
+  return parsed.toLocaleString(locale === "es" ? "es-ES" : "en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function createStyles(c: AppColors) {
@@ -320,6 +444,21 @@ function createStyles(c: AppColors) {
       color: c.tealDark,
       fontFamily: fonts.body,
       fontSize: 11,
+      fontWeight: "700",
+    },
+    backupDiscardRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 6,
+      justifyContent: "center",
+      marginTop: spacing.sm,
+      minHeight: 44,
+      paddingVertical: 10,
+    },
+    backupDiscardText: {
+      color: c.muted,
+      fontFamily: fonts.body,
+      fontSize: 13,
       fontWeight: "700",
     },
     clearDemoButton: {

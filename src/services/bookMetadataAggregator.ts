@@ -437,37 +437,141 @@ function enrichWorkFromCatalog(work: BookWork): BookWork {
 // ─── ISBN lookup ──────────────────────────────────────────────────────────────
 
 /**
- * Language implied by an ISBN's registration group (the digits after the
- * 978/979 prefix). This is a HINT, never a label we display: registration
- * groups are geographic/linguistic areas, so 978-84 (Spain) or 978-607 (Mexico)
- * means "this barcode belongs to a Spanish-language publisher".
+ * ISBN registration group → probable publication language.
  *
- * Only unambiguous groups are listed; everything else returns undefined and the
- * caller falls back to the catalog's canonical title.
+ * Keys are the registration-group digits that FOLLOW the 978 EAN prefix (the
+ * prefix itself is NOT part of the key). Registration groups are VARIABLE
+ * LENGTH — 1 digit (978-3 Germany) to 5 digits (978-99954 Bolivia) — so the
+ * lookup below must match the longest key, never a fixed-width slice: a
+ * 2-digit slice reads 978-607… (Mexico) as "60" and 978-9974… (Uruguay) as
+ * "99", and a 3-digit slice reads 978-84… (Spain) as "840".
+ *
+ * The real group table is a PREFIX CODE (no assigned group is a prefix of
+ * another), so longest-match is exact rather than a guess.
+ *
+ * Only groups whose language is effectively unambiguous are listed. Deliberate
+ * omissions: 80 (Czechia + Slovakia), 81/93 (India), 92 (international
+ * organisations), 9971/981 (Singapore) — multilingual groups that would make
+ * the hint worse than no hint.
  */
-function languageFromIsbnGroup(isbn13: string): string | undefined {
-  const prefix = isbn13.slice(0, 3);
-  const group = isbn13.slice(3);
+const ISBN_978_GROUP_LANGUAGE: Readonly<Record<string, string>> = {
+  // ── Spanish-language groups (the app's priority market) ──
+  "84": "Spanish",    // Spain
+  "607": "Spanish",   // Mexico
+  "612": "Spanish",   // Peru
+  "950": "Spanish",   // Argentina
+  "956": "Spanish",   // Chile
+  "958": "Spanish",   // Colombia
+  "959": "Spanish",   // Cuba
+  "968": "Spanish",   // Mexico
+  "970": "Spanish",   // Mexico
+  "980": "Spanish",   // Venezuela
+  "987": "Spanish",   // Argentina
+  "9942": "Spanish",  // Ecuador
+  "9945": "Spanish",  // Dominican Republic
+  "9962": "Spanish",  // Panama
+  "9968": "Spanish",  // Costa Rica
+  "9972": "Spanish",  // Peru
+  "9974": "Spanish",  // Uruguay
+  "9978": "Spanish",  // Ecuador
+  "99905": "Spanish", // Bolivia
+  "99922": "Spanish", // Guatemala
+  "99923": "Spanish", // El Salvador
+  "99924": "Spanish", // Nicaragua
+  "99925": "Spanish", // Paraguay
+  "99926": "Spanish", // Honduras
+  "99939": "Spanish", // Guatemala
+  "99953": "Spanish", // Paraguay
+  "99954": "Spanish", // Bolivia
+  // ── Other single-digit groups ──
+  "0": "English",     // English-speaking area
+  "1": "English",     // English-speaking area
+  "2": "French",      // French-speaking area
+  "3": "German",      // German-speaking area
+  "4": "Japanese",    // Japan
+  "5": "Russian",     // Russian Federation / former USSR
+  "7": "Chinese",     // China
+  // ── Two/three-digit groups ──
+  "65": "Portuguese", // Brazil
+  "605": "Turkish",   // Turkey
+  "82": "Norwegian",  // Norway
+  "83": "Polish",     // Poland
+  "85": "Portuguese", // Brazil
+  "87": "Danish",     // Denmark
+  "88": "Italian",    // Italy
+  "89": "Korean",     // Republic of Korea
+  "90": "Dutch",      // Netherlands
+  "91": "Swedish",    // Sweden
+  "94": "Dutch",      // Netherlands
+  "951": "Finnish",   // Finland
+  "952": "Finnish",   // Finland
+  "953": "Croatian",  // Croatia
+  "954": "Bulgarian", // Bulgaria
+  "957": "Chinese",   // Taiwan
+  "962": "Chinese",   // Hong Kong
+  "963": "Hungarian", // Hungary
+  "966": "Ukrainian", // Ukraine
+  "972": "Portuguese",// Portugal
+  "973": "Romanian",  // Romania
+  "975": "Turkish",   // Turkey
+  "986": "Chinese",   // Taiwan
+  "988": "Chinese",   // Hong Kong
+  "989": "Portuguese",// Portugal
+};
 
-  // 979 has its own (much smaller) set of registration groups.
-  if (prefix === "979") {
-    if (group.startsWith("10")) return "French";
-    if (group.startsWith("12")) return "Italian";
-    if (group.startsWith("13")) return "Spanish"; // 979-13 = Mexico
-    return undefined;
+/**
+ * 979 has its own, much smaller set of registration groups:
+ * 979-8 (United States), 979-10 (France), 979-11 (Korea), 979-12 (Italy).
+ *
+ * Note the mixed lengths: 979-8 is ONE digit while 979-1x are two, which is
+ * exactly why the lookup is longest-match and not `slice(3, 5)`.
+ */
+const ISBN_979_GROUP_LANGUAGE: Readonly<Record<string, string>> = {
+  "8": "English",  // United States
+  "10": "French",  // France
+  "11": "Korean",  // Republic of Korea
+  "12": "Italian", // Italy
+};
+
+/** Longest assigned registration group is 5 digits (e.g. 978-99954). */
+const MAX_ISBN_GROUP_DIGITS = 5;
+
+function matchLongestGroup(
+  table: Readonly<Record<string, string>>,
+  group: string
+): string | undefined {
+  for (let len = Math.min(MAX_ISBN_GROUP_DIGITS, group.length); len >= 1; len--) {
+    const hit = table[group.slice(0, len)];
+    if (hit) return hit;
   }
-  if (prefix !== "978") return undefined;
+  return undefined;
+}
 
-  // Spanish-language groups: 84 = Spain, 950/987 = Argentina, 956 = Chile,
-  // 958 = Colombia, 607/968/970 = Mexico, 980 = Venezuela, 9974 = Uruguay,
-  // 9968 = Costa Rica, 9972 = Peru.
-  if (/^(84|950|987|956|958|607|968|970|980|9974|9968|9972)/.test(group)) return "Spanish";
-  if (/^2/.test(group)) return "French";
-  if (/^3/.test(group)) return "German";
-  if (/^88/.test(group)) return "Italian";
-  if (/^(85|972|989)/.test(group)) return "Portuguese";
-  if (/^(90|94)/.test(group)) return "Dutch";
-  if (/^[01]/.test(group)) return "English";
+/**
+ * Language implied by an ISBN's registration group (the digits after the
+ * 978/979 prefix).
+ *
+ * THIS IS A SEARCH HINT, NEVER A LABEL. It exists only to decide which title
+ * variant to try FIRST when neither provider indexes a scanned barcode (see
+ * `fallbackTitlesForScan`) and to check whether the edition we then found
+ * confirms that language. Its return value is never assigned to
+ * `language` / `canonicalLanguage` / `languageCode`, never stored on a
+ * BookEdition or BookWork, and never rendered — a registration group is a
+ * geographic/commercial fact about the publisher, not evidence about the text,
+ * so displaying it would be exactly the fabricated visible metadata the merge
+ * policy forbids. Keep it that way: the only legitimate consumers are query
+ * ordering and `isSameLanguage(...)` comparisons.
+ *
+ * Exported for unit tests only.
+ */
+export function languageFromIsbnGroup(isbn13: string): string | undefined {
+  const digits = isbn13.replace(/\D/g, "");
+  const prefix = digits.slice(0, 3);
+  const group = digits.slice(3);
+  if (!group) return undefined;
+
+  if (prefix === "979") return matchLongestGroup(ISBN_979_GROUP_LANGUAGE, group);
+  if (prefix === "978") return matchLongestGroup(ISBN_978_GROUP_LANGUAGE, group);
   return undefined;
 }
 

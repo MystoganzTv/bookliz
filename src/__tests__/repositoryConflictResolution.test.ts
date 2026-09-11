@@ -162,6 +162,83 @@ describe("a device that has never pushed", () => {
   });
 });
 
+/**
+ * Reading the parked snapshot back out. Without these the backup exists but is
+ * unreachable — the loser of every conflict is, in practice, still lost.
+ */
+describe("the conflict backup slot", () => {
+  it("reads back nothing when none was parked", async () => {
+    expect(await repo().readConflictBackup()).toBeNull();
+  });
+
+  it("reads back the snapshot a conflict discarded, with the time it was parked", async () => {
+    // Local is ahead → the cloud copy is the one parked.
+    await AsyncStorage.setItem(LOCAL_SNAPSHOT_KEY, JSON.stringify(snapshotWith(["Synced", "Added Offline"], "T2")));
+    await AsyncStorage.setItem(LOCAL_SYNC_MARKER_KEY, "T1");
+    serveRemote(snapshotWith(["Synced"], "T1"));
+
+    const r = repo();
+    await r.load();
+
+    const backup = await r.readConflictBackup();
+    expect(titlesOf(backup?.snapshot ?? null)).toEqual(["Synced"]);
+    expect(backup?.backedUpAt).toBe(r.getStatus().conflictBackupAt);
+  });
+
+  it("falls back to the snapshot's own updatedAt when the stamp is missing", async () => {
+    await AsyncStorage.setItem(CONFLICT_BACKUP_KEY, JSON.stringify({ snapshot: snapshotWith(["Old"], "T7") }));
+
+    expect((await repo().readConflictBackup())?.backedUpAt).toBe("T7");
+  });
+
+  it("refuses a corrupt payload rather than offering half a library", async () => {
+    await AsyncStorage.setItem(CONFLICT_BACKUP_KEY, "{ not json");
+    expect(await repo().readConflictBackup()).toBeNull();
+
+    // Parseable, but not a whole snapshot — restoring it would write a library
+    // with pieces missing.
+    await AsyncStorage.setItem(CONFLICT_BACKUP_KEY, JSON.stringify({ backedUpAt: "T1", snapshot: { books: [] } }));
+    expect(await repo().readConflictBackup()).toBeNull();
+  });
+
+  it("parks a snapshot on request and reports it on the status", async () => {
+    const r = repo();
+    const at = await r.writeConflictBackup(snapshotWith(["Current"], "T5"));
+
+    expect(titlesOf((await r.readConflictBackup())?.snapshot ?? null)).toEqual(["Current"]);
+    expect(r.getStatus().conflictBackupAt).toBe(at);
+  });
+
+  it("replaces whatever was parked, so restoring stays reversible", async () => {
+    const r = repo();
+    await r.writeConflictBackup(snapshotWith(["First"], "T1"));
+    await r.writeConflictBackup(snapshotWith(["Second"], "T2"));
+
+    expect(titlesOf((await r.readConflictBackup())?.snapshot ?? null)).toEqual(["Second"]);
+  });
+
+  it("throws rather than parking an invalid snapshot over a good one", async () => {
+    const r = repo();
+    await r.writeConflictBackup(snapshotWith(["Good"], "T1"));
+
+    // The caller is about to overwrite the live library; a silent no-op here
+    // would leave it with no way back.
+    await expect(r.writeConflictBackup({} as BooklizSnapshot)).rejects.toThrow();
+    expect(titlesOf((await r.readConflictBackup())?.snapshot ?? null)).toEqual(["Good"]);
+  });
+
+  it("clears the slot and stops claiming a backup exists", async () => {
+    const r = repo();
+    await r.writeConflictBackup(snapshotWith(["Current"], "T5"));
+
+    await r.clearConflictBackup();
+
+    expect(await AsyncStorage.getItem(CONFLICT_BACKUP_KEY)).toBeNull();
+    expect(await r.readConflictBackup()).toBeNull();
+    expect(r.getStatus().conflictBackupAt).toBeUndefined();
+  });
+});
+
 describe("the sync marker", () => {
   it("advances only when the snapshot actually reached the remote", async () => {
     serveRemote(null);

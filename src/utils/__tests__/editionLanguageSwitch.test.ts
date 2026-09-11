@@ -19,6 +19,7 @@ jest.mock("../../services/googleBooksProvider", () => ({
 jest.mock("../bookMetadata", () => ({
   fetchBookMetadataByIsbn: jest.fn(async () => undefined),
   fetchBookMetadataByTitleAuthor: jest.fn(async () => undefined),
+  fetchOpenLibraryRecordsByTitleAuthor: jest.fn(async () => ({})),
   fetchEditionOptionsByWorkKey: jest.fn(async () => []),
   normalizeIsbn: (v?: string) => (v ?? "").replace(/\D/g, ""),
 }));

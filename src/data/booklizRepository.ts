@@ -57,6 +57,18 @@ export type RepositoryStatus = {
   localBelongedToOtherUser: boolean;
 };
 
+/**
+ * The snapshot parked in `CONFLICT_BACKUP_KEY`, as stored by `backupSnapshot`.
+ *
+ * `backedUpAt` is when it was set aside — NOT `snapshot.updatedAt`, which is
+ * when the library it describes was last edited. The UI shows the former so
+ * "the copy from Tuesday" means the copy we took on Tuesday.
+ */
+export type ConflictBackup = {
+  backedUpAt: string;
+  snapshot: BooklizSnapshot;
+};
+
 export type SaveResult = {
   /** True only when the snapshot genuinely reached the cloud. */
   pushedToRemote: boolean;
@@ -78,6 +90,12 @@ export interface BooklizRepository {
   load(): Promise<BooklizSnapshot | null>;
   save(snapshot: BooklizSnapshot, options?: SaveOptions): Promise<SaveResult>;
   getStatus(): RepositoryStatus;
+  /** The snapshot a conflict discarded, if one is still parked. */
+  readConflictBackup(): Promise<ConflictBackup | null>;
+  /** Park `snapshot` in the backup slot, replacing whatever is there. Throws on failure. */
+  writeConflictBackup(snapshot: BooklizSnapshot): Promise<string>;
+  /** Forget the parked snapshot. */
+  clearConflictBackup(): Promise<void>;
 }
 
 /**
@@ -400,6 +418,66 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
       // Best effort — failing to back up must not block the load.
       return undefined;
     }
+  }
+
+  /**
+   * Read the parked snapshot so a screen can offer it back to the user.
+   *
+   * Returns `null` for "there is nothing to offer" — no key, or a payload we
+   * cannot turn into a whole snapshot. A half-parsed backup is worse than none:
+   * restoring it would write a library with pieces missing. Storage failures
+   * are NOT swallowed; the caller decides whether it can carry on without
+   * knowing, and the restore path must not.
+   */
+  async readConflictBackup(): Promise<ConflictBackup | null> {
+    const raw = await this.storage.getItem(CONFLICT_BACKUP_KEY);
+    if (!raw) return null;
+
+    let parsed: { backedUpAt?: unknown; snapshot?: unknown } | null = null;
+    try {
+      parsed = JSON.parse(raw) as { backedUpAt?: unknown; snapshot?: unknown };
+    } catch {
+      // Corrupt JSON. Nothing recoverable is in there.
+      return null;
+    }
+
+    const snapshot = normalizeSnapshot(
+      (parsed?.snapshot ?? null) as Partial<BooklizSnapshot> | PersistedBooklizState | null
+    );
+    if (!snapshot) return null;
+
+    // Older payloads (or a hand-edited key) may lack the stamp; the snapshot's
+    // own `updatedAt` is the closest honest answer.
+    const stamp = parsed?.backedUpAt;
+    return {
+      backedUpAt: typeof stamp === "string" ? stamp : snapshot.updatedAt,
+      snapshot
+    };
+  }
+
+  /**
+   * Park `snapshot` in the backup slot on purpose, replacing what is there.
+   *
+   * Unlike the best-effort `backupSnapshot` used during conflict resolution,
+   * this one THROWS when it cannot write. Its caller is about to overwrite the
+   * live library and must not proceed without a way back — a restore that
+   * cannot be undone is simply a second way to lose the same work.
+   */
+  async writeConflictBackup(snapshot: BooklizSnapshot): Promise<string> {
+    const normalized = normalizeSnapshot(snapshot);
+    if (!normalized) {
+      throw new Error("Booklio snapshot is invalid and could not be backed up.");
+    }
+    const at = new Date().toISOString();
+    await this.storage.setItem(CONFLICT_BACKUP_KEY, JSON.stringify({ backedUpAt: at, snapshot: normalized }));
+    this.status = { ...this.status, conflictBackupAt: at };
+    return at;
+  }
+
+  /** Drop the parked snapshot. Throws if storage refuses, so the UI can say so. */
+  async clearConflictBackup(): Promise<void> {
+    await this.storage.removeItem(CONFLICT_BACKUP_KEY);
+    this.status = { ...this.status, conflictBackupAt: undefined };
   }
 
   async save(snapshot: BooklizSnapshot, options: SaveOptions = {}) {

@@ -474,13 +474,38 @@ export async function searchBookMetadata(
   return { results, total: mode === "author" ? results.length : data.numFound ?? results.length };
 }
 
-export async function fetchBookMetadataByTitleAuthor(title: string, authorName = ""): Promise<BookMetadata | undefined> {
+/**
+ * Same split as {@link OpenLibraryIsbnRecords}, for the title/author path.
+ *
+ * A /search.json hit and the `/works/…` record behind it are TWO records, and
+ * blending them has exactly the failure mode P1-11 documented for the ISBN
+ * path: the work's (usually English) description and original cover turned the
+ * search candidate into a chimera — judged a language mismatch and discarded
+ * whole when a language was requested, or silently supplying an English
+ * synopsis/cover to a Spanish book when it slipped through.
+ */
+export type OpenLibrarySearchRecords = {
+  /** Search-doc level metadata — safe to language-gate as one unit. */
+  edition?: BookMetadata;
+  /** Work-level metadata (title/synopsis/cover of the ORIGINAL work). */
+  work?: BookMetadata;
+};
+
+/**
+ * Fetch the Open Library records behind a title/author search, search hit and
+ * work kept apart. Callers that only care about the search hit can use
+ * `fetchBookMetadataByTitleAuthor`.
+ */
+export async function fetchOpenLibraryRecordsByTitleAuthor(
+  title: string,
+  authorName = ""
+): Promise<OpenLibrarySearchRecords> {
   const query = `${title} ${authorName}`.trim();
-  if (!query) return undefined;
+  if (!query) return {};
 
   const { results } = await searchBookMetadata(query, "general", 0);
   const first = results[0];
-  if (!first) return undefined;
+  if (!first) return {};
 
   const workMeta = await fetchWorkMetadata(first.workKey);
   const signals = detectEditorialSignals([
@@ -488,25 +513,42 @@ export async function fetchBookMetadataByTitleAuthor(title: string, authorName =
     ...(first.genre ?? [])
   ]);
 
-  return mergeBookMetadata(
-    {
-      title: first.title,
-      authorName: first.authorName,
-      isbn: first.isbn,
-      pages: first.pages,
-      genre: first.genre,
-      publisher: first.publisher,
-      publishedDate: first.publishedDate,
-      language: first.language,
-      synopsis: first.synopsis,
-      coverImageUri: first.coverImageUri,
-      workKey: first.workKey,
-      editionCount: first.editionCount,
-      isBestseller: signals.isBestseller,
-      tags: signals.tags
-    },
-    workMeta
-  );
+  const searchOnly: BookMetadata = {
+    title: first.title,
+    authorName: first.authorName,
+    isbn: first.isbn,
+    pages: first.pages,
+    genre: first.genre,
+    publisher: first.publisher,
+    publishedDate: first.publishedDate,
+    language: first.language,
+    synopsis: first.synopsis,
+    coverImageUri: first.coverImageUri,
+    workKey: first.workKey,
+    editionCount: first.editionCount,
+    isBestseller: signals.isBestseller,
+    tags: signals.tags
+  };
+
+  // The work may still fill STRUCTURAL gaps (title, genres, workKey, badges).
+  // Its synopsis and cover are language-locked work-level data and are handed
+  // back separately instead, so each can be gated on its own.
+  const workStructuralOnly = workMeta
+    ? { ...workMeta, synopsis: undefined, coverImageUri: undefined }
+    : undefined;
+
+  return {
+    edition: mergeBookMetadata(searchOnly, workStructuralOnly),
+    work: workMeta
+  };
+}
+
+export async function fetchBookMetadataByTitleAuthor(
+  title: string,
+  authorName = ""
+): Promise<BookMetadata | undefined> {
+  const { edition } = await fetchOpenLibraryRecordsByTitleAuthor(title, authorName);
+  return edition;
 }
 
 export async function fetchEditionOptionsByWorkKey(workKey?: string, limit = 6): Promise<BookEditionOption[]> {

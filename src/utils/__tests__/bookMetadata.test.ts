@@ -12,6 +12,9 @@
  *        edition: that made a Spanish edition carry an English description
  *        (discarded whole as a language mismatch, losing publisher/pages/ISBN)
  *        and let the original English cover pass as a language-locked field.
+ *
+ *  P1-11b The SAME separation on the title/author path: a /search.json hit and
+ *        the work behind it are two records too.
  */
 jest.mock("../fetchWithTimeout", () => ({
   fetchWithTimeout: jest.fn(),
@@ -21,7 +24,12 @@ jest.mock("../fetchWithTimeout", () => ({
 }));
 
 import { fetchWithTimeout } from "../fetchWithTimeout";
-import { fetchOpenLibraryRecordsByIsbn, searchBookMetadata } from "../bookMetadata";
+import {
+  fetchBookMetadataByTitleAuthor,
+  fetchOpenLibraryRecordsByIsbn,
+  fetchOpenLibraryRecordsByTitleAuthor,
+  searchBookMetadata,
+} from "../bookMetadata";
 
 const mockFetch = fetchWithTimeout as jest.Mock;
 
@@ -154,5 +162,90 @@ describe("fetchOpenLibraryRecordsByIsbn — edition and work stay separate", () 
   it("returns an empty record when the ISBN is unknown", async () => {
     mockFetch.mockResolvedValue(notFound);
     await expect(fetchOpenLibraryRecordsByIsbn(ISBN)).resolves.toEqual({});
+  });
+});
+
+// ─── P1-11b — search hit vs work (title/author path) ──────────────────────────
+
+describe("fetchOpenLibraryRecordsByTitleAuthor — search hit and work stay separate", () => {
+  const ENGLISH_SYNOPSIS =
+    "Twenty-year-old Violet Sorrengail was supposed to enter the Scribe Quadrant, living a quiet life among books.";
+
+  const routeFetch = () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.includes("/search.json")) {
+        return ok({
+          numFound: 1,
+          docs: [
+            {
+              key: "/works/OL1W",
+              title: "Alas de sangre",
+              author_name: ["Rebecca Yarros"],
+              cover_i: 1234, // the SEARCH HIT's own cover
+              subject: ["Fantasy"],
+              edition_count: 20,
+            },
+          ],
+        });
+      }
+      if (url.includes("/works/OL1W.json")) {
+        return ok({
+          key: "/works/OL1W",
+          title: "Fourth Wing",
+          description: ENGLISH_SYNOPSIS,
+          subjects: ["Fantasy"],
+          covers: [99999], // the ORIGINAL (English) cover
+        });
+      }
+      return notFound;
+    });
+  };
+
+  it("never blends the work's synopsis or cover into the search candidate", async () => {
+    routeFetch();
+
+    const { edition } = await fetchOpenLibraryRecordsByTitleAuthor("Alas de sangre", "Rebecca Yarros");
+
+    expect(edition?.synopsis).toBeUndefined();
+    expect(edition?.coverImageUri).toContain("1234");
+    expect(edition?.coverImageUri).not.toContain("99999");
+  });
+
+  it("keeps the search hit's own identity and the work's STRUCTURAL data", async () => {
+    routeFetch();
+
+    const { edition } = await fetchOpenLibraryRecordsByTitleAuthor("Alas de sangre", "Rebecca Yarros");
+
+    expect(edition?.title).toBe("Alas de sangre"); // not the work's "Fourth Wing"
+    expect(edition?.authorName).toBe("Rebecca Yarros");
+    expect(edition?.workKey).toBe("/works/OL1W");
+    expect(edition?.editionCount).toBe(20);
+  });
+
+  it("returns the work's synopsis and cover as a separate record", async () => {
+    routeFetch();
+
+    const { work } = await fetchOpenLibraryRecordsByTitleAuthor("Alas de sangre", "Rebecca Yarros");
+
+    expect(work?.title).toBe("Fourth Wing");
+    expect(work?.synopsis).toBe(ENGLISH_SYNOPSIS);
+    expect(work?.coverImageUri).toContain("99999");
+    // No language of its own — the resolver must judge it on evidence.
+    expect(work?.language).toBeUndefined();
+  });
+
+  it("fetchBookMetadataByTitleAuthor exposes only the search candidate", async () => {
+    routeFetch();
+
+    const meta = await fetchBookMetadataByTitleAuthor("Alas de sangre", "Rebecca Yarros");
+
+    expect(meta?.title).toBe("Alas de sangre");
+    expect(meta?.synopsis).toBeUndefined();
+    expect(meta?.coverImageUri).not.toContain("99999");
+  });
+
+  it("returns an empty record when the search finds nothing", async () => {
+    mockFetch.mockResolvedValue(ok({ numFound: 0, docs: [] }));
+    await expect(fetchOpenLibraryRecordsByTitleAuthor("Nothing At All")).resolves.toEqual({});
   });
 });

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useDialog } from "./DialogProvider";
 import * as AppleAuthentication from "expo-apple-authentication";
+import * as Crypto from "expo-crypto";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
@@ -215,11 +216,24 @@ export function GoogleConnectionCard({ variant = "settings" }: GoogleConnectionC
 
     setActiveProvider("apple");
     try {
+      // Anti-replay nonce. Apple signs the SHA-256 we hand it into the identity
+      // token's `nonce` claim; Supabase then checks that claim against the RAW
+      // value we send alongside the token. Without this the same identity token,
+      // if it ever leaked, could be replayed to mint a session. Signing in with
+      // no nonce at all works — Supabase accepts a token whose claim is absent —
+      // which is exactly why the omission went unnoticed.
+      const rawNonce = Crypto.randomUUID();
+      const hashedNonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        rawNonce
+      );
+
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
           AppleAuthentication.AppleAuthenticationScope.EMAIL
-        ]
+        ],
+        nonce: hashedNonce
       });
 
       const displayName = buildAppleDisplayName({
@@ -231,7 +245,10 @@ export function GoogleConnectionCard({ variant = "settings" }: GoogleConnectionC
       if (supabase && credential.identityToken) {
         const { error } = await supabase.auth.signInWithIdToken({
           provider: "apple",
-          token: credential.identityToken
+          token: credential.identityToken,
+          // The raw value, not the hash: Supabase hashes this itself and
+          // compares against the token's `nonce` claim.
+          nonce: rawNonce
         });
         if (error) {
           throw error;

@@ -25,6 +25,7 @@ jest.mock("../bookMetadata", () => {
   return {
     ...actual,
     fetchOpenLibraryRecordsByIsbn: jest.fn(),
+    fetchOpenLibraryRecordsByTitleAuthor: jest.fn(),
     fetchBookMetadataByIsbn: jest.fn(),
     fetchBookMetadataByTitleAuthor: jest.fn(),
     fetchEditionOptionsByWorkKey: jest.fn(),
@@ -40,6 +41,8 @@ const readCache = cache.readCache as jest.Mock;
 const writeCache = cache.writeCache as jest.Mock;
 const fetchByKeyword = GB.fetchByKeyword as jest.Mock;
 const fetchOlRecords = OLMeta.fetchOpenLibraryRecordsByIsbn as jest.Mock;
+const fetchOlSearchRecords = OLMeta.fetchOpenLibraryRecordsByTitleAuthor as jest.Mock;
+const fetchOlSearchMerged = OLMeta.fetchBookMetadataByTitleAuthor as jest.Mock;
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -63,6 +66,8 @@ beforeEach(() => {
   readCache.mockResolvedValue(null);
   writeCache.mockResolvedValue(undefined);
   fetchOlRecords.mockResolvedValue({});
+  fetchOlSearchRecords.mockResolvedValue({});
+  fetchOlSearchMerged.mockResolvedValue(undefined);
 });
 
 describe("resolveMetadata cache TTL", () => {
@@ -206,5 +211,73 @@ describe("resolveMetadata — Open Library edition vs work", () => {
 
     expect(result?.synopsis).toBe(ENGLISH_SYNOPSIS);
     expect(result?.coverImageUri).toContain("99999");
+  });
+});
+
+// ─── P1-11b — the OL work is its own candidate on the TITLE path too ──────────
+
+describe("resolveMetadata — Open Library search hit vs work (title/author path)", () => {
+  const ENGLISH_SYNOPSIS =
+    "Twenty-year-old Violet Sorrengail was supposed to enter the Scribe Quadrant, living a quiet life among books and history.";
+
+  const spanishSearchHit = {
+    title: "Alas de sangre",
+    authorName: "Rebecca Yarros",
+    language: "Spanish",
+    coverImageUri: "https://covers.openlibrary.org/b/id/1234-L.jpg",
+    workKey: "/works/OL1W",
+    editionCount: 20,
+  };
+  const englishWork = {
+    title: "Fourth Wing",
+    synopsis: ENGLISH_SYNOPSIS,
+    coverImageUri: "https://covers.openlibrary.org/b/id/99999-L.jpg",
+    workKey: "/works/OL1W",
+  };
+
+  beforeEach(() => {
+    fetchByKeyword.mockResolvedValue({ books: [], totalItems: 0 });
+    fetchOlSearchRecords.mockResolvedValue({ edition: spanishSearchHit, work: englishWork });
+  });
+
+  it("asks for the split records, not the pre-blended candidate", async () => {
+    await resolveMetadata({ title: "Alas de sangre", authorName: "Rebecca Yarros" });
+
+    expect(fetchOlSearchRecords).toHaveBeenCalledWith("Alas de sangre", "Rebecca Yarros");
+    expect(fetchOlSearchMerged).not.toHaveBeenCalled();
+  });
+
+  it("keeps the Spanish search hit instead of discarding it as a mismatch", async () => {
+    // Blended, this candidate carried the English synopsis → verdict
+    // "mismatch" → the whole record (title included) was dropped and
+    // resolveMetadata returned undefined.
+    const result = await resolveMetadata({
+      title: "Alas de sangre",
+      authorName: "Rebecca Yarros",
+      language: "Spanish",
+    });
+
+    expect(result?.title).toBe("Alas de sangre");
+    expect(result?.coverImageUri).toContain("1234");
+    expect(result?.workKey).toBe("/works/OL1W");
+  });
+
+  it("never lets the English work's synopsis or cover into a Spanish book", async () => {
+    const result = await resolveMetadata({
+      title: "Alas de sangre",
+      authorName: "Rebecca Yarros",
+      language: "Spanish",
+    });
+
+    expect(result?.synopsis).toBeUndefined();
+    expect(result?.coverImageUri).not.toContain("99999");
+  });
+
+  it("still uses the work record when no language lock is active", async () => {
+    const result = await resolveMetadata({ title: "Alas de sangre", authorName: "Rebecca Yarros" });
+
+    expect(result?.synopsis).toBe(ENGLISH_SYNOPSIS);
+    // The search hit's own cover still outranks the work's (ol-search > ol-work).
+    expect(result?.coverImageUri).toContain("1234");
   });
 });

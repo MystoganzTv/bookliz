@@ -22,6 +22,7 @@ import {
   fetchBookMetadataByTitleAuthor,
   fetchEditionOptionsByWorkKey,
   fetchOpenLibraryRecordsByIsbn,
+  fetchOpenLibraryRecordsByTitleAuthor,
   normalizeIsbn,
 } from "./bookMetadata";
 import { HOURS, readCache, writeCache } from "./discoverCache";
@@ -196,9 +197,17 @@ export async function resolveMetadata(input: ResolveInput): Promise<BookMetadata
         .then(({ books }) => tagGb(books, "gb-title", wantedLang)).catch(noteFailure)
     );
     // OL search — work-level data (workKey, series, author canonical name).
+    // Same split as the ISBN path: the search hit and the WORK behind it come
+    // back as two independent candidates. Blending them made the search hit
+    // carry the original (usually English) synopsis and cover, so a Spanish
+    // request discarded the whole candidate as a mismatch — and an English
+    // request accepted a work cover as if it were edition data.
     jobs.push(
-      fetchBookMetadataByTitleAuthor(title, author)
-        .then((meta) => tag(meta, "ol-search", wantedLang)).catch(noteFailure)
+      fetchOpenLibraryRecordsByTitleAuthor(title, author)
+        .then(({ edition, work }) => [
+          ...tag(edition, "ol-search", wantedLang),
+          ...tag(work, "ol-work", wantedLang),
+        ]).catch(noteFailure)
     );
 
     if (wantedCode) {
