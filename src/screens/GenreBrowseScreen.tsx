@@ -139,7 +139,11 @@ export function GenreBrowseScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [networkError, setNetworkError] = useState(false);
   const [totalItems, setTotalItems] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  /** Raw items fetched so far (NOT the filtered list) — drives pagination. */
   const startIndexRef = useRef(0);
+  /** Ids already rendered, so overlapping Google Books pages never duplicate. */
+  const seenIdsRef = useRef<Set<string>>(new Set());
   const currentGenreRef = useRef<string>("");
 
   const isKeywordMode = !!params.catalogQuery;
@@ -172,7 +176,9 @@ export function GenreBrowseScreen() {
       setLoading(true);
       setNetworkError(false);
       setCatalogBooks([]);
+      setHasMore(false);
       startIndexRef.current = 0;
+      seenIdsRef.current = new Set();
       currentGenreRef.current = genre;
     } else {
       setLoadingMore(true);
@@ -215,11 +221,25 @@ export function GenreBrowseScreen() {
         return (b.publishedYear ?? 0) - (a.publishedYear ?? 0);
       });
 
+      // Google Books overlaps results between startIndex values — keep the
+      // first occurrence of each id so the list never renders duplicate keys.
+      const seen = reset ? new Set<string>() : seenIdsRef.current;
+      const deduped = ranked.filter((b) => {
+        if (seen.has(b.id)) return false;
+        seen.add(b.id);
+        return true;
+      });
+      seenIdsRef.current = seen;
+
       startIndexRef.current += fetched.length;
       setTotalItems(total);
-      setCatalogBooks((prev) => reset ? ranked : [...prev, ...ranked]);
+      // Pagination is driven by RAW fetched-vs-total, never by the filtered
+      // length, and stops dead when a page comes back empty.
+      setHasMore(fetched.length > 0 && startIndexRef.current < total);
+      setCatalogBooks((prev) => reset ? deduped : [...prev, ...deduped]);
     } catch {
       if (reset) setNetworkError(true);
+      setHasMore(false);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -231,7 +251,7 @@ export function GenreBrowseScreen() {
   }, [currentGenre, loadGenre]);
 
   function handleLoadMore() {
-    if (loadingMore || loading || catalogBooks.length >= totalItems) return;
+    if (loadingMore || loading || !hasMore) return;
     if (currentGenreRef.current !== currentGenre) return;
     loadGenre(currentGenre, false);
   }
@@ -321,8 +341,6 @@ export function GenreBrowseScreen() {
       </Pressable>
     );
   }
-
-  const hasMore = catalogBooks.length < totalItems;
 
   return (
     <View style={[styles.root, { backgroundColor: c.bg }]}>

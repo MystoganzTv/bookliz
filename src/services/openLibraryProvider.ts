@@ -296,24 +296,29 @@ export async function fetchWorksByQuery(
     return (data.docs ?? [])
       .filter((doc) => doc.title && doc.author_name?.length)
       .map((doc) => {
-        const isbn13 = doc.isbn?.find((x) => x.length === 13);
-        // Unknown language stays unknown (no fabricated "English").
-        const lang = normalizeLanguage(doc.language?.[0]);
-
+        // A /search.json doc is WORK-level: `isbn`, `publisher`, `language`
+        // and `number_of_pages_median` aggregate EVERY edition of the work, in
+        // no particular order, and `first_publish_year` is the work's first
+        // publication — not this record's. Copying them into an edition builds
+        // a chimera (a German edition's ISBN on a Spanish book, an invented
+        // "-01-01" date). Only genuinely work-level, safe fields are mapped;
+        // ISBN / publisher / pageCount / publishedDate / language stay
+        // undefined until a real edition record is fetched.
         const bestEdition: Omit<BookEdition, "score"> = {
           id: `ol:${doc.key ?? doc.title}`,
-          isbn13,
+          isbn13: undefined,
+          isbn10: undefined,
           editionKey: undefined,
           source: "open-library",
           title: doc.title ?? "Untitled",
-          languageCode: lang?.code,
-          language: lang?.name,
-          publisher: doc.publisher?.[0],
-          publishedDate: doc.first_publish_year
-            ? `${doc.first_publish_year}-01-01`
-            : undefined,
+          languageCode: undefined,
+          language: undefined,
+          publisher: undefined,
+          publishedDate: undefined,
+          // Year of FIRST publication of the work — a dedicated field that
+          // does not pretend to be an exact edition date.
           publishedYear: doc.first_publish_year,
-          pageCount: doc.number_of_pages_median,
+          pageCount: undefined,
           coverUrl: olCoverUrl(doc.cover_i),
         };
 
@@ -324,8 +329,10 @@ export async function fetchWorksByQuery(
           authors: doc.author_name ?? [],
           genres: normalizeBookGenres(doc.subject?.slice(0, 8)),
           editionCount: doc.edition_count,
-          canonicalLanguageCode: lang?.code,
-          canonicalLanguage: lang?.name,
+          // `doc.language` lists every language the WORK exists in, unordered —
+          // it cannot name a canonical language. Unknown stays unknown.
+          canonicalLanguageCode: undefined,
+          canonicalLanguage: undefined,
         };
 
         return { doc, partialWork, bestEdition };

@@ -22,7 +22,7 @@
 
 import { BookEdition, BookWork, EditionGroup, WorkLookupResult, confidenceFromScore } from "../types/bookMetadata";
 import { parseIsbn } from "../utils/isbnUtils";
-import { normalizeLanguage, isPriorityLanguage, PRIORITY_LANGUAGE_CODES } from "../utils/languageUtils";
+import { normalizeLanguage, isPriorityLanguage, isSameLanguage, PRIORITY_LANGUAGE_CODES } from "../utils/languageUtils";
 import {
   ScoringQuery,
   scoreEdition,
@@ -40,8 +40,9 @@ import {
   lookupByTitle as knownLookupByTitle,
   inferSeriesData,
   getOriginalTitle,
+  getTitleVariants,
 } from "../utils/knownWorks";
-import { canUseFieldForLanguage } from "../utils/metadataMergePolicy";
+import { canUseFieldForLanguage, logMergeRejection } from "../utils/metadataMergePolicy";
 import {
   fetchByIsbn as gbFetchByIsbn,
   fetchWorksByQuery as gbFetchByQuery,
@@ -328,6 +329,63 @@ function buildWork(
   };
 }
 
+// ─── Description language tracking ────────────────────────────────────────────
+
+/**
+ * Language an Open Library WORK description is written in. OL work records
+ * describe the ORIGINAL work — in practice English. Same assumption as the
+ * work-title gate in lookupByIsbn.
+ */
+const OL_WORK_DESCRIPTION_LANGUAGE = "English";
+
+/** A description together with the language it was written in. */
+type DescriptionWithLanguage = { text?: string; language?: string };
+
+/**
+ * Fill an empty description from a candidate, keeping track of the language the
+ * text is in. Never overwrites an existing description, and never accepts text
+ * the language policy rejects for `workLanguage`.
+ */
+function adoptDescription(
+  current: DescriptionWithLanguage,
+  incoming: DescriptionWithLanguage,
+  workLanguage?: string
+): DescriptionWithLanguage {
+  if (current.text) return current;
+  if (!incoming.text) return { text: undefined, language: undefined };
+  if (!canUseFieldForLanguage("description", incoming.language, workLanguage)) {
+    return { text: undefined, language: undefined };
+  }
+  return { text: incoming.text, language: incoming.language };
+}
+
+/**
+ * `pickBestEdition` may settle on an edition in a DIFFERENT language than the
+ * one the description was accepted for (e.g. an English synopsis on a card that
+ * ends up showing `language: "Spanish"`). Re-evaluate once `best` is final and
+ * drop the description rather than showing it across languages.
+ *
+ * An unknown description language is never treated as a match — it is rejected
+ * by `canUseFieldForLanguage` exactly like a different language.
+ */
+function gateDescriptionAgainstBestEdition(
+  work: BookWork,
+  descriptionLanguage?: string
+): BookWork {
+  if (!work.description) return work;
+  const bestLanguage = work.bestEdition?.language;
+  if (canUseFieldForLanguage("description", descriptionLanguage, bestLanguage)) return work;
+  logMergeRejection("description", "best_edition_language_changed", {
+    requestedLanguage: bestLanguage,
+    candidateLanguage: descriptionLanguage,
+    source: "aggregator",
+    title: work.title,
+    isbn: work.bestEdition?.isbn13 ?? work.bestEdition?.isbn10,
+    editionKey: work.bestEdition?.editionKey,
+  });
+  return { ...work, description: undefined };
+}
+
 // ─── Known-works enrichment ───────────────────────────────────────────────────
 
 /**
@@ -377,6 +435,60 @@ function enrichWorkFromCatalog(work: BookWork): BookWork {
 }
 
 // ─── ISBN lookup ──────────────────────────────────────────────────────────────
+
+/**
+ * Language implied by an ISBN's registration group (the digits after the
+ * 978/979 prefix). This is a HINT, never a label we display: registration
+ * groups are geographic/linguistic areas, so 978-84 (Spain) or 978-607 (Mexico)
+ * means "this barcode belongs to a Spanish-language publisher".
+ *
+ * Only unambiguous groups are listed; everything else returns undefined and the
+ * caller falls back to the catalog's canonical title.
+ */
+function languageFromIsbnGroup(isbn13: string): string | undefined {
+  const prefix = isbn13.slice(0, 3);
+  const group = isbn13.slice(3);
+
+  // 979 has its own (much smaller) set of registration groups.
+  if (prefix === "979") {
+    if (group.startsWith("10")) return "French";
+    if (group.startsWith("12")) return "Italian";
+    if (group.startsWith("13")) return "Spanish"; // 979-13 = Mexico
+    return undefined;
+  }
+  if (prefix !== "978") return undefined;
+
+  // Spanish-language groups: 84 = Spain, 950/987 = Argentina, 956 = Chile,
+  // 958 = Colombia, 607/968/970 = Mexico, 980 = Venezuela, 9974 = Uruguay,
+  // 9968 = Costa Rica, 9972 = Peru.
+  if (/^(84|950|987|956|958|607|968|970|980|9974|9968|9972)/.test(group)) return "Spanish";
+  if (/^2/.test(group)) return "French";
+  if (/^3/.test(group)) return "German";
+  if (/^88/.test(group)) return "Italian";
+  if (/^(85|972|989)/.test(group)) return "Portuguese";
+  if (/^(90|94)/.test(group)) return "Dutch";
+  if (/^[01]/.test(group)) return "English";
+  return undefined;
+}
+
+/**
+ * Titles to try when neither provider indexes the scanned ISBN.
+ *
+ * The catalog's `originalTitle` is the ENGLISH canonical title — searching it
+ * for a Spanish barcode returns the English work (English cover and synopsis).
+ * When the ISBN's registration group implies a non-English language, the
+ * catalog's other title variants (translations) are tried FIRST.
+ *
+ * knownWorks does not record a language per variant, so the variants are tried
+ * in catalog order and the result is only accepted as localized when the found
+ * edition's own language confirms it (see the caller).
+ */
+function fallbackTitlesForScan(originalTitle: string, impliedLanguage?: string): string[] {
+  const canonical = originalTitle.trim();
+  if (!impliedLanguage || isSameLanguage(impliedLanguage, "English")) return [canonical];
+  const variants = getTitleVariants(canonical).filter((t) => t.trim() && t.trim() !== canonical);
+  return [...variants.slice(0, 2), canonical];
+}
 
 /**
  * Full ISBN lookup pipeline — with cascading fallbacks.
@@ -433,14 +545,33 @@ export async function lookupByIsbn(rawIsbn: string): Promise<WorkLookupResult> {
   // ── Step 4: If still nothing, fall back to catalog-driven title search ─────
   if (!initialEditions.length) {
     if (knownMeta) {
-      // We know what this ISBN is — search by original title
-      const fallbackResult = await lookupByQuery(
-        knownMeta.originalTitle,
-        knownMeta.author
-      );
-      if (fallbackResult.work) {
+      // Neither provider indexes this barcode — this is exactly the case the
+      // catalog exists for (e.g. a Planeta México ISBN). Search the LOCALIZED
+      // title variants first when the registration group implies a non-English
+      // language; the English canonical title is only the last resort.
+      const impliedLanguage = languageFromIsbnGroup(isbn13);
+      const titles = fallbackTitlesForScan(knownMeta.originalTitle, impliedLanguage);
+
+      let firstResult: WorkLookupResult | null = null;
+      let localizedResult: WorkLookupResult | null = null;
+
+      for (const candidateTitle of titles) {
+        const attempt = await lookupByQuery(candidateTitle, knownMeta.author);
+        if (!attempt.work) continue;
+        firstResult ??= attempt;
+        if (
+          impliedLanguage &&
+          isSameLanguage(attempt.work.bestEdition?.language, impliedLanguage)
+        ) {
+          localizedResult = attempt;
+          break;
+        }
+      }
+
+      const fallbackResult = localizedResult ?? firstResult;
+      if (fallbackResult?.work) {
         const enriched = enrichWorkFromCatalog(fallbackResult.work);
-        // Apply catalog series data (highly reliable)
+        // Apply catalog series data (structural only — highly reliable)
         const finalWork: BookWork = {
           ...enriched,
           seriesName: knownMeta.seriesName ?? enriched.seriesName,
@@ -450,7 +581,9 @@ export async function lookupByIsbn(rawIsbn: string): Promise<WorkLookupResult> {
           work: finalWork,
           works: [finalWork],
           flatEditions: fallbackResult.flatEditions,
-          isbnMatch: true, // we confirmed via catalog
+          // NOT an ISBN match: this came from a TEXT query. Claiming otherwise
+          // presented an English work as a confirmed match for a Spanish copy.
+          isbnMatch: false,
         };
       }
     }
@@ -525,6 +658,14 @@ export async function lookupByIsbn(rawIsbn: string): Promise<WorkLookupResult> {
   // ISBN lookups: always respect the scanned edition even if it's Large Print —
   // the user specifically scanned that barcode and expects that exact book.
   let work = buildWork(partialWork, allEditions, query, undefined, /* allowLargePrint */ true);
+
+  // The description was accepted against the SCANNED edition's language, but
+  // pickBestEdition may have settled on an edition in another language — the
+  // card would then show that language next to the original-language synopsis.
+  work = gateDescriptionAgainstBestEdition(
+    work,
+    partialWork.description ? OL_WORK_DESCRIPTION_LANGUAGE : undefined
+  );
 
   // ── Step 8: Enrich with catalog data ───────────────────────────────────────
   work = enrichWorkFromCatalog(work);
@@ -802,8 +943,16 @@ export async function lookupByQuery(
   }
 
   // ── 6. Build ranked candidate list ───────────────────────────────────────
-  // Each candidate carries its bucket and gbRank for hierarchical sorting.
-  type Candidate = { work: BookWork; bucket: number; gbRank: number };
+  // Each candidate carries its bucket and gbRank for hierarchical sorting, plus
+  // the language its description was written in — `bestEdition` can still
+  // change language after the description was chosen, and the final gate
+  // (gateDescriptionAgainstBestEdition) needs to know what it accepted.
+  type Candidate = {
+    work: BookWork;
+    bucket: number;
+    gbRank: number;
+    descriptionLanguage?: string;
+  };
   const candidates: Candidate[] = [];
 
   const primaryBucket = resolvedMode === "author" ? BUCKET_AUTHOR : BUCKET_EXACT_TITLE;
@@ -826,16 +975,19 @@ export async function lookupByQuery(
       const mergedEditions = dedupeEditions([...c.work.editions, scoredEdition]);
       const best = pickBestEdition(mergedEditions, queryLang);
       const { score, confidence } = scoreWork(c.work, best, scoringQuery);
+      // OL work descriptions are (in practice) English — only merge into works
+      // whose own language allows it. No cross-language synopsis mix.
+      const description = adoptDescription(
+        { text: c.work.description, language: c.descriptionLanguage },
+        { text: partialWork.description, language: OL_WORK_DESCRIPTION_LANGUAGE },
+        workLanguageOf(c.work)
+      );
       candidates[existingIdx] = {
         ...c,
+        descriptionLanguage: description.language,
         work: {
           ...c.work,
-          // OL work descriptions are (in practice) English — only merge into
-          // works whose own language allows it. No cross-language synopsis mix.
-          description: c.work.description ??
-            (canUseFieldForLanguage("description", "English", workLanguageOf(c.work))
-              ? partialWork.description
-              : undefined),
+          description: description.text,
           genres: c.work.genres.length ? c.work.genres : (partialWork.genres ?? []),
           workKey: c.work.workKey ?? partialWork.workKey,
           editionCount: c.work.editionCount ?? partialWork.editionCount,
@@ -847,7 +999,12 @@ export async function lookupByQuery(
       };
     } else {
       const work = buildWork(partialWork, [scoredEdition], scoringQuery, queryLang);
-      candidates.push({ work, bucket, gbRank: 9999 }); // OL-only: very low priority within bucket
+      candidates.push({
+        work,
+        bucket,
+        gbRank: 9999, // OL-only: very low priority within bucket
+        descriptionLanguage: work.description ? OL_WORK_DESCRIPTION_LANGUAGE : undefined,
+      });
     }
   }
 
@@ -865,17 +1022,20 @@ export async function lookupByQuery(
       const mergedEditions = dedupeEditions([...c.work.editions, edition]);
       const best = pickBestEdition(mergedEditions, queryLang);
       const { score, confidence } = scoreWork(c.work, best, queryForScoring);
+      // A merged GB volume may be a different-language edition of the same
+      // work — its description must not cross the language boundary.
+      const description = adoptDescription(
+        { text: c.work.description, language: c.descriptionLanguage },
+        { text: partialWork.description, language: edition.language },
+        workLanguageOf(c.work)
+      );
       candidates[existingIdx] = {
         bucket: Math.max(c.bucket, bucket),
         gbRank: Math.min(c.gbRank, gbRank),
+        descriptionLanguage: description.language,
         work: {
           ...c.work,
-          // A merged GB volume may be a different-language edition of the same
-          // work — its description must not cross the language boundary.
-          description: c.work.description ??
-            (canUseFieldForLanguage("description", edition.language, workLanguageOf(c.work))
-              ? partialWork.description
-              : undefined),
+          description: description.text,
           genres: c.work.genres.length ? c.work.genres : (partialWork.genres ?? []),
           workKey: c.work.workKey ?? partialWork.workKey,
           googleBooksId: c.work.googleBooksId ?? partialWork.googleBooksId,
@@ -892,7 +1052,13 @@ export async function lookupByQuery(
       };
     } else {
       const work = buildWork(partialWork, [edition], queryForScoring, queryLang);
-      candidates.push({ work, bucket, gbRank });
+      candidates.push({
+        work,
+        bucket,
+        gbRank,
+        // A GB work description belongs to the volume it came from.
+        descriptionLanguage: work.description ? edition.language : undefined,
+      });
     }
   }
 
@@ -961,8 +1127,13 @@ export async function lookupByQuery(
   const withCover = candidatesAfterCollection.filter(({ work }) => workHasCover(work));
   const finalCandidates = withCover.length >= 3 ? withCover : candidatesAfterCollection;
 
-  // ── 8. Enrich with series/translation data from local catalog ─────────────
-  const sorted = finalCandidates.map((c) => enrichWorkFromCatalog(c.work));
+  // ── 8. Re-check the description against the FINAL bestEdition, then enrich ─
+  // `bestEdition` is only settled now; a description accepted for another
+  // language (or one whose language we never knew) is dropped instead of being
+  // shown next to a card labelled with a different language.
+  const sorted = finalCandidates.map((c) =>
+    enrichWorkFromCatalog(gateDescriptionAgainstBestEdition(c.work, c.descriptionLanguage))
+  );
 
   const flatEditions = dedupeEditions(sorted.flatMap((w) => w.editions));
 

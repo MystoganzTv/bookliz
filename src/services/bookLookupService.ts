@@ -425,20 +425,22 @@ async function fetchOpenLibraryByQuery(
     return (data.docs ?? [])
       .filter((doc) => doc.title && doc.author_name?.length)
       .map((doc): BookMatch => {
-        const isbn13 = doc.isbn?.find((x) => x.length === 13);
-        const parsed = isbn13 ? parseIsbn(isbn13) : undefined;
+        // WORK-level search doc: `isbn`, `publisher`, `language` and
+        // `number_of_pages_median` aggregate ALL editions of the work (often a
+        // different language than the one shown), and `first_publish_year` is
+        // the work's first publication, not this record's. None of them may be
+        // presented as edition data — they stay undefined until a real edition
+        // record is fetched.
         const partial: Omit<BookMatch, "score" | "confidence"> = {
           id: `ol:${doc.key ?? doc.title}`,
           title: doc.title ?? "Untitled",
           authors: doc.author_name ?? [],
-          language: lang3(doc.language?.[0]),
-          publisher: doc.publisher?.[0],
-          publishedDate: doc.first_publish_year
-            ? `${doc.first_publish_year}-01-01`
-            : undefined,
-          pageCount: doc.number_of_pages_median,
-          isbn13: parsed?.isbn13 ?? isbn13,
-          isbn10: parsed?.isbn10,
+          language: undefined,
+          publisher: undefined,
+          publishedDate: undefined,
+          pageCount: undefined,
+          isbn13: undefined,
+          isbn10: undefined,
           coverUrl: olCoverUrl(doc.cover_i),
           genres: normalizeBookGenres(doc.subject?.slice(0, 8)),
           source: "open-library",
@@ -531,9 +533,12 @@ export async function lookupByIsbn(rawIsbn: string): Promise<BookMatch[]> {
   if (!all.length && knownMeta) {
     const titleResults = await lookupByQuery(knownMeta.originalTitle, knownMeta.author);
     if (titleResults.length) {
+      // These results came from a TEXT query — none of them was matched by the
+      // scanned ISBN, so the scanned ISBN must NOT be stamped onto them (it
+      // would turn an English work into a "confirmed" match for a Spanish
+      // copy). Only structural catalog data (series) is applied.
       return titleResults.map((m) => ({
         ...m,
-        isbn13,
         seriesName: knownMeta.seriesName ?? m.seriesName,
         seriesOrder: knownMeta.seriesOrder ?? m.seriesOrder,
       }));

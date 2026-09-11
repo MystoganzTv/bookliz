@@ -19,9 +19,9 @@ import { fetchByKeyword, GenreBookResult } from "../services/googleBooksProvider
 import {
   BookEditionOption,
   BookMetadata,
-  fetchBookMetadataByIsbn,
   fetchBookMetadataByTitleAuthor,
   fetchEditionOptionsByWorkKey,
+  fetchOpenLibraryRecordsByIsbn,
   normalizeIsbn,
 } from "./bookMetadata";
 import { HOURS, readCache, writeCache } from "./discoverCache";
@@ -41,7 +41,7 @@ export type ResolveInput = {
   language?: string;
 };
 
-type SourceTag = "gb-isbn" | "gb-lang" | "gb-title" | "ol-isbn" | "ol-search";
+type SourceTag = "gb-isbn" | "gb-lang" | "gb-title" | "ol-isbn" | "ol-work" | "ol-search";
 
 type Candidate = BookMetadata & {
   _src: SourceTag;
@@ -133,6 +133,10 @@ const SRC_RANK: Record<SourceTag, number> = {
   "gb-lang": 3,
   "gb-title": 2,
   "ol-search": 1,
+  // Work-level record of the ORIGINAL work — never edition data, so it is the
+  // last resort and (having no language of its own) never enters the locked
+  // pool when a language was requested.
+  "ol-work": 0,
 };
 
 // ─── resolver ─────────────────────────────────────────────────────────────────
@@ -172,10 +176,16 @@ export async function resolveMetadata(input: ResolveInput): Promise<BookMetadata
       fetchByKeyword(`isbn:${cleanIsbn}`, 0, 5, undefined, false, true)
         .then(({ books }) => tagGb(books, "gb-isbn", wantedLang)).catch(noteFailure)
     );
-    // OL by ISBN — best source for workKey/editionKey/publisher.
+    // OL by ISBN — best source for workKey/editionKey/publisher. The edition
+    // and the WORK come back as two independent candidates: blending them made
+    // a Spanish edition carry an English synopsis (whole candidate discarded as
+    // a mismatch) and let an English work cover pass as a language match.
     jobs.push(
-      fetchBookMetadataByIsbn(cleanIsbn, { rethrowTransient: true })
-        .then((meta) => tag(meta, "ol-isbn", wantedLang)).catch(noteFailure)
+      fetchOpenLibraryRecordsByIsbn(cleanIsbn, { rethrowTransient: true })
+        .then(({ edition, work }) => [
+          ...tag(edition, "ol-isbn", wantedLang),
+          ...tag(work, "ol-work", wantedLang),
+        ]).catch(noteFailure)
     );
   }
 

@@ -690,6 +690,216 @@ describe("lookupByQuery", () => {
   });
 });
 
+// ─── P1-9 — description follows the FINAL bestEdition language ────────────────
+
+describe("lookupByQuery — description vs bestEdition language", () => {
+  const ENGLISH_SYNOPSIS =
+    "Paul Atreides, a brilliant and gifted young man, is born into a great destiny beyond his understanding.";
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  /** GB contributes an English work + description; OL contributes an edition. */
+  const mockProviders = (olEditionOverrides: Partial<BookEdition>) => {
+    gbFetchByQuery.mockResolvedValue([
+      {
+        work: {
+          title: "Dune",
+          authors: ["Frank Herbert"],
+          description: ENGLISH_SYNOPSIS,
+          genres: ["Science Fiction"],
+        },
+        // No cover and a minimal score, so the OL edition wins bestEdition.
+        edition: makeEdition({
+          id: "gb-en",
+          source: "google-books",
+          isbn13: "9780441172719",
+          language: "English",
+          languageCode: "en",
+          coverUrl: undefined,
+          score: 0,
+        }),
+        gbRank: 0,
+      },
+    ]);
+    olFetchByQuery.mockResolvedValue([
+      {
+        partialWork: {
+          workKey: "/works/OL1W",
+          title: "Dune",
+          authors: ["Frank Herbert"],
+          genres: [],
+          editionCount: 5,
+        },
+        bestEdition: makeEdition({
+          id: "ol-ed",
+          source: "open-library",
+          isbn13: "9788401021909",
+          coverUrl: "https://covers/es.jpg",
+          ...olEditionOverrides,
+        }),
+      },
+    ]);
+  };
+
+  test("drops the description when bestEdition ends up in another language", async () => {
+    mockProviders({ language: "Spanish", languageCode: "es", title: "Dune" });
+
+    const result = await lookupByQuery("Dune");
+
+    expect(result.work!.bestEdition.language).toBe("Spanish");
+    // An English synopsis must never be shown on a card labelled Spanish.
+    expect(result.work!.description).toBeUndefined();
+  });
+
+  test("keeps the description when bestEdition stays in its language", async () => {
+    mockProviders({ language: "English", languageCode: "en", title: "Dune" });
+
+    const result = await lookupByQuery("Dune");
+
+    expect(result.work!.bestEdition.language).toBe("English");
+    expect(result.work!.description).toBe(ENGLISH_SYNOPSIS);
+  });
+
+  test("a description of unknown language is never treated as a match", async () => {
+    // The GB volume that carried the description has no language label at all,
+    // so we cannot prove it matches the Spanish edition that wins bestEdition.
+    gbFetchByQuery.mockResolvedValue([
+      {
+        work: {
+          title: "Dune",
+          authors: ["Frank Herbert"],
+          description: ENGLISH_SYNOPSIS,
+          genres: [],
+        },
+        edition: makeEdition({
+          id: "gb-nolang",
+          source: "google-books",
+          language: undefined,
+          languageCode: undefined,
+          coverUrl: undefined,
+          score: 0,
+        }),
+        gbRank: 0,
+      },
+    ]);
+    olFetchByQuery.mockResolvedValue([
+      {
+        partialWork: { workKey: "/works/OL1W", title: "Dune", authors: ["Frank Herbert"], genres: [], editionCount: 5 },
+        bestEdition: makeEdition({
+          id: "ol-es",
+          source: "open-library",
+          isbn13: "9788401021909",
+          language: "Spanish",
+          languageCode: "es",
+          coverUrl: "https://covers/es.jpg",
+        }),
+      },
+    ]);
+
+    const result = await lookupByQuery("Dune");
+
+    expect(result.work!.bestEdition.language).toBe("Spanish");
+    expect(result.work!.description).toBeUndefined();
+  });
+});
+
+// ─── P1-10 — catalog fallback is never an ISBN match ──────────────────────────
+
+describe("lookupByIsbn — catalog fallback when no provider indexes the ISBN", () => {
+  const ES_ISBN = "9786073925020";  // Fourth Wing, Planeta México (Spanish)
+  const EN_ISBN = "9781649374042";  // Fourth Wing, English hardcover
+
+  const spanishResult = [
+    {
+      work: {
+        title: "Alas de sangre",
+        authors: ["Rebecca Yarros"],
+        description: undefined,
+        genres: ["Fantasy"],
+      },
+      edition: makeEdition({
+        id: "gb-es",
+        source: "google-books",
+        title: "Alas de sangre",
+        language: "Spanish",
+        languageCode: "es",
+        coverUrl: "https://covers/es.jpg",
+        score: 60,
+      }),
+      gbRank: 0,
+    },
+  ];
+  const englishResult = [
+    {
+      work: {
+        title: "Fourth Wing",
+        authors: ["Rebecca Yarros"],
+        description: "Twenty-year-old Violet Sorrengail...",
+        genres: ["Fantasy"],
+      },
+      edition: makeEdition({
+        id: "gb-en",
+        source: "google-books",
+        title: "Fourth Wing",
+        language: "English",
+        languageCode: "en",
+        coverUrl: "https://covers/en.jpg",
+        score: 60,
+      }),
+      gbRank: 0,
+    },
+  ];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    olFetchEditionByIsbn.mockResolvedValue(null);
+    gbFetchByIsbn.mockResolvedValue([]);
+    olFetchByQuery.mockResolvedValue([]);
+    gbFetchByQuery.mockImplementation(async (queryTitle: string) =>
+      queryTitle === "Alas de sangre" ? spanishResult : englishResult
+    );
+  });
+
+  test("never reports isbnMatch for a result that came from a text query", async () => {
+    const result = await lookupByIsbn(ES_ISBN);
+    expect(result.work).not.toBeNull();
+    expect(result.isbnMatch).toBe(false);
+  });
+
+  test("a Spanish-group ISBN searches the localized title, not the English one", async () => {
+    const result = await lookupByIsbn(ES_ISBN);
+    const queriedTitles = gbFetchByQuery.mock.calls.map((call) => call[0]);
+
+    expect(queriedTitles).toContain("Alas de sangre");
+    expect(queriedTitles).not.toContain("Fourth Wing");
+    expect(result.work!.title).toBe("Alas de sangre");
+    expect(result.work!.bestEdition.language).toBe("Spanish");
+  });
+
+  test("still applies structural catalog data (series) to the fallback work", async () => {
+    const result = await lookupByIsbn(ES_ISBN);
+    expect(result.work!.seriesName).toBe("The Empyrean");
+    expect(result.work!.seriesOrder).toBe(1);
+  });
+
+  test("never stamps the scanned ISBN onto the text-search editions", async () => {
+    const result = await lookupByIsbn(ES_ISBN);
+    expect(result.flatEditions.some((e) => e.isbn13 === ES_ISBN)).toBe(false);
+    expect(result.work!.bestEdition.isbn13).not.toBe(ES_ISBN);
+  });
+
+  test("an English-group ISBN still searches the canonical title", async () => {
+    const result = await lookupByIsbn(EN_ISBN);
+    const queriedTitles = gbFetchByQuery.mock.calls.map((call) => call[0]);
+
+    expect(queriedTitles).toContain("Fourth Wing");
+    expect(queriedTitles).not.toContain("Alas de sangre");
+    expect(result.isbnMatch).toBe(false); // still a text query, not an ISBN hit
+  });
+});
+
 // ─── fetchAllEditions ─────────────────────────────────────────────────────────
 
 describe("fetchAllEditions", () => {

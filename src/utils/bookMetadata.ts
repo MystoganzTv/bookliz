@@ -145,11 +145,6 @@ const mapLanguageKey = (value?: string) => {
   return languageMap[code] ?? code.toUpperCase();
 };
 
-const mapSearchLanguage = (values?: string[]) => {
-  if (!values?.length) return undefined;
-  return mapLanguageKey(values[0]);
-};
-
 const mapPhysicalFormat = (value?: string): NewBookInput["format"] | undefined => {
   const normalized = value?.trim().toLowerCase() ?? "";
   if (!normalized) return undefined;
@@ -331,10 +326,31 @@ async function fetchWorkMetadata(workKey?: string): Promise<BookMetadata | undef
   }
 }
 
-async function mapEditionRecordToMetadata(
+/**
+ * An Open Library ISBN lookup yields TWO distinct records:
+ *
+ *   • `edition` — the physical book behind that ISBN (language, publisher,
+ *     pages, edition key, its own description/cover when it has them).
+ *   • `work`    — the original work (usually English): title, description and
+ *     the original cover.
+ *
+ * They must stay SEPARATE. Blending the work's synopsis/cover into the edition
+ * produced a single chimera candidate: a Spanish edition carrying an English
+ * description was judged a language mismatch and discarded whole (losing the
+ * publisher/pages/ISBN OL is best at), while an English work cover silently
+ * became a language-locked field of a Spanish book.
+ */
+export type OpenLibraryIsbnRecords = {
+  /** Edition-level metadata — safe to language-gate as one unit. */
+  edition?: BookMetadata;
+  /** Work-level metadata (title/synopsis/cover of the ORIGINAL work). */
+  work?: BookMetadata;
+};
+
+async function mapEditionRecordToRecords(
   data: OpenLibraryIsbnResponse,
   fallbackIsbn?: string
-): Promise<BookMetadata | undefined> {
+): Promise<OpenLibraryIsbnRecords> {
   const authorName = await fetchAuthorName(data.authors?.[0]?.key);
   const workKey = data.works?.[0]?.key;
   const workMeta = await fetchWorkMetadata(workKey);
@@ -345,40 +361,53 @@ async function mapEditionRecordToMetadata(
     ...(data.subjects ?? [])
   ]);
 
-  return mergeBookMetadata(
-    {
-      title: data.title,
-      authorName,
-      isbn: data.isbn_13?.[0] ?? data.isbn_10?.[0] ?? fallbackIsbn,
-      pages: data.number_of_pages,
-      genre: normalizeBookGenres(data.subjects?.slice(0, 8)),
-      publisher: data.publishers?.[0],
-      publishedDate: data.publish_date,
-      // Unknown language stays unknown — never a fabricated "English" label.
-      language: mapLanguageKey(data.languages?.[0]?.key),
-      synopsis: readDescription(data.description),
-      coverImageUri: coverUrl(data.covers?.[0]),
-      workKey,
-      editionKey: data.key,
-      format: mapPhysicalFormat(data.physical_format),
-      isBestseller: signals.isBestseller,
-      tags: signals.tags
-    },
-    workMeta
-  );
+  const editionOnly: BookMetadata = {
+    title: data.title,
+    authorName,
+    isbn: data.isbn_13?.[0] ?? data.isbn_10?.[0] ?? fallbackIsbn,
+    pages: data.number_of_pages,
+    genre: normalizeBookGenres(data.subjects?.slice(0, 8)),
+    publisher: data.publishers?.[0],
+    publishedDate: data.publish_date,
+    // Unknown language stays unknown — never a fabricated "English" label.
+    language: mapLanguageKey(data.languages?.[0]?.key),
+    synopsis: readDescription(data.description),
+    coverImageUri: coverUrl(data.covers?.[0]),
+    workKey,
+    editionKey: data.key,
+    format: mapPhysicalFormat(data.physical_format),
+    isBestseller: signals.isBestseller,
+    tags: signals.tags
+  };
+
+  // The work may still fill STRUCTURAL gaps (title, genres, workKey, badges).
+  // Its synopsis and cover are language-locked work-level data and are handed
+  // back separately instead, so each can be gated on its own.
+  const workStructuralOnly = workMeta
+    ? { ...workMeta, synopsis: undefined, coverImageUri: undefined }
+    : undefined;
+
+  return {
+    edition: mergeBookMetadata(editionOnly, workStructuralOnly),
+    work: workMeta
+  };
 }
 
-export async function fetchBookMetadataByIsbn(
+/**
+ * Fetch the Open Library records behind an ISBN, edition and work kept apart.
+ * Callers that only care about the edition can use `fetchBookMetadataByIsbn`.
+ */
+export async function fetchOpenLibraryRecordsByIsbn(
   isbn: string,
   /**
    * `rethrowTransient`: let RateLimitedError / FetchTimeoutError (and HTTP 429)
-   * propagate instead of returning undefined, so a caching caller can tell
-   * "no record" apart from "couldn't ask right now".
+   * propagate instead of returning an empty record, so a caching caller can
+   * tell "no record" apart from "couldn't ask right now".
    */
   opts: { rethrowTransient?: boolean } = {}
-): Promise<BookMetadata | undefined> {
+): Promise<OpenLibraryIsbnRecords> {
   const cleanIsbn = normalizeIsbn(isbn);
-  if (cleanIsbn.length < 10) return undefined;
+  if (cleanIsbn.length < 10) return {};
 
   try {
     const response = await fetchWithTimeout(openLibraryUrl(`/isbn/${cleanIsbn}.json`));
@@ -386,16 +415,24 @@ export async function fetchBookMetadataByIsbn(
       if (opts.rethrowTransient && response.status === 429) {
         throw new RateLimitedError("openlibrary.org", RATE_LIMIT_COOLDOWN_MS);
       }
-      return undefined;
+      return {};
     }
     const data = (await response.json()) as OpenLibraryIsbnResponse;
-    return await mapEditionRecordToMetadata(data, cleanIsbn);
+    return await mapEditionRecordToRecords(data, cleanIsbn);
   } catch (err) {
     if (opts.rethrowTransient && (err instanceof RateLimitedError || err instanceof FetchTimeoutError)) {
       throw err;
     }
-    return undefined;
+    return {};
   }
+}
+
+export async function fetchBookMetadataByIsbn(
+  isbn: string,
+  opts: { rethrowTransient?: boolean } = {}
+): Promise<BookMetadata | undefined> {
+  const { edition } = await fetchOpenLibraryRecordsByIsbn(isbn, opts);
+  return edition;
 }
 
 export async function fetchBookMetadataByEditionKey(editionKey?: string): Promise<BookMetadata | undefined> {
@@ -404,7 +441,7 @@ export async function fetchBookMetadataByEditionKey(editionKey?: string): Promis
     const response = await fetchWithTimeout(openLibraryUrl(`${editionKey}.json`));
     if (!response.ok) return undefined;
     const data = (await response.json()) as OpenLibraryIsbnResponse;
-    return await mapEditionRecordToMetadata(data);
+    return (await mapEditionRecordToRecords(data)).edition;
   } catch {
     return undefined;
   }
@@ -683,15 +720,20 @@ function mapSearchDocToBookInput(doc: OpenLibrarySearchDoc): NewBookInput {
     doc.title,
     ...(doc.subject ?? [])
   ]);
+  // /search.json docs are WORK-level. `isbn` (which may even be an ISBN-10 of
+  // a foreign edition), `publisher`, `number_of_pages_median`, `language` (all
+  // languages the work exists in, unordered) and `first_publish_year` describe
+  // the work as a whole, not the record shown. Presenting them as edition data
+  // produces a chimera edition, so they are left undefined here.
   return {
     title: doc.title ?? "Untitled Book",
     authorName: doc.author_name?.[0] ?? "Unknown Author",
-    isbn: doc.isbn?.[0],
-    pages: doc.number_of_pages_median,
+    isbn: undefined,
+    pages: undefined,
     genre: normalizeBookGenres(doc.subject?.slice(0, 8)),
-    publisher: doc.publisher?.[0],
-    publishedDate: doc.first_publish_year ? `${doc.first_publish_year}-01-01` : undefined,
-    language: mapSearchLanguage(doc.language),
+    publisher: undefined,
+    publishedDate: undefined,
+    language: undefined,
     synopsis: undefined,
     coverImageUri: coverUrl(doc.cover_i),
     workKey: doc.key?.startsWith("/works/") ? doc.key : undefined,

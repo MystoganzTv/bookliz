@@ -59,7 +59,11 @@ export function AuthorBooksScreen() {
   const [loadingMore, setLoadingMore]     = useState(false);
   const [networkError, setNetworkError]   = useState(false);
   const [totalItems, setTotalItems]       = useState(0);
+  const [hasMore, setHasMore]             = useState(false);
+  /** Raw items fetched so far (NOT the filtered list) — drives pagination. */
   const startIndexRef                     = useRef(0);
+  /** Ids already rendered, so overlapping Google Books pages never duplicate. */
+  const seenIdsRef                        = useRef<Set<string>>(new Set());
 
   // ── Library section ────────────────────────────────────────────────────────
   // Match by id when we have one (library author), by name otherwise (catalog
@@ -76,6 +80,10 @@ export function AuthorBooksScreen() {
     () => new Set(books.map((b) => b.isbn).filter(Boolean) as string[]),
     [books]
   );
+  // Read through a ref inside the fetch callback: adding a book must not
+  // re-create loadAuthor (that reset the catalog and the scroll position).
+  const libraryIsbnSetRef = useRef(libraryIsbnSet);
+  libraryIsbnSetRef.current = libraryIsbnSet;
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const loadAuthor = useCallback(async (reset = true) => {
@@ -83,7 +91,9 @@ export function AuthorBooksScreen() {
       setLoading(true);
       setNetworkError(false);
       setCatalogBooks([]);
+      setHasMore(false);
       startIndexRef.current = 0;
+      seenIdsRef.current = new Set();
     } else {
       setLoadingMore(true);
     }
@@ -101,28 +111,43 @@ export function AuthorBooksScreen() {
       let filtered     = highSignal.length >= 4 ? highSignal : withCover.length > 0 ? withCover : fetched;
       filtered = filtered.filter((b) => !LOW_SIGNAL_PATTERN.test(b.title));
 
+      const librarySet = libraryIsbnSetRef.current;
       filtered.sort((a, b) => {
-        const aLib = a.isbn13 && libraryIsbnSet.has(a.isbn13) ? 1 : 0;
-        const bLib = b.isbn13 && libraryIsbnSet.has(b.isbn13) ? 1 : 0;
+        const aLib = a.isbn13 && librarySet.has(a.isbn13) ? 1 : 0;
+        const bLib = b.isbn13 && librarySet.has(b.isbn13) ? 1 : 0;
         if (bLib !== aLib) return bLib - aLib;
         return (b.ratingsCount ?? 0) - (a.ratingsCount ?? 0);
       });
 
+      // Google Books overlaps results between startIndex values — keep the
+      // first occurrence of each id so the list never renders duplicate keys.
+      const seen = reset ? new Set<string>() : seenIdsRef.current;
+      const deduped = filtered.filter((b) => {
+        if (seen.has(b.id)) return false;
+        seen.add(b.id);
+        return true;
+      });
+      seenIdsRef.current = seen;
+
       startIndexRef.current += fetched.length;
       setTotalItems(total);
-      setCatalogBooks((prev) => (reset ? filtered : [...prev, ...filtered]));
+      // Pagination is driven by RAW fetched-vs-total, never by the filtered
+      // length, and stops dead when a page comes back empty.
+      setHasMore(fetched.length > 0 && startIndexRef.current < total);
+      setCatalogBooks((prev) => (reset ? deduped : [...prev, ...deduped]));
     } catch {
       if (reset) setNetworkError(true);
+      setHasMore(false);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [authorName, libraryIsbnSet]);
+  }, [authorName]);
 
   useEffect(() => { loadAuthor(true); }, [loadAuthor]);
 
   function handleLoadMore() {
-    if (loadingMore || loading || catalogBooks.length >= totalItems) return;
+    if (loadingMore || loading || !hasMore) return;
     void loadAuthor(false);
   }
 
@@ -237,7 +262,6 @@ export function AuthorBooksScreen() {
   }
 
   const isGrid  = viewMode === "grid";
-  const hasMore = catalogBooks.length < totalItems;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (

@@ -8,3 +8,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .DS_Store
+
+# Tarballs temporales de sincronización
+_sync.tgz
+_audit*.tgz
+_audit*.tar.gz

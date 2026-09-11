@@ -99,7 +99,8 @@ export function EditBookScreen() {
   const [seriesName,      setSeriesName]      = useState(book?.seriesName ?? "");
   const [seriesNumber,    setSeriesNumber]    = useState(book?.seriesNumber ? String(book.seriesNumber) : "");
   const [genres,          setGenres]          = useState<string[]>(book?.genre ?? []);
-  const [pages,           setPages]           = useState(book ? String(book.pages) : "");
+  // Unknown page count (0 / negative) shows as an empty field — never a literal "0".
+  const [pages,           setPages]           = useState(book && book.pages > 0 ? String(book.pages) : "");
   const [publishedDate,   setPublishedDate]   = useState(book?.publishedDate ?? "");
   const [publisher,       setPublisher]       = useState(book?.publisher ?? "");
   const [language,        setLanguage]        = useState(book?.language ?? "English");
@@ -123,7 +124,7 @@ export function EditBookScreen() {
   const [finishDate,      setFinishDate]      = useState(book?.userStatus.finishDate ?? "");
   const [progressPercent, setProgressPercent] = useState(book ? String(book.userStatus.progressPercent) : "0");
   const [notes,           setNotes]           = useState(book?.userStatus.notes ?? "");
-  const [favoriteQuotes,  setFavoriteQuotes]  = useState(book?.userStatus.favoriteQuotes.join("\n") ?? "");
+  const [favoriteQuotes,  setFavoriteQuotes]  = useState<string[]>(book?.userStatus.favoriteQuotes ?? []);
   // Edition pointer — cleared on edition switch (stale pointers are bugs).
   const [editionKey,      setEditionKey]      = useState(book?.editionKey);
   const [isFetching,      setIsFetching]      = useState(false);
@@ -323,7 +324,7 @@ export function EditBookScreen() {
       startDate, finishDate,
       progressPercent: parseNum(progressPercent) ?? book.userStatus.progressPercent,
       notes,
-      favoriteQuotes: favoriteQuotes.split("\n").map((q) => q.trim()).filter(Boolean),
+      favoriteQuotes: favoriteQuotes.map((q) => q.trim()).filter(Boolean),
     });
     navigation.goBack();
   };
@@ -422,6 +423,22 @@ export function EditBookScreen() {
       {/* ══ RATING ═══════════════════════════════════════════════════════════ */}
       <FieldCard icon="star-outline" label={t("editBook.labelRating")} c={c} styles={styles}>
         <StarRating value={rating} onChange={setRating} styles={styles} c={c} />
+      </FieldCard>
+
+      {/* ══ READING STATUS ═══════════════════════════════════════════════════ */}
+      <FieldCard icon="bookmark-outline" label={t("editBook.labelStatus")} c={c} styles={styles}>
+        <View style={styles.langChipRow}>
+          {STATUS_OPTIONS.map((opt) => (
+            <ToggleChip
+              key={opt.value}
+              label={t(opt.labelKey)}
+              active={status === opt.value}
+              onPress={() => setStatus(opt.value)}
+              styles={styles}
+              c={c}
+            />
+          ))}
+        </View>
       </FieldCard>
 
       {/* ══ DETAILS ══════════════════════════════════════════════════════════ */}
@@ -560,6 +577,28 @@ export function EditBookScreen() {
         <PlainInput value={coverImageUri} onChangeText={setCoverImageUri} placeholder="https://…" autoCapitalize="none" styles={styles} c={c} />
       </FieldCard>
 
+      {/* ══ NOTES & QUOTES ═══════════════════════════════════════════════════ */}
+      <FieldCard icon="create-outline" label={t("editBook.labelNotes")} c={c} styles={styles}>
+        <PlainInput
+          value={notes}
+          onChangeText={setNotes}
+          placeholder={t("editBook.notesPlaceholder")}
+          multiline
+          styles={styles}
+          c={c}
+        />
+      </FieldCard>
+
+      <FieldCard icon="chatbubble-ellipses-outline" label={t("editBook.labelQuotes")} c={c} styles={styles}>
+        <ChipEditor
+          chips={favoriteQuotes}
+          onChipsChange={setFavoriteQuotes}
+          placeholder={t("editBook.quotePlaceholder")}
+          styles={styles}
+          c={c}
+        />
+      </FieldCard>
+
       {/* ══ SAVE ═════════════════════════════════════════════════════════════ */}
       <Pressable accessibilityRole="button" style={styles.saveBtn} onPress={onSave}>
         <Ionicons name="checkmark" size={18} color="#fff" />
@@ -633,6 +672,7 @@ function ChipEditor({
   chips: string[]; onChipsChange: (v: string[]) => void;
   placeholder: string; styles: ReturnType<typeof createStyles>; c: AppColors;
 }) {
+  const { t } = useI18n();
   const [adding, setAdding] = useState(false);
   const [draft,  setDraft]  = useState("");
   const inputRef = useRef<TextInput>(null);
@@ -673,7 +713,7 @@ function ChipEditor({
       ) : (
         <Pressable accessibilityRole="button" style={styles.chipAdd} onPress={() => { setAdding(true); }}>
           <Ionicons name="add" size={14} color={c.teal} />
-          <Text style={styles.chipAddText}>Add</Text>
+          <Text style={styles.chipAddText}>{t("editBook.chipAdd")}</Text>
         </Pressable>
       )}
     </View>
