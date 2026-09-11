@@ -18,6 +18,7 @@ import { normalizeBookGenres } from "../utils/genres";
 import { coverUrl as olCoverUrl } from "../utils/bookMetadata";
 import { parseIsbn } from "../utils/isbnUtils";
 import { openLibraryUrl } from "../utils/openLibrary";
+import { googleBooksAppHeaders } from "../utils/googleBooksAppHeaders";
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 import {
   lookupByIsbn as knownLookupByIsbn,
@@ -274,7 +275,7 @@ async function fetchGoogleBooksByIsbn(isbn13: string): Promise<BookMatch[]> {
   try {
     const key = GB_API_KEY ? `&key=${GB_API_KEY}` : "";
     const url = `${GB_BASE}?q=isbn:${isbn13}&maxResults=5${key}`;
-    const res = await fetchWithTimeout(url);
+    const res = await fetchWithTimeout(url, { headers: googleBooksAppHeaders() });
     if (!res.ok) return [];
     const data = (await res.json()) as GBResponse;
     return (data.items ?? []).map((vol) =>
@@ -293,7 +294,7 @@ async function fetchGoogleBooksByQuery(
     const key = GB_API_KEY ? `&key=${GB_API_KEY}` : "";
     const authorPart = author ? `+inauthor:${encodeURIComponent(author)}` : "";
     const url = `${GB_BASE}?q=intitle:${encodeURIComponent(title)}${authorPart}&maxResults=10${key}`;
-    const res = await fetchWithTimeout(url);
+    const res = await fetchWithTimeout(url, { headers: googleBooksAppHeaders() });
     if (!res.ok) return [];
     const data = (await res.json()) as GBResponse;
     return (data.items ?? []).map((vol) =>
