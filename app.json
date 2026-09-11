@@ -47,14 +47,14 @@
       [
         "@react-native-google-signin/google-signin",
         {
-          "iosUrlScheme": "com.googleusercontent.apps.TU_REVERSED_IOS_CLIENT_ID"
+          "iosUrlScheme": "com.googleusercontent.apps.167166673441-1m9fio2dlddt0a053ip2o8b6tan85pdb"
         }
       ]
     ],
     "extra": {
       "googleAuth": {
-        "webClientId": "167166673441-1m9fio2dlddt0a053ip2o8b6tan85pdb.apps.googleusercontent.com",
-        "iosClientId": "TU_IOS_CLIENT_ID.apps.googleusercontent.com",
+        "webClientId": "167166673441-tu8ias7s9t8gs09n2vnh75pbo8sgus8j.apps.googleusercontent.com",
+        "iosClientId": "167166673441-1m9fio2dlddt0a053ip2o8b6tan85pdb.apps.googleusercontent.com",
         "androidClientId": "167166673441-v01ji3rds3frjipugsur98fdvlcm0li9.apps.googleusercontent.com"
       },
       "eas": {
