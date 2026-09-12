@@ -1143,6 +1143,27 @@ export function createStyles(c: AppColors, isDark: boolean) {
     fontFamily: fonts.bodyRegular,
     fontSize: 13,
   },
+  matchChipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 6,
+  },
+  matchChip: {
+    alignItems: "center",
+    backgroundColor: isDark ? "rgba(45,138,138,0.20)" : "rgba(45,138,138,0.10)",
+    borderRadius: radii.pill,
+    flexDirection: "row",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  matchChipText: {
+    color: c.tealDark,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: "800",
+  },
   matchMeta: {
     color: c.muted,
     fontFamily: fonts.bodyRegular,

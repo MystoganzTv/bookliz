@@ -6,6 +6,7 @@
 import { BookMatch } from "../../services/bookLookupService";
 import { buildLibraryIndex } from "../../services/recommendationEngine";
 import { UserTasteProfile } from "../../services/userTasteProfile";
+import { languageDisplayName } from "../../utils/languageUtils";
 
 export type MatchSortOrder = "relevance" | "popular" | "rating" | "year_desc" | "year_asc";
 /**
@@ -259,4 +260,66 @@ export function matchMetaLine(match: BookMatch, t: (key: string, vars?: Record<s
   if (match.publishedYear) parts.push(t("search.metaFirstPublished", { year: match.publishedYear }));
   if (match.editionCount && match.editionCount > 1) parts.push(t("search.metaEditions", { count: match.editionCount }));
   return parts.length ? parts.join(" · ") : null;
+}
+
+/** One fact about an edition, ready to render as a chip. */
+export type MatchChip = { key: string; icon: string; label: string };
+
+const FORMAT_LABEL_KEYS: Record<string, string> = {
+  paperback: "editBook.fmtPaperback",
+  hardcover: "editBook.fmtHardcover",
+  ebook: "editBook.fmtEbook",
+  audiobook: "editBook.fmtAudiobook",
+  "mass-market": "editBook.fmtMassMarket",
+};
+
+/**
+ * The edition facts worth showing on a result card: binding, language and
+ * publication date.
+ *
+ * Every one of them is omitted when the catalogue did not state it. That is
+ * the whole point of this function — a card that always shows three chips is
+ * a card that invents two of them, and the binding in particular is unknown
+ * for every Google Books result because Google does not record it.
+ */
+export function matchChips(
+  match: BookMatch,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  locale?: string
+): MatchChip[] {
+  const chips: MatchChip[] = [];
+
+  const formatKey = match.format ? FORMAT_LABEL_KEYS[match.format] : undefined;
+  if (formatKey) chips.push({ key: "format", icon: "book-outline", label: t(formatKey) });
+
+  // Only when a source labelled it. A language inferred from the query we sent
+  // is not a fact about the edition.
+  if (match.language) {
+    const name = languageDisplayName(match.language);
+    if (name) chips.push({ key: "language", icon: "language-outline", label: name });
+  }
+
+  const published = formatPublished(match.publishedDate, locale) ??
+    (match.publishedYear ? String(match.publishedYear) : undefined);
+  if (published) chips.push({ key: "published", icon: "calendar-outline", label: published });
+
+  return chips;
+}
+
+/**
+ * Catalogue dates arrive as "2018", "2018-04" or "2018-04-10". Show exactly
+ * as much as the source knew — padding a bare year out to January 1st would
+ * be inventing a publication day.
+ */
+export function formatPublished(raw?: string, locale?: string): string | undefined {
+  if (!raw) return undefined;
+  const match = /^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?/.exec(raw.trim());
+  if (!match) return undefined;
+  const [, year, month, day] = match;
+  if (!month) return year;
+  const date = new Date(Number(year), Number(month) - 1, day ? Number(day) : 1);
+  if (Number.isNaN(date.getTime())) return year;
+  return date.toLocaleDateString(locale, day
+    ? { year: "numeric", month: "short", day: "numeric" }
+    : { year: "numeric", month: "short" });
 }

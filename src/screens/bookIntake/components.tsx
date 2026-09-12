@@ -19,7 +19,7 @@ import {
 } from "react-native";
 import { BookMatch } from "../../services/bookLookupService";
 import { formatIsbn13 } from "../../utils/isbnUtils";
-import { matchMetaLine } from "./matchLogic";
+import { matchChips, matchMetaLine } from "./matchLogic";
 import { ScanQueueEntry, ScanShelfChoice } from "./scanQueue";
 import { fonts, radii, spacing } from "../../theme/theme";
 import { useColors, useTheme } from "../../theme/ThemeContext";
@@ -602,11 +602,12 @@ export function MatchCard({
   isPrimary?: boolean;
   hideConfidence?: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const c = useColors();
   const { isDark } = useTheme();
   const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
   const meta = matchMetaLine(match, t);
+  const chips = matchChips(match, t, locale);
 
   return (
     <Pressable accessibilityRole="button" style={styles.matchCard} onPress={onSelect}>
@@ -626,7 +627,7 @@ export function MatchCard({
         {/* Series */}
         {match.seriesName ? (
           <Text style={styles.matchSeries} numberOfLines={1}>
-            {match.seriesOrder ? `Book ${match.seriesOrder} · ` : ""}{match.seriesName}
+            {match.seriesOrder ? `${t("search.seriesBookNumber", { number: match.seriesOrder })} · ` : ""}{match.seriesName}
           </Text>
         ) : null}
 
@@ -635,8 +636,20 @@ export function MatchCard({
 
         {/* Author */}
         <Text style={styles.matchAuthor} numberOfLines={1}>
-          By {match.authors.join(", ") || "Unknown author"}
+          {match.authors.join(", ") || t("search.unknownAuthor")}
         </Text>
+
+        {/* Edition chips — each omitted when the catalogue did not state it */}
+        {chips.length ? (
+          <View style={styles.matchChipRow}>
+            {chips.map((chip) => (
+              <View key={chip.key} style={styles.matchChip}>
+                <Ionicons name={chip.icon as IconName} size={11} color={c.tealDark} />
+                <Text style={styles.matchChipText} numberOfLines={1}>{chip.label}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         {/* Ratings */}
         {match.averageRating ? (

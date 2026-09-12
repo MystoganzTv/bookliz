@@ -123,13 +123,20 @@ function parsePublishedYear(date?: string): number | undefined {
   return isNaN(year) ? undefined : year;
 }
 
+/**
+ * Google Books cannot tell you a binding.
+ *
+ * `printType` has exactly two values, BOOK and MAGAZINE — it separates books
+ * from periodicals, not paperbacks from hardcovers. Mapping BOOK to
+ * "paperback", as this did until 2026-09-12, stamped a made-up binding on
+ * every edition the app ever took from Google, which is the same fabrication
+ * as the old `language ?? "English"`: a field the user never entered and the
+ * source never claimed. Unknown stays unknown; Open Library's
+ * `physical_format` is where a real binding comes from.
+ */
 function normalizeFormat(printType?: string): EditionFormat | undefined {
   if (!printType) return undefined;
-  switch (printType.toLowerCase()) {
-    case "book": return "paperback";
-    case "magazine": return "other";
-    default: return "other";
-  }
+  return printType.toLowerCase() === "magazine" ? "other" : undefined;
 }
 
 // ─── Volume → BookEdition ─────────────────────────────────────────────────────

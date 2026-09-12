@@ -13,6 +13,7 @@
  * and sorted by confidence score descending.
  */
 
+import { EditionFormat } from "../types/bookMetadata";
 import { NewBookInput } from "../types/models";
 import { normalizeBookGenres } from "../utils/genres";
 import { coverUrl as olCoverUrl } from "../utils/bookMetadata";
@@ -41,6 +42,13 @@ export interface BookMatch {
   subtitle?: string;
   authors: string[];
   language?: string;
+  /**
+   * Binding, when a source actually states one. Open Library records it as
+   * `physical_format`; Google Books does not have the field at all, so a
+   * Google result leaves this undefined rather than guessing (see
+   * googleBooksProvider.normalizeFormat).
+   */
+  format?: EditionFormat;
   publisher?: string;
   publishedDate?: string;
   /**
@@ -331,6 +339,35 @@ interface OLIsbnEdition {
   languages?: { key?: string }[];
 }
 
+/**
+ * Open Library's `physical_format` is free text typed by contributors, so it
+ * is matched loosely — but only matched: a string that resembles nothing known
+ * returns undefined instead of "other", because "other" on a card reads as a
+ * fact about the edition rather than as our failure to parse it.
+ */
+function normalizePhysicalFormat(physical?: string): EditionFormat | undefined {
+  if (!physical) return undefined;
+  const lower = physical.toLowerCase();
+  if (lower.includes("mass market")) return "mass-market";
+  if (lower.includes("hardcover") || lower.includes("hardback")) return "hardcover";
+  if (lower.includes("paperback") || lower.includes("trade paper") || lower.includes("softcover")) return "paperback";
+  if (lower.includes("ebook") || lower.includes("e-book") || lower.includes("electronic")) return "ebook";
+  if (lower.includes("audio")) return "audiobook";
+  return undefined;
+}
+
+/** EditionFormat (catalogue vocabulary) → ReadingFormat (the app's own). */
+function toReadingFormat(format: EditionFormat): NewBookInput["format"] {
+  switch (format) {
+    case "mass-market": return "mass-market-paperback";
+    case "hardcover": return "hardcover";
+    case "paperback": return "paperback";
+    case "ebook": return "ebook";
+    case "audiobook": return "audiobook";
+    default: return undefined;
+  }
+}
+
 interface OLSearchDoc {
   key?: string;
   title?: string;
@@ -383,6 +420,7 @@ async function normalizeOLEdition(
     authors: authorName ? [authorName] : [],
     // Unknown language stays unknown — never a fabricated "English" label.
     language: lang3(data.languages?.[0]?.key),
+    format: normalizePhysicalFormat(data.physical_format),
     publisher: data.publishers?.[0],
     publishedDate: data.publish_date,
     pageCount: data.number_of_pages,
@@ -640,6 +678,7 @@ export function bookMatchToNewBookInput(
     publisher: match.publisher,
     publishedDate: match.publishedDate,
     language: match.language,
+    ...(match.format && match.format !== "other" ? { format: toReadingFormat(match.format) } : {}),
     synopsis: match.description,
     coverImageUri: match.coverUrl,
     workKey: match.workKey,
