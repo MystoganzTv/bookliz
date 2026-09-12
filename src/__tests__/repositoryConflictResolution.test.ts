@@ -1,16 +1,22 @@
 /**
- * Regression tests for P0-B — the cloud used to overwrite offline work.
+ * Regression tests for P0-B — the cloud used to overwrite offline work — and
+ * for P0-B2, which stopped resolution from picking a side at all.
  *
  * `load()` preferred the cloud snapshot unconditionally. That is right when the
  * local copy is a stale mirror and wrong whenever it is not: edit with no
  * signal, relaunch with signal, and the older cloud snapshot replaced
  * everything done in between.
  *
- * Resolution is by sync marker, not by timestamp comparison. The marker records
- * the `updatedAt` this device last pushed successfully, so "is the local copy
- * ahead?" is answered with two values written by the SAME clock. Comparing a
- * device clock against a server clock would hand every conflict to whichever
- * machine happened to be set fast.
+ * "Is the local copy ahead?" is answered by the sync marker, not by comparing
+ * timestamps: the marker records the `updatedAt` this device last pushed
+ * successfully, so both values come from the SAME clock. Comparing a device
+ * clock against a server clock would hand every conflict to whichever machine
+ * happened to be set fast.
+ *
+ * Since P0-B2 that answer only decides who keeps the PROFILE. The five row
+ * collections are merged per record, so the ordinary two-device case — each
+ * side holding rows the other has never seen — no longer discards anything and
+ * no longer needs the conflict backup at all.
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -43,6 +49,24 @@ const snapshotWith = (titles: string[], updatedAt: string): BooklizSnapshot => (
     userProfile: profile,
   }),
   updatedAt,
+});
+
+/** A snapshot carrying explicit per-row stamps — the P0-B2 shape. */
+const stamped = (
+  books: { id: string; title: string }[],
+  bookStamps: Record<string, { updatedAt: string; deletedAt?: string }>,
+  updatedAt: string
+): BooklizSnapshot => ({
+  ...createBooklizSnapshot({
+    authors: [],
+    books: books as Book[],
+    readingSessions: [],
+    reviews: [],
+    userLists: [],
+    userProfile: profile,
+  }),
+  updatedAt,
+  records: { authors: {}, books: bookStamps, readingSessions: {}, reviews: {}, userLists: {} },
 });
 
 const REMOTE = "https://api.example.test";
@@ -99,14 +123,16 @@ describe("local snapshot has unsynced work", () => {
     expect(r.getStatus().localAheadOfRemote).toBe(true);
   });
 
-  it("backs up the discarded cloud snapshot", async () => {
+  it("discards nothing, so it parks nothing", async () => {
+    // Before P0-B2 the cloud copy lost whole and went to the backup slot. Now
+    // both sides survive the merge, and a backup nobody needs is just an
+    // invitation to restore a stale library over a good one.
     await setUpDivergence();
     const r = repo();
     await r.load();
 
-    const backup = JSON.parse((await AsyncStorage.getItem(CONFLICT_BACKUP_KEY))!);
-    expect(titlesOf(backup.snapshot)).toEqual(["Synced"]);
-    expect(r.getStatus().conflictBackupAt).toBeDefined();
+    expect(await AsyncStorage.getItem(CONFLICT_BACKUP_KEY)).toBeNull();
+    expect(r.getStatus().conflictBackupAt).toBeUndefined();
   });
 });
 
@@ -171,17 +197,29 @@ describe("the conflict backup slot", () => {
     expect(await repo().readConflictBackup()).toBeNull();
   });
 
-  it("reads back the snapshot a conflict discarded, with the time it was parked", async () => {
-    // Local is ahead → the cloud copy is the one parked.
-    await AsyncStorage.setItem(LOCAL_SNAPSHOT_KEY, JSON.stringify(snapshotWith(["Synced", "Added Offline"], "T2")));
+  it("parks the pre-merge local copy when the merge overrules a local row", async () => {
+    // The one case the merge cannot make painless: the same row edited on both
+    // devices. The later stamp wins and the other edit is genuinely gone from
+    // the library, so the copy it came from has to remain reachable.
+    const local = stamped(
+      [{ id: "b-0", title: "Edited here" }],
+      { "b-0": { updatedAt: "2026-09-01T00:00:00.000Z" } },
+      "T2"
+    );
+    const remote = stamped(
+      [{ id: "b-0", title: "Edited on the iPad" }],
+      { "b-0": { updatedAt: "2026-09-02T00:00:00.000Z" } },
+      "T3"
+    );
+    await AsyncStorage.setItem(LOCAL_SNAPSHOT_KEY, JSON.stringify(local));
     await AsyncStorage.setItem(LOCAL_SYNC_MARKER_KEY, "T1");
-    serveRemote(snapshotWith(["Synced"], "T1"));
+    serveRemote(remote);
 
     const r = repo();
-    await r.load();
+    expect(titlesOf(await r.load())).toEqual(["Edited on the iPad"]);
 
     const backup = await r.readConflictBackup();
-    expect(titlesOf(backup?.snapshot ?? null)).toEqual(["Synced"]);
+    expect(titlesOf(backup?.snapshot ?? null)).toEqual(["Edited here"]);
     expect(backup?.backedUpAt).toBe(r.getStatus().conflictBackupAt);
   });
 

@@ -1,8 +1,37 @@
 # P0-B2 — Fusión por registro
 
-> Diseño, no implementación. Escrito 2026-09-12 para que la próxima sesión no
-> tenga que volver a reconstruir el problema. **No se ha escrito ni una línea
-> de esto todavía.**
+> **IMPLEMENTADO el 2026-09-12.** Este documento se queda como el porqué; el
+> código vive en `src/data/recordMerge.ts` (reglas puras),
+> `src/data/booklizRepository.ts` (sellado, merge, push) y
+> `supabase/migrations/20260912120000_per_record_merge.sql`.
+>
+> Tres cosas salieron distintas del diseño, y las tres por el mismo motivo —
+> el diseño daba por hecho algo del servidor que no se sostiene:
+>
+> 1. **El sello lo pone el cliente, no el servidor.** El diseño decía comparar
+>    contra el `updated_at` del servidor. No sirve: el push hace upsert de
+>    *todas* las filas, así que el trigger reescribe ese campo en cada
+>    sincronización y acaba diciendo "cuándo sincronizó este aparato", no
+>    "cuándo cambió esta fila". La columna nueva `record_updated_at` la escribe
+>    el dispositivo y ningún trigger la toca. El precio es comparar dos relojes
+>    de dispositivo, que es la limitación inherente de último-en-escribir-gana;
+>    se mitiga con sellos monótonos (`nextStamp`), para que un reloj atrasado no
+>    deje al aparato incapaz de ganar nada nunca más.
+>
+> 2. **El sello se calcula al persistir, no en cada mutación.** El diseño pedía
+>    escribirlo "en el momento en que la entidad cambia", y eso son decenas de
+>    puntos en un contexto de 2.000 líneas, cada uno de ellos olvidable. En su
+>    lugar `stampCollection` compara el snapshot nuevo con el anterior: una fila
+>    que no cambió conserva su sello — que es justo la propiedad que
+>    `snapshotFingerprint` necesitaba — y una que desapareció se convierte en
+>    lápida sin que ningún reducer tenga que acordarse.
+>
+> 3. **Hizo falta un tercer estado: `revivedAt`.** No estaba en el diseño y sin
+>    él la fusión no funciona. Un upsert normal no puede mandar
+>    `deleted_at: null`, porque un aparato que estuvo desconectado borraría la
+>    lápida que otro escribió y el libro resucitaría; y omitir la columna
+>    siempre haría imposible deshacer un borrado. Un `deleted_at` solo se limpia
+>    cuando el sello local dice que esa fila concreta volvió a la vida.
 
 ## El problema, en una frase
 

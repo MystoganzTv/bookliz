@@ -2,6 +2,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Author, Book, ReadingSession, Review, UserList, UserProfile } from "../types/models";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
+import {
+  emptyStamps,
+  mergeCollection,
+  MERGED_COLLECTIONS,
+  stableStringify,
+  stampCollection,
+  StampMap,
+  SnapshotStamps,
+} from "./recordMerge";
 
 export type PersistedBooklizState = {
   authors: Author[];
@@ -15,6 +24,13 @@ export type PersistedBooklizState = {
 export type BooklizSnapshot = PersistedBooklizState & {
   version: number;
   updatedAt: string;
+  /**
+   * Per-row stamps for the five merged collections, including tombstones for
+   * rows this device has deleted. Written by `save`, read by the merge in
+   * `resolveAgainstLocal`. Absent on a snapshot written before P0-B2 — every
+   * consumer must tolerate that and treat the rows as unstamped.
+   */
+  records?: SnapshotStamps;
 };
 
 export type RepositorySyncState = "idle" | "loading" | "saving" | "synced" | "error";
@@ -157,8 +173,8 @@ export const CONFLICT_BACKUP_KEY = "booklio:v2:conflictBackup";
  */
 export const LOCAL_SYNC_OWNER_KEY = "booklio:v2:syncOwner";
 
-/** Upper bound of ids per `not in (...)` prune request — keeps URLs under PostgREST/proxy limits. */
-const PRUNE_CHUNK = 150;
+/** Upper bound of ids per `in (...)` request — keeps URLs under PostgREST/proxy limits. */
+const ID_CHUNK = 150;
 
 type RemotePayload = {
   snapshot?: BooklizSnapshot | null;
@@ -179,6 +195,13 @@ const messageOf = (error: unknown, fallback: string) =>
 
 export class LocalFirstBooklizRepository implements BooklizRepository {
   private status: RepositoryStatus;
+  /**
+   * The last snapshot this instance wrote to disk. `save` diffs against it to
+   * decide which rows changed, so the stamps only move for rows that really
+   * did. Kept in memory to avoid a storage read on every keystroke-driven
+   * save; falls back to reading disk when the process has just started.
+   */
+  private lastPersisted: BooklizSnapshot | null = null;
 
   constructor(
     private readonly storage = AsyncStorage,
@@ -289,67 +312,83 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
   }
 
   /**
-   * Decide between a snapshot just fetched from the cloud and the one on disk.
+   * Reconcile the snapshot just fetched from the cloud with the one on disk.
    *
-   * The cloud used to win unconditionally. That is correct exactly when the
-   * local copy is a stale mirror, and wrong whenever it is not: edit offline,
-   * relaunch with signal, and the older cloud snapshot overwrote everything
-   * done in between.
+   * This used to pick a side. The cloud won unless the sync marker said the
+   * local copy had moved past its last successful push, in which case local
+   * won whole — and whatever only existed in the cloud went to the conflict
+   * backup, a single slot the user had to notice and restore by hand.
    *
-   * The test for "not stale" is the sync marker — the `updatedAt` this device
-   * last pushed successfully. If the local snapshot has moved past it, there is
-   * work up here the cloud never received, and it wins.
+   * Now the two are merged row by row (see recordMerge). Only rows that
+   * genuinely collide are decided by a stamp comparison; rows that exist on
+   * one side only are simply kept, which is the case that used to lose work.
+   * The profile is still all-or-nothing: it is one row, so there is nothing
+   * to merge, and the side with unsynced work keeps it.
    *
-   * The losing snapshot is parked in `CONFLICT_BACKUP_KEY` first. Resolving at
-   * snapshot level means one side is always dropped, and on a second device
-   * that side can hold real work; a backup makes that recoverable rather than
-   * silent. Per-record merge is the only thing that avoids the drop entirely,
-   * and it needs per-record timestamps the local snapshot does not carry yet.
+   * The conflict backup stays. Not because a merge drops a side, but because
+   * a merge can still resolve an individual row the wrong way if a device's
+   * clock is wrong, and having yesterday's local copy is the difference
+   * between "annoying" and "gone".
    */
   private async resolveAgainstLocal(remote: BooklizSnapshot): Promise<BooklizSnapshot> {
     const local = await this.readLocalSnapshot();
     const marker = await this.readSyncMarker();
-    // No local copy at all → nothing to weigh the cloud against.
-    // No marker → this device has never pushed, so it cannot be "ahead".
-    const localHasUnsyncedWork = Boolean(local && marker && local.updatedAt !== marker);
-
-    if (localHasUnsyncedWork) {
-      const backupAt = await this.backupSnapshot(remote);
+    // No local copy at all → nothing to merge; take the cloud as it is.
+    if (!local) {
+      await this.storage.setItem(this.storageKey, JSON.stringify(remote));
+      this.lastPersisted = remote;
+      await this.writeSyncMarker(remote.updatedAt);
       this.status = {
         ...this.status,
         syncState: "synced",
         lastLoadedAt: new Date().toISOString(),
-        lastSavedAt: local!.updatedAt,
+        lastSavedAt: remote.updatedAt,
         lastError: undefined,
         localReadFailed: false,
-        localAheadOfRemote: true,
-        conflictBackupAt: backupAt
+        localAheadOfRemote: false
       };
-      return local!;
+      return remote;
     }
 
-    // Local is a faithful mirror of what we last pushed (or there is none):
-    // the cloud is authoritative and may legitimately carry another device's work.
-    const backupAt = local && local.updatedAt !== remote.updatedAt
+    // No marker → this device has never pushed, so it cannot be "ahead", but
+    // its rows are still real and still merge.
+    const localHasUnsyncedWork = Boolean(marker && local.updatedAt !== marker);
+    const merged = mergeSnapshots(local, remote, localHasUnsyncedWork ? "local" : "remote");
+
+    // "Ahead" now means the merge produced something the cloud does not have —
+    // which is exactly the condition for needing a push, and is true whether
+    // the extra rows came from unsynced local work or from a resolved delete.
+    const aheadOfRemote = !sameLibrary(merged, remote);
+    const changedLocally = !sameLibrary(merged, local);
+
+    const resolved: BooklizSnapshot = {
+      ...merged,
+      updatedAt: aheadOfRemote ? new Date().toISOString() : remote.updatedAt
+    };
+
+    // Park the pre-merge local copy whenever the merge changed it. Cheap, and
+    // it is the only way back from a bad clock on another device.
+    const backupAt = changedLocally
       ? await this.backupSnapshot(local)
       : this.status.conflictBackupAt;
 
-    await this.storage.setItem(this.storageKey, JSON.stringify(remote));
-    // The local copy now equals what the cloud holds, so it is by definition
-    // in sync — record that, or the very next load would call it "ahead".
-    await this.writeSyncMarker(remote.updatedAt);
+    await this.storage.setItem(this.storageKey, JSON.stringify(resolved));
+    this.lastPersisted = resolved;
+    // Only a snapshot identical to the cloud's may move the marker; otherwise
+    // the next load would think this device had nothing left to push.
+    if (!aheadOfRemote) await this.writeSyncMarker(resolved.updatedAt);
 
     this.status = {
       ...this.status,
       syncState: "synced",
       lastLoadedAt: new Date().toISOString(),
-      lastSavedAt: remote.updatedAt,
+      lastSavedAt: resolved.updatedAt,
       lastError: undefined,
       localReadFailed: false,
-      localAheadOfRemote: false,
+      localAheadOfRemote: aheadOfRemote,
       conflictBackupAt: backupAt
     };
-    return remote;
+    return resolved;
   }
 
   /** Read + normalise the on-disk snapshot. Throws if storage is unreadable. */
@@ -357,6 +396,21 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     const raw = await this.storage.getItem(this.storageKey);
     if (!raw) return null;
     return normalizeSnapshot(JSON.parse(raw) as Partial<BooklizSnapshot> | PersistedBooklizState);
+  }
+
+  /**
+   * Same read, but a failure answers `null` instead of throwing.
+   *
+   * Only for the stamping diff in `save`: not knowing the previous snapshot
+   * costs a round of over-stamping, whereas letting the read's failure escape
+   * would abort a save that was about to write the user's work to disk.
+   */
+  private async readLocalSnapshotQuietly(): Promise<BooklizSnapshot | null> {
+    try {
+      return await this.readLocalSnapshot();
+    } catch {
+      return null;
+    }
   }
 
   private async readSyncMarker(): Promise<string | null> {
@@ -496,11 +550,20 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     this.status = { ...this.status, syncState: "saving", lastError: undefined };
 
     try {
-      const normalized = normalizeSnapshot(snapshot);
-      if (!normalized) {
+      const incoming = normalizeSnapshot(snapshot);
+      if (!incoming) {
         throw new Error("Bookliz snapshot is invalid and could not be saved.");
       }
+
+      // Stamp here rather than at every mutation site: a differ cannot forget
+      // a new reducer branch, and an untouched row keeps its old stamp, so a
+      // persist that changed nothing does not make the whole library look
+      // freshly edited to the other device.
+      const previous = this.lastPersisted ?? (await this.readLocalSnapshotQuietly());
+      const normalized = stampSnapshot(previous, incoming, new Date().toISOString());
+
       await this.storage.setItem(this.storageKey, JSON.stringify(normalized));
+      this.lastPersisted = normalized;
 
       let pushedToRemote = false;
       if (!options.localOnly) {
@@ -606,20 +669,36 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     // is what an interrupted push (or a pre-stamp client that failed midway)
     // leaves behind. It is not "the cloud is empty" — treating it that way
     // made the loader replace a full local library with nothing.
+    //
+    // Tombstones count as child rows: a library whose every book was deleted
+    // is a real, complete state, not an unfinished upload.
     const childRows = (authorRows?.length ?? 0) + (bookRows?.length ?? 0) + (sessionRows?.length ?? 0);
     if (!profileRow.snapshot_pushed_at && childRows === 0) {
       return null;
     }
 
+    const authors = splitRemoteRows(authorRows, mapAuthorRowToAuthor);
+    const books = splitRemoteRows(bookRows, mapBookRowToBook);
+    const readingSessions = splitRemoteRows(sessionRows, mapSessionRowToReadingSession);
+    const reviews = splitRemoteRows(reviewRows, mapReviewRowToReview);
+    const userLists = splitRemoteRows(listRows, mapListRowToUserList);
+
     return normalizeSnapshot({
       version: SNAPSHOT_VERSION,
       updatedAt: profileRow.updated_at ?? new Date().toISOString(),
       userProfile: mapProfileRowToProfile(profileRow),
-      authors: (authorRows ?? []).map(mapAuthorRowToAuthor),
-      books: (bookRows ?? []).map(mapBookRowToBook),
-      readingSessions: (sessionRows ?? []).map(mapSessionRowToReadingSession),
-      reviews: (reviewRows ?? []).map(mapReviewRowToReview),
-      userLists: (listRows ?? []).map(mapListRowToUserList)
+      authors: authors.items,
+      books: books.items,
+      readingSessions: readingSessions.items,
+      reviews: reviews.items,
+      userLists: userLists.items,
+      records: {
+        authors: authors.stamps,
+        books: books.stamps,
+        readingSessions: readingSessions.stamps,
+        reviews: reviews.stamps,
+        userLists: userLists.stamps
+      }
     });
   }
 
@@ -632,64 +711,61 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     // the sync marker and make this device look up to date when it is not.
     if (!userId) return false;
 
-    // ─── Strategy: upsert-first, then prune orphans ───────────────────────────
+    // ─── Strategy: upsert every row, tombstone the dead, delete nothing ──────
     //
-    // Old approach (delete → insert) had a data-loss window: if the network
-    // dropped after the DELETE but before INSERTs completed, Supabase rows
-    // were gone (local AsyncStorage was safe, but cloud was empty until next sync).
+    // Deletion used to be absence: upsert what we have, then delete every
+    // remote row whose id is missing from the snapshot (pruneOrphans). That is
+    // correct only while the pushed snapshot is authoritative and complete.
+    // Under per-record merge it is not — absence means "this device has not
+    // seen it" — so a book created on another device would be deleted by this
+    // one's next push. pruneOrphans is gone; a delete is now a `deleted_at`
+    // written on the row, which the merge can weigh like any other change.
     //
-    // New approach:
-    //   1. Upsert all current rows  → adds new rows, updates changed rows, never deletes
-    //   2. Delete orphans           → removes rows whose IDs are no longer in the snapshot
-    //
-    // If step 2 fails, we have stale rows in Supabase but zero missing data.
-    // The next successful save will clean them up.
+    // Upserts still cover every row rather than only the changed ones. The
+    // stamp travels in `record_updated_at`, a column no trigger touches, so
+    // re-uploading an unchanged row does not make it look freshly edited.
 
     // Every child table has primary key (user_id, id). Postgres needs the
     // ON CONFLICT target to match a unique index EXACTLY, so `onConflict: "id"`
     // alone raised 42P10 on every upsert — the cloud never received a single
     // author, book or session.
     const CHILD_CONFLICT = "user_id,id";
+    const records = snapshot.records ?? emptyStamps();
 
-    // Authors
-    const authorPayload = snapshot.authors.map((a) => mapAuthorToRow(userId, a));
-    if (authorPayload.length) {
-      const { error } = await supabase.from("booklio_authors").upsert(authorPayload, { onConflict: CHILD_CONFLICT });
-      if (error) throw new Error(`Supabase author sync failed: ${error.message}`);
-    }
-    await pruneOrphans("booklio_authors", userId, snapshot.authors.map((a) => a.id));
+    // `deleted_at` is deliberately absent from an ordinary upsert. PostgREST
+    // only assigns the columns the payload carries, so leaving it out means a
+    // device pushing a row it still holds cannot wipe a tombstone another
+    // device wrote while it was offline — which is exactly how a deleted book
+    // comes back from the dead. Only a genuine revival clears it.
+    const stampRow = <T extends { id: string }>(row: Record<string, unknown>, item: T, stamps: StampMap) => {
+      const stamp = stamps[item.id];
+      return {
+        ...row,
+        record_updated_at: stamp?.updatedAt ?? snapshot.updatedAt,
+        ...(stamp?.revivedAt ? { deleted_at: null } : {})
+      };
+    };
 
-    // Books
-    const bookPayload = snapshot.books.map((b) => mapBookToRow(userId, b));
-    if (bookPayload.length) {
-      const { error } = await supabase.from("booklio_books").upsert(bookPayload, { onConflict: CHILD_CONFLICT });
-      if (error) throw new Error(`Supabase book sync failed: ${error.message}`);
-    }
-    await pruneOrphans("booklio_books", userId, snapshot.books.map((b) => b.id));
+    const pushCollection = async <T extends { id: string }>(
+      table: string,
+      label: string,
+      items: readonly T[],
+      stamps: StampMap,
+      toRow: (userId: string, item: T) => Record<string, unknown>
+    ) => {
+      const payload = items.map((item) => stampRow(toRow(userId, item), item, stamps));
+      if (payload.length) {
+        const { error } = await supabase!.from(table).upsert(payload, { onConflict: CHILD_CONFLICT });
+        if (error) throw new Error(`Supabase ${label} sync failed: ${error.message}`);
+      }
+      await pushTombstones(table, userId, stamps);
+    };
 
-    // Reading sessions
-    const sessionPayload = snapshot.readingSessions.map((s) => mapReadingSessionToRow(userId, s));
-    if (sessionPayload.length) {
-      const { error } = await supabase.from("booklio_reading_sessions").upsert(sessionPayload, { onConflict: CHILD_CONFLICT });
-      if (error) throw new Error(`Supabase reading session sync failed: ${error.message}`);
-    }
-    await pruneOrphans("booklio_reading_sessions", userId, snapshot.readingSessions.map((s) => s.id));
-
-    // Reviews
-    const reviewPayload = (snapshot.reviews ?? []).map((r) => mapReviewToRow(userId, r));
-    if (reviewPayload.length) {
-      const { error } = await supabase.from("booklio_reviews").upsert(reviewPayload, { onConflict: CHILD_CONFLICT });
-      if (error) throw new Error(`Supabase review sync failed: ${error.message}`);
-    }
-    await pruneOrphans("booklio_reviews", userId, (snapshot.reviews ?? []).map((r) => r.id));
-
-    // User lists
-    const listPayload = (snapshot.userLists ?? []).map((l) => mapUserListToRow(userId, l));
-    if (listPayload.length) {
-      const { error } = await supabase.from("booklio_user_lists").upsert(listPayload, { onConflict: CHILD_CONFLICT });
-      if (error) throw new Error(`Supabase user list sync failed: ${error.message}`);
-    }
-    await pruneOrphans("booklio_user_lists", userId, (snapshot.userLists ?? []).map((l) => l.id));
+    await pushCollection("booklio_authors", "author", snapshot.authors, records.authors, mapAuthorToRow);
+    await pushCollection("booklio_books", "book", snapshot.books, records.books, mapBookToRow);
+    await pushCollection("booklio_reading_sessions", "reading session", snapshot.readingSessions, records.readingSessions, mapReadingSessionToRow);
+    await pushCollection("booklio_reviews", "review", snapshot.reviews ?? [], records.reviews, mapReviewToRow);
+    await pushCollection("booklio_user_lists", "user list", snapshot.userLists ?? [], records.userLists, mapUserListToRow);
 
     // Profile — one row per user, written LAST and stamped. The stamp is the
     // "push completed" marker `loadSupabase` looks for: if anything above
@@ -738,43 +814,165 @@ function normalizeSnapshot(snapshot?: Partial<BooklizSnapshot> | PersistedBookli
     updatedAt:
       "updatedAt" in snapshot && typeof snapshot.updatedAt === "string"
         ? snapshot.updatedAt
-        : new Date().toISOString()
+        : new Date().toISOString(),
+    ...(normalizeStamps((snapshot as Partial<BooklizSnapshot>).records) ?? {})
   };
 }
 
 /**
- * Delete rows in `table` for `userId` whose `id` is NOT in `keepIds`.
- * If `keepIds` is empty, deletes all rows for the user (entity was fully cleared).
- * Errors here are non-fatal — stale rows are harmless and will be pruned next sync.
+ * Accept a `records` bag only if it is shaped like one. A snapshot written
+ * before P0-B2 has none, and a corrupt one must not be half-trusted: a stamp
+ * map with garbage in it decides merges.
  */
-async function pruneOrphans(table: string, userId: string, keepIds: string[]): Promise<void> {
+function normalizeStamps(records: unknown): { records: SnapshotStamps } | null {
+  if (!records || typeof records !== "object") return null;
+  const source = records as Record<string, unknown>;
+  const out = emptyStamps();
+  let found = false;
+  for (const key of MERGED_COLLECTIONS) {
+    const map = source[key];
+    if (!map || typeof map !== "object") continue;
+    for (const [id, stamp] of Object.entries(map as Record<string, unknown>)) {
+      const value = stamp as { updatedAt?: unknown; deletedAt?: unknown; revivedAt?: unknown } | null;
+      if (!value || typeof value.updatedAt !== "string") continue;
+      out[key][id] = {
+        updatedAt: value.updatedAt,
+        ...(typeof value.deletedAt === "string" ? { deletedAt: value.deletedAt } : {}),
+        ...(typeof value.revivedAt === "string" ? { revivedAt: value.revivedAt } : {})
+      };
+      found = true;
+    }
+  }
+  return found ? { records: out } : null;
+}
+
+/** Per-row stamps for a snapshot about to be persisted, diffed against the last one. */
+function stampSnapshot(
+  previous: BooklizSnapshot | null,
+  next: BooklizSnapshot,
+  now: string
+): BooklizSnapshot {
+  const records = emptyStamps();
+  for (const key of MERGED_COLLECTIONS) {
+    // Each collection holds a different entity type; `stampCollection` only
+    // ever reads `id`, so widening to the common shape here is safe and keeps
+    // the loop from having to be five copies of itself.
+    records[key] = stampCollection(
+      previous?.[key] as readonly { id: string }[] | undefined,
+      previous?.records?.[key],
+      (next[key] ?? []) as readonly { id: string }[],
+      now
+    );
+  }
+  return { ...next, records };
+}
+
+/** Row-by-row merge of two snapshots. The profile is one row, so it is picked, not merged. */
+function mergeSnapshots(
+  local: BooklizSnapshot,
+  remote: BooklizSnapshot,
+  profileFrom: "local" | "remote"
+): BooklizSnapshot {
+  const base = profileFrom === "local" ? local : remote;
+  const records = emptyStamps();
+  const merged: Partial<PersistedBooklizState> = {};
+
+  for (const key of MERGED_COLLECTIONS) {
+    const result = mergeCollection<{ id: string }>(
+      { items: (local[key] ?? []) as readonly { id: string }[], stamps: local.records?.[key] ?? {} },
+      { items: (remote[key] ?? []) as readonly { id: string }[], stamps: remote.records?.[key] ?? {} }
+    );
+    // The collections are structurally independent; the cast is only needed
+    // because TypeScript cannot follow the key through the union.
+    (merged as Record<string, unknown>)[key] = result.items;
+    records[key] = result.stamps;
+  }
+
+  return {
+    ...base,
+    ...(merged as Pick<PersistedBooklizState, (typeof MERGED_COLLECTIONS)[number]>),
+    userProfile: base.userProfile,
+    version: SNAPSHOT_VERSION,
+    updatedAt: base.updatedAt,
+    records
+  };
+}
+
+/** Do two snapshots hold the same rows and the same stamps? Ignores the profile. */
+function sameLibrary(a: BooklizSnapshot, b: BooklizSnapshot): boolean {
+  for (const key of MERGED_COLLECTIONS) {
+    if (stableStringify(a[key] ?? []) !== stableStringify(b[key] ?? [])) return false;
+    if (stableStringify(a.records?.[key] ?? {}) !== stableStringify(b.records?.[key] ?? {})) return false;
+  }
+  return true;
+}
+
+/**
+ * Write `deleted_at` on the rows this device has tombstoned.
+ *
+ * An UPDATE, never a DELETE: the tombstone is what tells the other device the
+ * row is gone. Rows created and deleted before this device ever pushed have no
+ * remote counterpart, so the update simply matches nothing.
+ *
+ * Errors are non-fatal, exactly as the old prune was. A tombstone that fails
+ * to land leaves a row the other device will resurrect, which the next
+ * successful push corrects; failing the whole save here would instead block
+ * the far more valuable upserts above.
+ */
+async function pushTombstones(table: string, userId: string, stamps: StampMap): Promise<void> {
   if (!supabase) return;
+  // Rows dying at the same instant travel together — in practice a "clear
+  // everything" is one batch, and a single delete is one row.
+  const batches = new Map<string, string[]>();
+  for (const [id, stamp] of Object.entries(stamps)) {
+    if (!stamp.deletedAt) continue;
+    const key = `${stamp.deletedAt}|${stamp.updatedAt}`;
+    const batch = batches.get(key);
+    if (batch) batch.push(id);
+    else batches.set(key, [id]);
+  }
+  if (!batches.size) return;
+
   try {
-    if (keepIds.length === 0) {
-      const { error } = await supabase.from(table).delete().eq("user_id", userId);
-      if (error && __DEV__) console.warn(`[Bookliz] prune ${table} failed: ${error.message}`);
-      return;
-    }
-    // The id list travels in the query string. A few hundred `b-<slug>-<ts>`
-    // ids overflow URL limits and PostgREST answers 414 — silently, because
-    // supabase-js returns errors rather than throwing them. So: fetch the
-    // remote ids (cheap, one column) and delete only the actual orphans, in
-    // small batches.
-    const { data: remoteRows, error: listError } = await supabase.from(table).select("id").eq("user_id", userId);
-    if (listError) {
-      if (__DEV__) console.warn(`[Bookliz] prune ${table} could not list ids: ${listError.message}`);
-      return;
-    }
-    const keep = new Set(keepIds);
-    const orphans = (remoteRows ?? []).map((row: { id: string }) => row.id).filter((id) => !keep.has(id));
-    for (let i = 0; i < orphans.length; i += PRUNE_CHUNK) {
-      const chunk = orphans.slice(i, i + PRUNE_CHUNK);
-      const { error } = await supabase.from(table).delete().eq("user_id", userId).in("id", chunk);
-      if (error && __DEV__) console.warn(`[Bookliz] prune ${table} failed: ${error.message}`);
+    for (const [key, ids] of batches) {
+      const [deletedAt, updatedAt] = key.split("|");
+      for (let i = 0; i < ids.length; i += ID_CHUNK) {
+        const { error } = await supabase
+          .from(table)
+          .update({ deleted_at: deletedAt, record_updated_at: updatedAt })
+          .eq("user_id", userId)
+          .in("id", ids.slice(i, i + ID_CHUNK));
+        if (error && __DEV__) console.warn(`[Bookliz] tombstone ${table} failed: ${error.message}`);
+      }
     }
   } catch {
-    // Non-fatal: stale orphan rows will be pruned on the next successful save.
+    // Non-fatal: the next successful save retries every tombstone it still holds.
   }
+}
+
+/**
+ * Split remote rows into live entities and stamps, keeping tombstones as
+ * stamps only.
+ *
+ * A row with no `record_updated_at` predates P0-B2 and gets no stamp at all,
+ * which the merge reads as "older than anything stamped" — correct, since by
+ * definition it was written by a client that could not stamp.
+ */
+function splitRemoteRows<TRow extends { id: string; record_updated_at?: string | null; deleted_at?: string | null }, T>(
+  rows: TRow[] | null | undefined,
+  toEntity: (row: TRow) => T
+): { items: T[]; stamps: StampMap } {
+  const items: T[] = [];
+  const stamps: StampMap = {};
+  for (const row of rows ?? []) {
+    if (row.deleted_at) {
+      stamps[row.id] = { updatedAt: row.record_updated_at ?? row.deleted_at, deletedAt: row.deleted_at };
+      continue;
+    }
+    if (row.record_updated_at) stamps[row.id] = { updatedAt: row.record_updated_at };
+    items.push(toEntity(row));
+  }
+  return { items, stamps };
 }
 
 function isRemotePayload(payload: RemotePayload | BooklizSnapshot | null): payload is RemotePayload {

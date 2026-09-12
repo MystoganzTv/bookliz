@@ -23,11 +23,14 @@ let currentUserId: string | null = null;
 const upsertFailures: Record<string, string> = {};
 /** Records every upsert call: [table, onConflict]. */
 const upsertLog: Array<[string, string | undefined]> = [];
+/** Records every child-row DELETE. Should stay empty: deletes are tombstones now. */
+const deleteLog: string[] = [];
 
 const reset = () => {
   for (const key of Object.keys(tables)) delete tables[key];
   for (const key of Object.keys(upsertFailures)) delete upsertFailures[key];
   upsertLog.length = 0;
+  deleteLog.length = 0;
   currentUserId = null;
 };
 
@@ -36,7 +39,8 @@ const keyOf = (table: string, row: Row) =>
 
 class FakeQuery {
   private filters: Array<(row: Row) => boolean> = [];
-  private op: "select" | "delete" = "select";
+  private op: "select" | "delete" | "update" = "select";
+  private patch: Row = {};
   constructor(private table: string) {
     tables[table] ??= [];
   }
@@ -46,6 +50,12 @@ class FakeQuery {
   }
   delete() {
     this.op = "delete";
+    return this;
+  }
+  /** Tombstoning is an UPDATE of deleted_at — the client never DELETEs a row. */
+  update(patch: Row) {
+    this.op = "update";
+    this.patch = patch;
     return this;
   }
   eq(col: string, value: unknown) {
@@ -84,7 +94,12 @@ class FakeQuery {
     return tables[this.table].filter((row) => this.filters.every((f) => f(row)));
   }
   then<T>(resolve: (value: { data: Row[] | null; error: null }) => T) {
+    if (this.op === "update") {
+      for (const row of this.run()) Object.assign(row, this.patch);
+      return Promise.resolve({ data: null, error: null }).then(resolve);
+    }
     if (this.op === "delete") {
+      if (this.table !== "booklio_profiles") deleteLog.push(this.table);
       const doomed = new Set(this.run());
       tables[this.table] = tables[this.table].filter((row) => !doomed.has(row));
       return Promise.resolve({ data: null, error: null }).then(resolve);
@@ -237,13 +252,150 @@ describe("round trip", () => {
     expect(await AsyncStorage.getItem(LOCAL_SYNC_MARKER_KEY)).toBe(loaded!.updatedAt);
   });
 
-  it("prunes orphans by fetching remote ids, never with ids in the URL", async () => {
+  it("deleting tombstones the row instead of removing it", async () => {
+    // The row has to stay: under per-record merge, a row that is simply gone
+    // reads as "the other device has not seen it yet", and the other device
+    // would push it straight back.
     currentUserId = "A";
     const r = repo();
     await r.save(snapshotWith(["Keep", "Drop"]));
     expect(tables.booklio_books).toHaveLength(2);
+
     await r.save(snapshotWith(["Keep"]));
-    expect(tables.booklio_books.map((b) => b.title)).toEqual(["Keep"]);
+
+    expect(tables.booklio_books).toHaveLength(2);
+    const dropped = tables.booklio_books.find((b) => b.title === "Drop");
+    expect(dropped?.deleted_at).toBeTruthy();
+    // …and a fresh device does not see it.
+    await AsyncStorage.clear();
+    expect((await repo().load())?.books.map((b) => b.title)).toEqual(["Keep"]);
+  });
+
+  it("never DELETEs a child row", async () => {
+    // pruneOrphans is gone. If it ever comes back, it takes another device's
+    // unseen books with it.
+    currentUserId = "A";
+    const r = repo();
+    await r.save(snapshotWith(["Keep", "Drop"]));
+    deleteLog.length = 0;
+    await r.save(snapshotWith(["Keep"]));
+
+    expect(deleteLog).toEqual([]);
+  });
+});
+
+// ─── P0-B2: per-record merge ────────────────────────────────────────────────
+
+describe("two devices", () => {
+  /** Push `books` as if from a device that starts with no local snapshot. */
+  const deviceSaves = async (books: Book[]) => {
+    await AsyncStorage.clear();
+    const r = repo();
+    await r.load(); // pull first, exactly as a real device does on launch
+    const pulled = (await repo().load()) ?? null;
+    await r.save({
+      ...createBooklizSnapshot({
+        authors: [author],
+        books: [...(pulled?.books ?? []), ...books],
+        readingSessions: [],
+        reviews: [],
+        userLists: [],
+        userProfile: profile
+      }),
+      records: pulled?.records
+    });
+  };
+
+  it("keeps books added on both, instead of letting one side win whole", async () => {
+    currentUserId = "A";
+    await deviceSaves([bookNamed("b-ipad", "From the iPad")]);
+    await deviceSaves([bookNamed("b-phone", "From the phone")]);
+
+    await AsyncStorage.clear();
+    const titles = ((await repo().load())?.books ?? []).map((b) => b.title).sort();
+    expect(titles).toEqual(["From the iPad", "From the phone"]);
+  });
+
+  it("gives the same book to the later edit, and the loser does not come back", async () => {
+    currentUserId = "A";
+    await deviceSaves([bookNamed("b-1", "First title")]);
+
+    // The other device edits the same row later. Its stamp is newer, so it wins.
+    await AsyncStorage.clear();
+    const other = repo();
+    await other.load();
+    await other.save(
+      createBooklizSnapshot({
+        authors: [author],
+        books: [bookNamed("b-1", "Second title")],
+        readingSessions: [],
+        reviews: [],
+        userLists: [],
+        userProfile: profile
+      })
+    );
+
+    await AsyncStorage.clear();
+    expect(((await repo().load())?.books ?? []).map((b) => b.title)).toEqual(["Second title"]);
+    // A second cycle must not resurrect the older title from the cloud row.
+    const again = repo();
+    await again.load();
+    await again.save(createBooklizSnapshot({
+      authors: [author],
+      books: (await repo().load())?.books ?? [],
+      readingSessions: [],
+      reviews: [],
+      userLists: [],
+      userProfile: profile
+    }));
+    await AsyncStorage.clear();
+    expect(((await repo().load())?.books ?? []).map((b) => b.title)).toEqual(["Second title"]);
+  });
+
+  it("a delete stays deleted when the other device pushes afterwards", async () => {
+    // The classic failure of every sync layer written without tombstones: A
+    // deletes, B still has the book, B pushes, the book is back.
+    currentUserId = "A";
+    await deviceSaves([bookNamed("b-1", "Doomed"), bookNamed("b-2", "Kept")]);
+
+    // Device B pulls both, so it holds the row A is about to delete.
+    await AsyncStorage.clear();
+    const deviceB = repo();
+    const seenByB = await deviceB.load();
+    expect(seenByB?.books).toHaveLength(2);
+
+    // Device A deletes it.
+    await AsyncStorage.clear();
+    const deviceA = repo();
+    const seenByA = await deviceA.load();
+    await deviceA.save({
+      ...createBooklizSnapshot({
+        authors: [author],
+        books: (seenByA?.books ?? []).filter((b) => b.id !== "b-1"),
+        readingSessions: [],
+        reviews: [],
+        userLists: [],
+        userProfile: profile
+      }),
+      records: seenByA?.records
+    });
+    expect(tables.booklio_books.find((b) => b.id === "b-1")?.deleted_at).toBeTruthy();
+
+    // Now B pushes what it still holds. Without tombstones this resurrects it.
+    await deviceB.save({
+      ...createBooklizSnapshot({
+        authors: [author],
+        books: seenByB?.books ?? [],
+        readingSessions: [],
+        reviews: [],
+        userLists: [],
+        userProfile: profile
+      }),
+      records: seenByB?.records
+    });
+
+    await AsyncStorage.clear();
+    expect(((await repo().load())?.books ?? []).map((b) => b.id)).toEqual(["b-2"]);
   });
 });
 
