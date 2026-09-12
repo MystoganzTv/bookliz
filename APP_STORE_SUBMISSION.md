@@ -90,8 +90,11 @@ atribuibles a este proyecto.
 es defendible ante revisión; no declararlo obliga a sostener que los logs de
 Google no cuentan, que es una posición más frágil de lo que parece.
 
-Esto desaparece del todo cuando el proxy en Edge Function esté montado y las
-búsquedas dejen de salir del dispositivo con nuestra clave.
+Corrección (2026-09-12): el proxy **no** hace que esto desaparezca. Ya está
+montado, y lo que cambia es dónde vive la clave, no quién ve el término: la
+búsqueda sigue llegando a Google bajo nuestra cuenta, solo que desde la Edge
+Function en vez de desde el teléfono. La recomendación de declararlo sigue en
+pie tal cual.
 
 ---
 
@@ -138,9 +141,16 @@ Resultado esperado: **4+**.
 
 ## 5. Textos de la ficha
 
-Escritos contra lo que la app hace hoy. **Nada de esto menciona el OCR de
-portadas ni el proxy**: las funciones están desplegadas pero ninguna build
-publicada las usa todavía. Cuando salga una que sí, hay una frase que añadir.
+Escritos contra lo que la app hace hoy. La descripción **ya menciona el OCR de
+portadas** (2026-09-12) porque la próxima build sí lo usa: el flujo de foto
+manda la imagen fuera del dispositivo, y decirlo en la ficha es lo coherente
+con la etiqueta de *Photos or Videos* de la sección 1. El proxy de Google Books
+no se menciona y no hace falta: es un cambio de dónde vive una clave, invisible
+para el usuario.
+
+> Si alguna vez sale una build **sin** el endpoint de visión configurado, estas
+> dos frases pasan a describir una función que no existe. El `preflight` exige
+> `EXPO_PUBLIC_BOOKLIZ_VISION_ENDPOINT` justo por esto.
 
 ### Name (30) · Subtitle (30)
 
@@ -172,8 +182,9 @@ publicada las usa todavía. Cuando salga una que sí, hay una frase que añadir.
 Bookliz is a reading tracker for people who actually keep their books.
 
 Scan the barcode on the back cover and the book lands on your shelf with its
-cover, page count and synopsis already filled in. No barcode? Search by title
-or author, or type the details yourself.
+cover, page count and synopsis already filled in. No barcode? Photograph the
+cover and Bookliz reads the title off it. Or search by title or author, or
+type the details in yourself.
 
 YOUR SHELVES, HONESTLY
 Owned, wishlist, want to buy, reading, finished, abandoned. Ownership is its
@@ -203,6 +214,10 @@ NO ADS. NO TRACKING.
 No advertising, no analytics, no crash reporting, no third-party SDK reading
 over your shoulder. Your library is yours. Works offline; sign in only if you
 want it on more than one device.
+
+The only things that ever leave your device are the ones you ask for: a search
+term, or a cover photo sent to be recognised. The photo is not stored, not
+attached to your account, and not used for anything else.
 ```
 
 **ES**
@@ -213,7 +228,8 @@ libros.
 
 Escanea el código de barras de la contraportada y el libro aparece en tu
 estantería con portada, número de páginas y sinopsis ya rellenos. ¿Sin código?
-Búscalo por título o autor, o escribe los datos tú.
+Haz una foto de la portada y Bookliz lee el título. O búscalo por título o
+autor, o escribe los datos tú.
 
 TUS ESTANTES, SIN MENTIRAS
 Lo tengo, lista de deseos, quiero comprarlo, leyendo, terminado, abandonado.
@@ -244,6 +260,10 @@ SIN ANUNCIOS. SIN RASTREO.
 Sin publicidad, sin analítica, sin crash reporting, sin ningún SDK de terceros
 mirando por encima de tu hombro. Tu biblioteca es tuya. Funciona sin conexión;
 inicia sesión solo si la quieres en más de un dispositivo.
+
+Lo único que sale de tu dispositivo es lo que tú pides: un término de búsqueda,
+o la foto de una portada para reconocerla. Esa foto no se guarda, no se asocia
+a tu cuenta y no se usa para nada más.
 ```
 
 ### Nota sobre el enlace de afiliado
