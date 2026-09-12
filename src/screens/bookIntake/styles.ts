@@ -1283,6 +1283,31 @@ export function createStyles(c: AppColors, isDark: boolean) {
     marginTop: 2,
     opacity: 0.7,
   },
+  scopeToggle: {
+    alignSelf: "flex-start",
+    backgroundColor: c.teal + "12",
+    borderRadius: radii.pill,
+    flexDirection: "row",
+    marginTop: spacing.sm,
+    padding: 3,
+  },
+  scopeOption: {
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+  },
+  scopeOptionActive: {
+    backgroundColor: c.teal,
+  },
+  scopeOptionText: {
+    color: c.tealDark,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  scopeOptionTextActive: {
+    color: "#fff",
+  },
   sortButton: {
     alignItems: "center",
     backgroundColor: c.teal + "14",

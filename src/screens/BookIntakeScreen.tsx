@@ -74,7 +74,16 @@ import { groupEditionCandidates } from "../utils/editionMatchValidation";
 import { hapticLight, hapticSuccess } from "../utils/haptics";
 
 type IntakeMode = "menu" | "isbn" | "manual" | "search" | "matches" | "review";
-type DiscoverSearchIntent = "auto" | "author" | "series";
+type DiscoverSearchIntent = "auto" | "author" | "series" | "title";
+
+/**
+ * What the query is meant to be. Until now this was guessed from the text
+ * (detectQueryIntent) and the guess was invisible: "Miller" is an author,
+ * "Circe" is a title, and "Pilar" is both — and when the guess went the wrong
+ * way the user had no way to say so. The guess survives as the INITIAL value;
+ * the toggle is what decides.
+ */
+type SearchScope = "title" | "author";
 type BookIntakeRouteProp = RouteProp<RootStackParamList, "BookIntake">;
 
 const booklizLogo = require("../../assets/brand/bookliz-logo.png");
@@ -174,6 +183,7 @@ export function BookIntakeScreen() {
   const [matchReturnMode, setMatchReturnMode] = useState<"menu" | "isbn" | "search">("menu");
   // Sort order for search results
   const [sortOrder, setSortOrder] = useState<MatchSortOrder>("popular");
+  const [searchScope, setSearchScope] = useState<SearchScope>("title");
   const [showSortSheet, setShowSortSheet] = useState(false);
   // Grid / list toggle for results
   const [matchViewMode, setMatchViewMode] = useState<"list" | "grid">("list");
@@ -366,6 +376,9 @@ export function BookIntakeScreen() {
     const isAuthorSearch =
       type === "query" &&
       (forcedIntent === "author" || (forcedIntent === "auto" && detectQueryIntent(query) === "author"));
+    // Keep the toggle honest about what this search actually did, including
+    // when the guess picked for us.
+    if (type === "query") setSearchScope(isAuthorSearch ? "author" : "title");
     const initialSortOrder: MatchSortOrder =
       type === "isbn" ? "relevance" : isAuthorSearch ? "year_desc" : "relevance";
 
@@ -401,7 +414,8 @@ export function BookIntakeScreen() {
               queryTitle,
               queryAuthor,
               queryAuthor ? "title" :
-              forcedIntent === "author" ? "author" : forcedIntent === "series" ? "title" : "auto"
+              forcedIntent === "author" ? "author" :
+              forcedIntent === "series" || forcedIntent === "title" ? "title" : "auto"
             )
       );
       if (seq !== searchSeqRef.current) return; // a newer search superseded this one
@@ -1223,6 +1237,31 @@ export function BookIntakeScreen() {
                 <Ionicons name="search" size={16} color="#fff" />
               </Pressable>
             )}
+          </View>
+
+          {/* Title | Author — the guess made visible, and correctable */}
+          <View style={styles.scopeToggle}>
+            {(["title", "author"] as const).map((scope) => {
+              const active = searchScope === scope;
+              return (
+                <Pressable
+                  key={scope}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={[styles.scopeOption, active && styles.scopeOptionActive]}
+                  onPress={() => {
+                    if (active) return;
+                    setSearchScope(scope);
+                    const query = matchLookupLabel.trim();
+                    if (query) void lookupAndShowMatches(query, matchReturnMode, "query", scope);
+                  }}
+                >
+                  <Text style={[styles.scopeOptionText, active && styles.scopeOptionTextActive]}>
+                    {scope === "title" ? t("search.scopeTitle") : t("search.scopeAuthor")}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
