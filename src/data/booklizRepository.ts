@@ -101,10 +101,22 @@ export interface BooklizRepository {
 /**
  * AsyncStorage key for the local library snapshot.
  *
- * Still spelled "booklio" (the app's former name) on purpose: renaming it would
- * orphan every existing install's library. This is the ONE canonical key —
- * anything that wipes or rewrites the snapshot must import it from here rather
- * than hardcoding a string, or it will silently write to a key nobody reads.
+ * Still spelled "booklio" (the app's former name) on purpose, and this is a
+ * CLOSED decision, taken 2026-09-12 — not an oversight left behind by the
+ * Booklio → Bookliz rename. Renaming it orphans the library of every install
+ * that already exists: the app would start up, find nothing under the new key,
+ * and present an empty shelf. Doing it safely needs a read-old/write-new shim
+ * in the one code path that has already come close to deleting a user's books,
+ * and buys nothing at all — no reader ever sees this string.
+ *
+ * The same reasoning covers LOCAL_SYNC_MARKER_KEY, CONFLICT_BACKUP_KEY and
+ * LOCAL_SYNC_OWNER_KEY below, and the booklio_* tables in Supabase (see the
+ * header of supabase/bootstrap_bookliz.sql). Reopen it only if the schema has
+ * to change for some other reason, and then rename inside that same migration.
+ *
+ * This is also the ONE canonical key — anything that wipes or rewrites the
+ * snapshot must import it from here rather than hardcoding a string, or it
+ * will silently write to a key nobody reads.
  */
 export const LOCAL_SNAPSHOT_KEY = "booklio:v2";
 const STORAGE_KEY = LOCAL_SNAPSHOT_KEY;

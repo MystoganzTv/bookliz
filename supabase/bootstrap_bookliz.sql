@@ -1,5 +1,22 @@
 -- Bookliz — esquema completo para un proyecto Supabase NUEVO.
 -- Generado 2026-09-11 concatenando supabase/migrations/ en orden. Pegar entero en SQL Editor → Run.
+--
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Los objetos se llaman booklio_* A PROPÓSITO. Decisión cerrada el 2026-09-12;
+-- NO es un resto olvidado del rename Booklio → Bookliz.
+--
+-- Son 44 identificadores (7 tablas, 4 policies cada una, índices, triggers y
+-- 3 funciones) más el repositorio, el bootstrap y repositorySupabaseSync.test.ts.
+-- El beneficio es cosmético y solo lo ve quien abre el dashboard; el coste es
+-- tocar el camino de sync y obligar a un rebuild coordinado, porque cualquier
+-- build ya instalado deja de sincronizar en el momento en que las tablas
+-- cambian de nombre.
+--
+-- Reabrirlo solo si hay que modificar el esquema por otra razón: entonces el
+-- rename va dentro de esa misma migración. Mientras tanto, el prefijo correcto
+-- para CUALQUIER objeto nuevo sigue siendo booklio_ — dos prefijos conviviendo
+-- sería peor que el que hay.
+-- ─────────────────────────────────────────────────────────────────────────────
 
 
 -- ═══════════ supabase/migrations/20260526_create_booklio_core.sql ═══════════
