@@ -20,7 +20,7 @@
       "buildNumber": "1",
       "deploymentTarget": "15.1",
       "usesAppleSignIn": true,
-      "supportsTablet": false,
+      "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Bookliz uses the camera to photograph book covers and scan ISBN barcodes.",
         "NSPhotoLibraryUsageDescription": "Bookliz uses your photo library to import pictures of physical books."
