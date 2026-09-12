@@ -48,7 +48,7 @@
     a { color: inherit; text-decoration: none; }
     img { max-width: 100%; height: auto; display: block; }
 
-    .wrap { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+    .wrap { width: 100%; max-width: 1280px; margin: 0 auto; padding: 0 40px; }
 
     /* ───────── Nav ───────── */
     .nav {
@@ -94,8 +94,8 @@
 
     /* ───────── Hero ───────── */
     .hero { text-align: center; padding: 76px 0 0; }
-    .hero h1 { font-size: clamp(38px, 6.4vw, 64px); max-width: 15ch; margin: 18px auto 0; }
-    .hero .lede { max-width: 56ch; margin: 22px auto 0; }
+    .hero h1 { font-size: clamp(38px, 6.4vw, 68px); max-width: 16ch; margin: 18px auto 0; }
+    .hero .lede { max-width: 60ch; margin: 22px auto 0; font-size: 19.5px; }
 
     .cta-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
     .badge {
@@ -118,7 +118,7 @@
     /* ───────── Phone frame ───────── */
     .phone {
       position: relative; flex: 0 0 auto; min-width: 0;
-      width: 100%; max-width: 300px; align-self: center;
+      width: 100%; max-width: 330px; align-self: center;
       border-radius: 44px; padding: 9px;
       background: linear-gradient(160deg, #2A3550 0%, #14213A 46%, #0C1425 100%);
       box-shadow: var(--phone-sh);
@@ -143,17 +143,17 @@
     .rows { padding: 26px 0 0; }
     .row {
       display: grid; grid-template-columns: 1fr 1fr;
-      gap: 64px; align-items: center;
-      padding: 74px 0;
+      gap: 88px; align-items: center;
+      padding: 84px 0;
       border-top: 1px solid var(--line2);
     }
     .row:first-child { border-top: 0; }
     .row .shot { display: flex; justify-content: center; }
     .row.flip .txt { order: 2; }
     .row.flip .shot { order: 1; }
-    .row h2 { font-size: clamp(27px, 3.6vw, 37px); margin: 14px 0 0; max-width: 17ch; }
-    .row p { margin-top: 16px; color: var(--ink2); font-size: 17.5px; }
-    .row ul { margin-top: 20px; list-style: none; display: grid; gap: 10px; }
+    .row h2 { font-size: clamp(27px, 3.6vw, 40px); margin: 14px 0 0; max-width: 17ch; }
+    .row p { margin-top: 18px; color: var(--ink2); font-size: 18px; max-width: 46ch; }
+    .row ul { margin-top: 22px; list-style: none; display: grid; gap: 10px; max-width: 46ch; }
     .row li { display: flex; gap: 11px; align-items: flex-start; font-size: 16px; color: var(--ink2); }
     .row li::before {
       content: ''; flex-shrink: 0; width: 7px; height: 7px; margin-top: 11px;
@@ -162,11 +162,11 @@
 
     /* ───────── Grid ───────── */
     .grid-sec { padding: 84px 0; border-top: 1px solid var(--line2); }
-    .sec-head { text-align: center; max-width: 44ch; margin: 0 auto 48px; }
+    .sec-head { text-align: center; max-width: 48ch; margin: 0 auto 52px; }
     .sec-head h2 { font-size: clamp(29px, 4vw, 41px); margin-top: 14px; }
     .sec-head p { margin-top: 16px; color: var(--ink2); }
 
-    .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
     .card {
       background: var(--white); border: 1px solid var(--line2);
       border-radius: 22px; padding: 30px 28px; box-shadow: var(--card-sh);
@@ -184,7 +184,7 @@
     .close-sec { padding: 0 0 84px; }
     .close-box {
       background: linear-gradient(165deg, #16324A 0%, var(--ink) 52%, #0C1425 100%);
-      border-radius: 34px; padding: 72px 40px; text-align: center; color: var(--cream);
+      border-radius: 34px; padding: 92px 40px; text-align: center; color: var(--cream);
       position: relative; overflow: hidden;
     }
     .close-box::after {
@@ -204,7 +204,7 @@
 
     /* ───────── Footer ───────── */
     footer { border-top: 1px solid var(--line); padding: 56px 0 48px; }
-    .foot-top { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 40px; }
+    .foot-top { display: grid; grid-template-columns: 1fr auto auto; gap: 40px 100px; }
     .foot-brand img { height: 50px; width: auto; }
     .foot-brand p { margin-top: 14px; color: var(--muted); font-size: 15px; max-width: 34ch; }
     .foot-col h4 {
@@ -220,7 +220,11 @@
     }
 
     /* ───────── Responsive ───────── */
+    @media (max-width: 1040px) {
+      .cards { grid-template-columns: repeat(2, 1fr); }
+    }
     @media (max-width: 860px) {
+      .wrap { padding: 0 26px; }
       .row { grid-template-columns: 1fr; gap: 40px; padding: 60px 0; }
       .row.flip .txt, .row.flip .shot { order: initial; }
       .row h2 { max-width: none; }
