@@ -1977,7 +1977,7 @@ export function BookIntakeScreen() {
   }
 
   return (
-    <Screen>
+    <Screen wide>
       {dialogNode}
       <View style={styles.pageHeader}>
         <Text style={styles.pageEyebrow}>{t("addBook.eyebrow")}</Text>

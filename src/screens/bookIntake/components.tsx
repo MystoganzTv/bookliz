@@ -23,6 +23,7 @@ import { matchChips, matchMetaLine } from "./matchLogic";
 import { ScanQueueEntry, ScanShelfChoice } from "./scanQueue";
 import { fonts, radii, spacing } from "../../theme/theme";
 import { useColors, useTheme } from "../../theme/ThemeContext";
+import { useIsWide } from "../../utils/layout";
 import { BookEditionOption } from "../../utils/bookMetadata";
 import { ScalePressable } from "../../components/ScalePressable";
 import { createStyles } from "./styles";
@@ -80,8 +81,18 @@ export function IntakePath({ title, description, icon, accent, onPress }: Intake
   const c = useColors();
   const { isDark } = useTheme();
   const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
+  /**
+   * Two cards per row is right on a phone. On a tablet two cards across the
+   * full width are billboards with three words on them; three fits the five
+   * ways in without any of them looking like a mistake.
+   */
+  const isWide = useIsWide();
   return (
-    <Pressable accessibilityRole="button" style={styles.pathCard} onPress={onPress}>
+    <Pressable
+      accessibilityRole="button"
+      style={[styles.pathCard, isWide && styles.pathCardWide]}
+      onPress={onPress}
+    >
       <View style={[styles.pathIcon, { backgroundColor: accent, borderColor: isDark && accent === c.surface ? c.border : "transparent", borderWidth: isDark && accent === c.surface ? 1 : 0 }]}>
         <Ionicons color={isDark && accent === c.surface ? c.ink : "#FFFFFF"} name={icon} size={24} />
       </View>

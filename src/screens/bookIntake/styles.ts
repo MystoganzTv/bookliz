@@ -114,6 +114,10 @@ export function createStyles(c: AppColors, isDark: boolean) {
     padding: 14,
     width: "47%"
   },
+  /** Three across once there is room for it. */
+  pathCardWide: {
+    width: "31.5%"
+  },
   pathIcon: {
     alignItems: "center",
     borderRadius: 20,

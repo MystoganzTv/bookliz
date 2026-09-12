@@ -8,6 +8,7 @@ import { Screen } from "../components/Screen";
 import { SectionHeader } from "../components/SectionHeader";
 import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
+import { useIsWide } from "../utils/layout";
 import { RootStackParamList } from "../navigation/types";
 import { Achievement } from "../types/models";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
@@ -63,6 +64,7 @@ export function ProfileScreen() {
   const { colors: c } = useTheme();
   const { t, locale } = useI18n();
   const styles = useMemo(() => createStyles(c), [c]);
+  const isWide = useIsWide();
   const { books, getAuthor, overallStats, repositoryStatus, userProfile } = useBookliz();
 
   const topBooks = userProfile.topBookIds.map((id) => books.find((b) => b.id === id)).filter(Boolean);
@@ -92,7 +94,7 @@ export function ProfileScreen() {
   ];
 
   return (
-    <Screen>
+    <Screen wide>
       <View style={styles.hero}>
         <View style={styles.heroGlowLarge} />
         <View style={styles.heroGlowSmall} />
@@ -163,6 +165,13 @@ export function ProfileScreen() {
         </View>
       </View>
 
+      {/*
+        Wide windows: the three short cards stack on the left and the tall
+        achievements card takes the right, so the two sides finish at roughly
+        the same height instead of leaving one long gap.
+      */}
+      <View style={isWide ? styles.columns : undefined}>
+        <View style={isWide ? styles.column : undefined}>
       <View style={styles.identityCard}>
         <View style={styles.identityHeader}>
           <View>
@@ -216,6 +225,8 @@ export function ProfileScreen() {
         <Ionicons name="chevron-forward" size={16} color={c.muted} style={{ marginLeft: "auto" }} />
       </Pressable>
 
+        </View>
+        <View style={isWide ? styles.column : undefined}>
       <Pressable accessibilityRole="button" style={styles.achievementsCard} onPress={() => navigation.navigate("Achievements")}>
         <View style={styles.achievementsCardTop}>
           <View>
@@ -314,6 +325,8 @@ export function ProfileScreen() {
         </>
       ) : null}
 
+        </View>
+      </View>
     </Screen>
   );
 }
@@ -372,6 +385,15 @@ function formatSyncTime(timestamp: string, locale: string) {
 
 function createStyles(c: AppColors) {
   return StyleSheet.create({
+    /** Side-by-side card columns, wide windows only. */
+    columns: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: spacing.md,
+    },
+    column: {
+      flex: 1,
+    },
     hero: {
       ...shadows.card,
       backgroundColor: c.navy,

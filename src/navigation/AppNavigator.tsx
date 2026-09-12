@@ -52,6 +52,13 @@ function AppTabs() {
         headerShown: false,
         tabBarActiveTintColor: route.name === "Add" ? c.coral : c.tealDark,
         tabBarInactiveTintColor: c.muted,
+        /**
+         * Stacked, always. Wide enough and the tab bar puts the label beside
+         * the icon on its own — which on an iPad jams "Add book" against the
+         * circular + frame with nothing between them. The frames are drawn
+         * for a label underneath them, so pin it there at every width.
+         */
+        tabBarLabelPosition: "below-icon",
         tabBarLabelStyle: {
           fontFamily: fonts.body,
           fontSize: 11,
