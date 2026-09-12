@@ -12,6 +12,7 @@ import { SessionRow } from "../components/SessionRow";
 import { useBookliz } from "../data/BooklizContext";
 import { formatElapsed, useReadingTimer } from "../data/ReadingTimerContext";
 import { useI18n } from "../i18n/LocalizationContext";
+import { useIsWide } from "../utils/layout";
 import { MainTabParamList, RootStackParamList } from "../navigation/types";
 import { fetchByGenre, GenreBookResult } from "../services/googleBooksProvider";
 import {
@@ -103,6 +104,7 @@ export function HomeScreen() {
   const { isDark } = useTheme();
   const { t } = useI18n();
   const styles = useMemo(() => createStyles(c), [c]);
+  const isWide = useIsWide();
   const { authors, books, getAuthor, getBook, overallStats, readingSessions, recommendations, userProfile } = useBookliz();
   const logoSource = isDark ? booklizLogoDark : booklizLogoLight;
   const tasteProfile = useMemo(
@@ -242,7 +244,7 @@ export function HomeScreen() {
   }
 
   return (
-    <Screen>
+    <Screen wide>
       {/* Header */}
       <View style={styles.header}>
         <Image source={logoSource} style={styles.logo} resizeMode="contain" />
@@ -270,6 +272,15 @@ export function HomeScreen() {
         </View>
       </View>
 
+      {/*
+        On a tablet these four cards become two columns: the three small
+        status cards on the left, the one card you actually act on — what you
+        are reading — on the right, where it is not buried below the fold of
+        a 13" screen. On a phone the wrappers are inert and the order is
+        exactly what it always was.
+      */}
+      <View style={isWide ? styles.columns : undefined}>
+        <View style={isWide ? styles.column : undefined}>
       {/* Streak card */}
       <Pressable accessibilityRole="button" style={styles.streakCard} onPress={() => navigation.navigate("ReadingLog", {})}>
         <View style={[styles.streakIconWrap, { backgroundColor: streakMsg.accent + "22" }]}>
@@ -317,6 +328,8 @@ export function HomeScreen() {
         </View>
       </View>
 
+        </View>
+        <View style={isWide ? styles.column : undefined}>
       {/* Continue reading */}
       {continueBook ? (
         <View style={styles.continueCard}>
@@ -369,6 +382,8 @@ export function HomeScreen() {
           <Text style={styles.emptySubtitle}>{t("home.addFirstBook")}</Text>
         </Pressable>
       )}
+        </View>
+      </View>
 
       {loadingPersonalized ? (
         <View style={styles.personalizedLoading}>
@@ -520,6 +535,15 @@ function CollectorMini({ label, value, accent, styles }: {
 
 function createStyles(c: AppColors) {
   return StyleSheet.create({
+    /** Side-by-side card columns, wide windows only. */
+    columns: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: spacing.md,
+    },
+    column: {
+      flex: 1,
+    },
     header: {
       alignItems: "center",
       flexDirection: "row",

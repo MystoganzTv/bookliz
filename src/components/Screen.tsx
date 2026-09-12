@@ -25,13 +25,19 @@ type ScreenProps = PropsWithChildren<{
   scroll?: boolean;
   contentStyle?: ViewStyle;
   headerRight?: ReactNode;
+  /**
+   * This screen lays itself out for a wide window (columns, a grid) and does
+   * not want the reading-column cap. Forms and text screens leave it off: a
+   * settings list or a review form spread across 1024pt is worse, not better.
+   */
+  wide?: boolean;
 }>;
 
-export function Screen({ children, scroll = true, contentStyle, headerRight }: ScreenProps) {
+export function Screen({ children, scroll = true, contentStyle, headerRight, wide = false }: ScreenProps) {
   const c = useColors();
   const styles = useMemo(() => createStyles(c), [c]);
   const { width } = useWindowDimensions();
-  const isWide = width > MAX_CONTENT_WIDTH;
+  const capped = !wide && width > MAX_CONTENT_WIDTH;
   /**
    * Tapping the tab you are already on returns you to the top of it — the
    * behaviour every iOS app has, and the only way back up from a long shelf
@@ -46,7 +52,7 @@ export function Screen({ children, scroll = true, contentStyle, headerRight }: S
       <SafeAreaView style={[styles.safe, contentStyle]}>
         {headerRight ? <View style={styles.headerRight}>{headerRight}</View> : null}
         {/* flex:1 so a list inside still owns the full height — only the width is capped. */}
-        <View style={[styles.column, styles.columnFill, !isWide && styles.columnFree]}>{children}</View>
+        <View style={[styles.column, styles.columnFill, !capped && styles.columnFree]}>{children}</View>
       </SafeAreaView>
     );
   }
@@ -62,7 +68,7 @@ export function Screen({ children, scroll = true, contentStyle, headerRight }: S
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
       >
-        <View style={[styles.column, !isWide && styles.columnFree]}>{children}</View>
+        <View style={[styles.column, !capped && styles.columnFree]}>{children}</View>
       </ScrollView>
     </SafeAreaView>
   );

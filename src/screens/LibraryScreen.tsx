@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useScrollToTop } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
-import { FlatList, Image, Linking, ListRenderItem, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Image, Linking, ListRenderItem, Pressable, ScrollView, StyleSheet, Text, TextInput, View, ViewStyle } from "react-native";
 import { Badge } from "../components/Badge";
 import { BooklizDialog } from "../components/BooklizDialog";
 import { BookCover, FormatBadge, isMutedBook } from "../components/BookCover";
@@ -16,6 +16,7 @@ import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
 import { Book } from "../types/models";
+import { useIsWide } from "../utils/layout";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { buildAmazonUrl } from "../utils/amazonLink";
 import { useColors, useTheme } from "../theme/ThemeContext";
@@ -180,17 +181,37 @@ export function LibraryScreen() {
       });
   }, [books, effectiveQuery, filter, genreFilter, tagFilter, listFilter, userLists, getAuthor, latestLogByBook, advFilters]);
 
+  /**
+   * Three covers across is right on a phone. On an iPad the same three become
+   * three enormous posters with the shelf ending after two rows — a grid of
+   * covers is supposed to let you find a book by its spine, and that needs
+   * more of them on screen, not bigger ones.
+   */
+  const isWide = useIsWide();
+  const gridColumns = isWide ? 5 : 3;
+  /**
+   * flex + a maxWidth of one column, rather than a fixed percentage: a row
+   * that is not full — the last one, or a shelf with two books on it — then
+   * keeps its covers at the left at the right size, instead of flinging one
+   * to each edge the way space-between does.
+   */
+  const tileWidth = useMemo<ViewStyle>(
+    () => ({ flex: 1, maxWidth: `${100 / gridColumns}%` }),
+    [gridColumns]
+  );
+
   const renderGridItem = useCallback<ListRenderItem<Book>>(
     ({ item: book }) => (
       <GridBookTile
         book={book}
         authorName={getAuthor(book.authorId)?.name ?? ""}
         styles={styles}
+        widthStyle={tileWidth}
         onPress={() => navigation.navigate("BookDetail", { bookId: book.id })}
         onMenu={() => setContextBook({ book, authorName: getAuthor(book.authorId)?.name ?? "" })}
       />
     ),
-    [getAuthor, navigation, styles]
+    [getAuthor, navigation, styles, tileWidth]
   );
 
   const renderRowItem = useCallback<ListRenderItem<Book>>(
@@ -356,17 +377,17 @@ export function LibraryScreen() {
   useScrollToTop(listRef);
 
   return (
-    <Screen scroll={false}>
+    <Screen scroll={false} wide>
       <FlatList
         ref={listRef}
         /* numColumns cannot change on a mounted list — remounting on view mode
            switch is the supported way to flip between grid and rows. */
-        key={viewMode}
+        key={`${viewMode}-${gridColumns}`}
         data={filteredBooks}
         extraData={latestLogByBook}
         keyExtractor={(book) => book.id}
         renderItem={isGrid ? renderGridItem : renderRowItem}
-        numColumns={isGrid ? 3 : 1}
+        numColumns={isGrid ? gridColumns : 1}
         columnWrapperStyle={isGrid ? styles.gridRow : undefined}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={listEmpty}
@@ -578,12 +599,14 @@ function GridBookTile({
   book,
   authorName,
   styles,
+  widthStyle,
   onPress,
   onMenu,
 }: {
   book: Book;
   authorName: string;
   styles: ReturnType<typeof createStyles>;
+  widthStyle: ViewStyle;
   onPress: () => void;
   onMenu: () => void;
 }) {
@@ -610,7 +633,7 @@ function GridBookTile({
   );
 
   return (
-    <ScalePressable accessibilityRole="button" style={styles.bookTile} onPress={onPress} pressScale={0.95}>
+    <ScalePressable accessibilityRole="button" style={[styles.bookTile, widthStyle]} onPress={onPress} pressScale={0.95}>
       <View style={styles.tileCoverContainer}>
         {coverEl}
         <FormatBadge format={book.format} size={13} style={styles.tileFormatBadge} />
@@ -970,11 +993,11 @@ function createStyles(c: AppColors, isDark: boolean) {
     },
     /** One row of the 3-column grid. Replaces the old flexWrap container. */
     gridRow: {
-      justifyContent: "space-between",
+      gap: spacing.md,
+      justifyContent: "flex-start",
       marginBottom: spacing.lg,
     },
     bookTile: {
-      width: "30.5%",
     },
     tileCoverWrap: {
       aspectRatio: 2 / 3,
