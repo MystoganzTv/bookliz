@@ -3,5 +3,12 @@
   "compilerOptions": {
     "strict": true,
     "baseUrl": "."
-  }
+  },
+  "exclude": [
+    "supabase/functions",
+    "node_modules",
+    "dist",
+    "ios",
+    ".expo"
+  ]
 }

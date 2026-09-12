@@ -19,15 +19,19 @@ import {
   RateLimitedError,
   RATE_LIMIT_COOLDOWN_MS,
 } from "../utils/fetchWithTimeout";
-import { googleBooksAppHeaders } from "../utils/googleBooksAppHeaders";
+import {
+  GOOGLE_BOOKS_BASE,
+  googleBooksHeaders,
+  googleBooksKeyParam,
+  redactGoogleBooksUrl,
+} from "./googleBooksEndpoint";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const GB_BASE = "https://www.googleapis.com/books/v1/volumes";
+const GB_BASE = GOOGLE_BOOKS_BASE;
 
 /** The two orderings the Google Books API accepts. */
 export type CatalogOrder = "relevance" | "newest";
-const GB_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY ?? "";
 const MAX_RESULTS_ISBN = 5;
 const MAX_RESULTS_QUERY = 15;
 
@@ -76,9 +80,7 @@ interface GBResponse {
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
-function apiKey(): string {
-  return GB_API_KEY ? `&key=${GB_API_KEY}` : "";
-}
+const apiKey = googleBooksKeyParam;
 
 // Google Books volume IDs ending in "ACAAJ" are catalog-only metadata records
 // (no preview, no real cover). Google still returns an imageLinks thumbnail for
@@ -204,7 +206,7 @@ export function volumeToWork(vol: GBVolume, query: ScoringQuery): {
 export async function fetchByIsbn(isbn13: string): Promise<BookEdition[]> {
   try {
     const url = `${GB_BASE}?q=isbn:${isbn13}&maxResults=${MAX_RESULTS_ISBN}${apiKey()}`;
-    const res = await fetchWithTimeout(url, { headers: googleBooksAppHeaders() });
+    const res = await fetchWithTimeout(url, { headers: googleBooksHeaders() });
     if (!res.ok) return [];
     const data = (await res.json()) as GBResponse;
     const query: ScoringQuery = { isbn13 };
@@ -227,7 +229,7 @@ export async function fetchByTitle(
       ? `+inauthor:${encodeURIComponent(author)}`
       : "";
     const url = `${GB_BASE}?q=intitle:${encodeURIComponent(title)}${authorPart}&maxResults=${MAX_RESULTS_QUERY}${apiKey()}`;
-    const res = await fetchWithTimeout(url, { headers: googleBooksAppHeaders() });
+    const res = await fetchWithTimeout(url, { headers: googleBooksHeaders() });
     if (!res.ok) return [];
     const data = (await res.json()) as GBResponse;
     const query: ScoringQuery = { title, author };
@@ -289,7 +291,7 @@ export async function fetchByGenre(
   try {
     const subject = GENRE_TO_SUBJECT[genre] ?? encodeURIComponent(genre.toLowerCase());
     const url = `${GB_BASE}?q=subject:${subject}&startIndex=${startIndex}&maxResults=${maxResults}&orderBy=${orderBy}&printType=books${apiKey()}`;
-    const res = await fetchWithTimeout(url, { headers: googleBooksAppHeaders() });
+    const res = await fetchWithTimeout(url, { headers: googleBooksHeaders() });
     if (!res.ok) {
       if (__DEV__) console.log("[GB] keyword HTTP " + res.status + (res.status === 429 ? " - QUOTA/RATE LIMITED" : ""));
       return { books: [], totalItems: 0 };
@@ -358,7 +360,7 @@ export async function fetchByKeyword(
   try {
     const langParam = langRestrict ? `&langRestrict=${encodeURIComponent(langRestrict)}` : "";
     const url = `${GB_BASE}?q=${encodeURIComponent(query)}&startIndex=${startIndex}&maxResults=${maxResults}&orderBy=${orderBy}&printType=books${langParam}${apiKey()}`;
-    const res = await fetchWithTimeout(url, { headers: googleBooksAppHeaders() });
+    const res = await fetchWithTimeout(url, { headers: googleBooksHeaders() });
     if (!res.ok) {
       if (__DEV__) console.log("[GB] keyword HTTP " + res.status + (res.status === 429 ? " - QUOTA/RATE LIMITED" : ""));
       if (rethrowTransient && res.status === 429) {
@@ -461,9 +463,9 @@ export async function fetchWorksByQuery(
     const url = `${GB_BASE}?q=${queryStr}&maxResults=${maxResults}${apiKey()}`;
 
     // ── DEBUG: log the exact URL and raw results ──────────────────────────────
-    if (__DEV__) console.log(`[GB] mode=${mode} url=${url.replace(/key=[^&]+/, "key=REDACTED")}`);
+    if (__DEV__) console.log(`[GB] mode=${mode} url=${redactGoogleBooksUrl(url)}`);
 
-    const res = await fetchWithTimeout(url, { headers: googleBooksAppHeaders() });
+    const res = await fetchWithTimeout(url, { headers: googleBooksHeaders() });
     if (!res.ok) {
       if (__DEV__) console.log(`[GB] HTTP ${res.status}`);
       return [];

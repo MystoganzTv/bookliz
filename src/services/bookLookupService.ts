@@ -27,6 +27,7 @@ import {
   inferSeriesData,
 } from "../utils/knownWorks";
 import { dice, fuzzyOverlapCoeff } from "./bookMatchScorer";
+import { GOOGLE_BOOKS_BASE, googleBooksKeyParam } from "./googleBooksEndpoint";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -206,8 +207,7 @@ function dedupeMatches(matches: BookMatch[]): BookMatch[] {
 
 // ─── Google Books ─────────────────────────────────────────────────────────────
 
-const GB_BASE = "https://www.googleapis.com/books/v1/volumes";
-const GB_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY ?? "";
+const GB_BASE = GOOGLE_BOOKS_BASE;
 
 interface GBVolumeInfo {
   title?: string;
@@ -279,7 +279,7 @@ function normalizeGBVolume(
 
 async function fetchGoogleBooksByIsbn(isbn13: string): Promise<BookMatch[]> {
   try {
-    const key = GB_API_KEY ? `&key=${GB_API_KEY}` : "";
+    const key = googleBooksKeyParam();
     const url = `${GB_BASE}?q=isbn:${isbn13}&maxResults=5${key}`;
     const res = await fetchWithTimeout(url, { headers: googleBooksAppHeaders() });
     if (!res.ok) return [];
@@ -297,7 +297,7 @@ async function fetchGoogleBooksByQuery(
   author?: string
 ): Promise<BookMatch[]> {
   try {
-    const key = GB_API_KEY ? `&key=${GB_API_KEY}` : "";
+    const key = googleBooksKeyParam();
     const authorPart = author ? `+inauthor:${encodeURIComponent(author)}` : "";
     const url = `${GB_BASE}?q=intitle:${encodeURIComponent(title)}${authorPart}&maxResults=10${key}`;
     const res = await fetchWithTimeout(url, { headers: googleBooksAppHeaders() });
