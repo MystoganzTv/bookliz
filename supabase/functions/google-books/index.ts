@@ -30,6 +30,54 @@ const GOOGLE_BOOKS = "https://www.googleapis.com/books/v1/volumes";
  * whatever arrives would let a caller aim the project's key at other parameters
  * (or other endpoints, via a crafted path) on our quota.
  */
+/**
+ * Google's partial-response parameter, fixed here rather than accepted from
+ * the caller.
+ *
+ * A volumes response is mostly things this app never reads: saleInfo,
+ * accessInfo, searchInfo, layerInfo, preview and canonical links, reading
+ * modes, panelization summaries. Measured on `q=dune&maxResults=40`, asking
+ * for everything costs 72.5 KB and asking for these fields costs 24.7 KB —
+ * two thirds of the bytes were being paid for twice, once into the function
+ * and once back out to the phone, and Supabase bills the second one.
+ *
+ * The list must cover every field the app's own GBVolumeInfo interfaces
+ * declare (`googleBooksProvider.ts` and `bookLookupService.ts`); a field
+ * dropped here does not error anywhere, it just arrives undefined and the
+ * book quietly loses its page count. `googleBooksProxyFields.test.ts` reads
+ * both files and fails if an interface grows a field this string lacks.
+ *
+ * Direct mode (no proxy URL, i.e. development) is unaffected and still
+ * receives the full payload.
+ */
+const FIELDS = [
+  "kind",
+  "totalItems",
+  "items(id,volumeInfo(",
+  [
+    "title",
+    "subtitle",
+    "authors",
+    "publisher",
+    "publishedDate",
+    "description",
+    "industryIdentifiers",
+    "pageCount",
+    "categories",
+    "language",
+    "imageLinks",
+    "seriesInfo",
+    "printType",
+    "averageRating",
+    "ratingsCount",
+  ].join(","),
+  "))",
+].join("");
+
+/** Google's own ceiling. Asking for more is silently truncated anyway, and a
+ * client bug asking for 500 would still have cost a full round trip. */
+const MAX_RESULTS_CAP = 40;
+
 const ALLOWED_PARAMS = [
   "q",
   "maxResults",
@@ -72,6 +120,15 @@ Deno.serve(async (req: Request) => {
     if (value !== null && value !== "") target.searchParams.set(name, value);
   }
   if (!target.searchParams.get("q")) return json({ error: "missing_q" }, 400);
+
+  const requested = Number(target.searchParams.get("maxResults") ?? "");
+  if (!Number.isFinite(requested) || requested < 1) {
+    target.searchParams.delete("maxResults");
+  } else {
+    target.searchParams.set("maxResults", String(Math.min(requested, MAX_RESULTS_CAP)));
+  }
+
+  target.searchParams.set("fields", FIELDS);
   target.searchParams.set("key", apiKey);
 
   let upstream: Response;
