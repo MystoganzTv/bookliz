@@ -1708,6 +1708,26 @@ export function BooklizProvider({ children }: PropsWithChildren) {
 
     const getReviewForBook = (bookId: string) => reviews.find((r) => r.bookId === bookId);
 
+    /**
+     * Put a review's stars onto the book as well.
+     *
+     * A rating lived in two places that never spoke: `reviews[].rating`, shown
+     * on the review card, and `userStatus.rating`, shown in the hero and used
+     * by the average-rating statistic. Rating a book therefore left the hero
+     * blank and the average wrong, and the reader had to rate it twice to make
+     * the app agree with itself. The review is the reader's most deliberate
+     * statement about the book, so it wins.
+     */
+    const syncRatingToBook = (bookId: string, rating: number) => {
+      setBooks((current) =>
+        current.map((book) =>
+          book.id === bookId
+            ? { ...book, userStatus: { ...book.userStatus, rating } }
+            : book
+        )
+      );
+    };
+
     const addReview = (input: Omit<Review, "id" | "createdAt">): Review => {
       const review: Review = {
         ...input,
@@ -1715,6 +1735,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
         createdAt: localDateKey()
       };
       setReviews((prev) => [review, ...prev.filter((r) => r.bookId !== input.bookId)]);
+      syncRatingToBook(input.bookId, input.rating);
       return review;
     };
 
@@ -1722,6 +1743,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       setReviews((prev) =>
         prev.map((r) => r.id === reviewId ? { ...r, ...input } : r)
       );
+      syncRatingToBook(input.bookId, input.rating);
     };
 
     const deleteReview = (reviewId: string) => {

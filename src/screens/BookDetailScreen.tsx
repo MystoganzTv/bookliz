@@ -85,6 +85,7 @@ export function BookDetailScreen() {
   const author = getAuthor(book.authorId);
   const stats = getBookStats(book.id);
   const review = getReviewForBook(route.params.bookId);
+  const hasOpinion = Boolean(review) || typeof book?.userStatus.rating === "number";
   const genres = cleanGenres(book.genre);
   const isReading = book.userStatus.status === "reading";
   const isDone = book.userStatus.status === "read";
@@ -254,7 +255,13 @@ export function BookDetailScreen() {
             accessibilityRole="button"
             accessibilityLabel={review ? t("a11y.editReview") : t("a11y.writeReview")}
           >
-            <Ionicons name={review ? "star" : "star-outline"} size={20} color={review ? c.gold : c.ink} />
+            {/* Filled when the reader has said anything about the book — a
+                rating counts, not only a written review. */}
+            <Ionicons
+              name={hasOpinion ? "star" : "star-outline"}
+              size={20}
+              color={hasOpinion ? c.gold : c.ink}
+            />
           </Pressable>
           {/* Timer button */}
           <Pressable

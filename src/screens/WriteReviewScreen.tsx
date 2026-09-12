@@ -60,7 +60,10 @@ export function WriteReviewScreen() {
   const [title, setTitle] = useState(existing?.title ?? "");
   const [body, setBody] = useState(existing?.body ?? "");
 
-  const canSave = rating > 0 && title.trim().length > 0;
+  // A rating on its own is a complete thought. Requiring a headline to save it
+  // meant tapping five stars, going back, and finding nothing saved — the
+  // rating was thrown away by a validation rule about the title.
+  const canSave = rating > 0;
 
   const ratingLabels = [
     t("writeReview.ratingLabel0"),
