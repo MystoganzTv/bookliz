@@ -109,7 +109,9 @@ export function EditBookScreen() {
   const [pages,           setPages]           = useState(book && book.pages > 0 ? String(book.pages) : "");
   const [publishedDate,   setPublishedDate]   = useState(book?.publishedDate ?? "");
   const [publisher,       setPublisher]       = useState(book?.publisher ?? "");
-  const [language,        setLanguage]        = useState(book?.language ?? "English");
+  // "" = unknown, exactly like synopsis/publisher/pages. Pre-selecting English
+  // here is how a Spanish book silently acquires an English language field.
+  const [language,        setLanguage]        = useState(book?.language ?? "");
   const rawIsbn = book?.isbn ?? "";
   const [isbn13, setIsbn13] = useState(rawIsbn.replace(/\D/g, "").length === 13 ? rawIsbn : "");
   const [isbn10, setIsbn10] = useState(rawIsbn.replace(/\D/g, "").length === 10 ? rawIsbn : "");
@@ -552,7 +554,7 @@ export function EditBookScreen() {
             );
           })}
         </View>
-        <PlainInput value={language} onChangeText={setLanguage} placeholder="Language" styles={styles} c={c} />
+        <PlainInput value={language} onChangeText={setLanguage} placeholder={t("editBook.labelLanguage")} styles={styles} c={c} />
         <Text style={styles.langHint}>{t("editBook.langHint")}</Text>
       </FieldCard>
 

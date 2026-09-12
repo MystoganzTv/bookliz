@@ -762,7 +762,7 @@ export function BookIntakeScreen() {
     if (!reviewBook) return;
 
     // No-op when the language didn't actually change.
-    if (normalizeSearchText(language) === normalizeSearchText(reviewBook.language ?? "English")) {
+    if (normalizeSearchText(language) === normalizeSearchText(reviewBook.language ?? "")) {
       return;
     }
 
@@ -1028,7 +1028,7 @@ export function BookIntakeScreen() {
         <View style={styles.compactSelectorRow}>
           <Pressable accessibilityRole="button" style={[styles.languageCompactBtn, styles.compactSelectorFlex]} onPress={() => setShowLanguageModal(true)}>
             <Ionicons name="language-outline" size={15} color={c.muted} />
-            <Text style={styles.languageCompactText} numberOfLines={1}>{reviewBook.language ?? "English"}</Text>
+            <Text style={styles.languageCompactText} numberOfLines={1}>{reviewBook.language?.trim() || t("addBook.chooseLanguage")}</Text>
             <Ionicons name="chevron-down-outline" size={13} color={c.muted} />
           </Pressable>
 
@@ -1036,7 +1036,7 @@ export function BookIntakeScreen() {
             <Pressable accessibilityRole="button" style={[styles.languageCompactBtn, styles.compactSelectorFlex]} onPress={openEditionPicker}>
               <Ionicons name="layers-outline" size={15} color={c.muted} />
               <Text style={styles.languageCompactText} numberOfLines={1}>
-                {[reviewBook.publisher, reviewBook.publishedDate?.slice(0, 4)].filter(Boolean).join(" · ") || "Choose edition"}
+                {[reviewBook.publisher, reviewBook.publishedDate?.slice(0, 4)].filter(Boolean).join(" · ") || t("addBook.chooseEdition")}
               </Text>
               <Ionicons name="chevron-down-outline" size={13} color={c.muted} />
             </Pressable>
@@ -1137,7 +1137,7 @@ export function BookIntakeScreen() {
         {/* ── Language modal ───────────────────────────────────────────── */}
         <CompactLanguageModal
           visible={showLanguageModal}
-          selected={reviewBook.language ?? "English"}
+          selected={reviewBook.language ?? ""}
           preferredLanguages={tasteProfile.preferredLanguages.map((l: { language: string }) => l.language)}
           onSelect={(lang) => { setShowLanguageModal(false); selectReviewLanguage(lang); }}
           onClose={() => setShowLanguageModal(false)}
