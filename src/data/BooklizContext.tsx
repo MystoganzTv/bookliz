@@ -47,6 +47,7 @@ import { buildBookSpecificRecommendations, buildGlobalRecommendations } from "..
 import { supabase } from "../lib/supabase";
 import { normalizeBookGenres } from "../utils/genres";
 import { languageCode } from "../utils/languageUtils";
+import { isOnWishlist, shelfFieldsFor, wantsToBuy } from "./shelfRules";
 import { localDateKey } from "../utils/dateUtils";
 import { inferSeriesData } from "../utils/knownWorks";
 import { computeReadingIdentity, loadStoredIdentity, READING_IDENTITY_KEY, ReadingIdentity, storeIdentity } from "../utils/readingIdentity";
@@ -321,7 +322,7 @@ const enrichProfileAchievements = (
   const noteCount =
     books.filter((book) => book.userStatus.notes.trim()).length +
     sessions.filter((session) => session.notes.trim()).length;
-  const wishlistCount = books.filter((book) => book.userStatus.wishlist).length;
+  const wishlistCount = books.filter((book) => isOnWishlist(book.userStatus)).length;
   const audiobookCount = completedBooks.filter((book) => book.format === "audiobook").length;
   const digitalCount = completedBooks.filter((book) => book.format === "kindle").length;
   const bigBookCount = completedBooks.filter((book) => book.pages >= 700).length;
@@ -641,8 +642,10 @@ const buildOverallStats = (books: Book[], sessions: ReadingSession[], authors: A
   const { currentStreak, longestStreak } = calculateStreaks(sessions);
   const completionRate = booksTracked ? Math.round((totalBooksRead / booksTracked) * 100) : 0;
   const ownedCount = books.filter((book) => book.userStatus.ownership === "owned").length;
-  const wishlistCount = books.filter((book) => book.userStatus.wishlist).length;
-  const wantToBuyCount = books.filter((book) => book.userStatus.wantToBuy).length;
+  // Owned books are excluded — see wantsToAcquire() in shelfRules.ts. A book
+  // already on the shelf is not one the reader still has to get.
+  const wishlistCount = books.filter((book) => isOnWishlist(book.userStatus)).length;
+  const wantToBuyCount = books.filter((book) => wantsToBuy(book.userStatus)).length;
 
   const byDate = sessions.reduce<Record<string, number>>((acc, session) => {
     acc[session.date] = (acc[session.date] ?? 0) + session.pagesRead;
@@ -1559,16 +1562,10 @@ export function BooklizProvider({ children }: PropsWithChildren) {
               ...book.userStatus,
               status: newStatus,
               ...(rating !== undefined ? { rating } : {}),
-              // Wishlist: book is desired but not owned
-              ...(newStatus === "wishlist"
-                ? { wishlist: true, ownership: "not-owned" as const, wantToBuy: false }
-                : { wishlist: false }),
-              // Ownership is its own axis and the caller states it explicitly.
-              // Placed after the wishlist rule so an explicit choice wins; the
-              // sheet never sends `owned: true` alongside a wishlist status.
-              ...(owned !== undefined && newStatus !== "wishlist"
-                ? { ownership: owned ? ("owned" as const) : ("not-owned" as const) }
-                : {}),
+              // Which shelves this book now belongs on. See shelfRules.ts —
+              // ownership, wishlist and wantToBuy are not independent, and
+              // deciding them inline here is what got it wrong twice.
+              ...shelfFieldsFor(newStatus, owned),
               ...(newStatus === "reading"
                 ? shouldStartReread
                   ? {

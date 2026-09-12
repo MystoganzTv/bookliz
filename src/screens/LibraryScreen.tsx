@@ -18,6 +18,7 @@ import { RootStackParamList } from "../navigation/types";
 import { Book } from "../types/models";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useColors, useTheme } from "../theme/ThemeContext";
+import { wantsToAcquire } from "../data/shelfRules";
 import { normalizeBookGenres } from "../utils/genres";
 import { languageCode } from "../utils/languageUtils";
 import { CreateListSheet } from "../components/CreateListSheet";
@@ -135,7 +136,7 @@ export function LibraryScreen() {
       .filter((book) => {
         if (filter === "read") return book.userStatus.status === "read";
         if (filter === "reading") return book.userStatus.status === "reading";
-        if (filter === "wishlist") return Boolean(book.userStatus.wishlist) || Boolean(book.userStatus.wantToBuy);
+        if (filter === "wishlist") return wantsToAcquire(book.userStatus);
         return true;
       })
       .filter((book) => {

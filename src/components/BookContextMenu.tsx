@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { BookCover } from "./BookCover";
 import { Book, CoreTrackingStatus } from "../types/models";
+import { wantsToAcquire } from "../data/shelfRules";
 import { AppColors, colors, fonts, radii, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
 import { useI18n } from "../i18n/LocalizationContext";
@@ -69,7 +70,10 @@ export function BookContextMenu({
     // Group 3 — organisation
     [
       { key: "list",     label: t("contextMenu.addToList"), icon: "bookmark-outline" },
-      { key: "buy",      label: t("contextMenu.buy"),       icon: "cart-outline" },
+      // Hidden once the reader owns a copy — offering to go buy a book that
+      // is already on their shelf is the kind of detail that makes an app
+      // feel like it is not paying attention.
+      { key: "buy",      label: t("contextMenu.buy"),       icon: "cart-outline", hidden: !wantsToAcquire(book.userStatus) },
     ],
     // Group 4 — destructive
     [

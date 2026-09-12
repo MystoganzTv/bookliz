@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BookCover } from "../components/BookCover";
 import { ScalePressable } from "../components/ScalePressable";
 import { RecommendationCard } from "../components/RecommendationCard";
+import { wantsToAcquire } from "../data/shelfRules";
 import { BookStatusSheet } from "../components/BookStatusSheet";
 import { BookListSheet } from "../components/BookListSheet";
 import { SessionRow } from "../components/SessionRow";
@@ -88,7 +89,12 @@ export function BookDetailScreen() {
   const isReading = book.userStatus.status === "reading";
   const isDone = book.userStatus.status === "read";
   const isDnf = book.userStatus.status === "dnf";
-  const isWishlist = !isReading && !isDone && !isDnf;
+  // "Still to acquire" is an ownership question, not a reading-status one.
+  // This used to be `!isReading && !isDone && !isDnf`, which made every owned
+  // book the reader had not started yet look unacquired — the "Get on Amazon"
+  // action showed for a book already on their shelf.
+  const needsAcquiring = wantsToAcquire(book.userStatus);
+  const isOwned = book.userStatus.ownership === "owned";
   const hasSessions = stats.totalSessions > 0;
   const statusLabel = t(statusLabelKey(book.userStatus.status));
 
@@ -321,6 +327,9 @@ export function BookDetailScreen() {
         <View style={[styles.collectorRow, { marginTop: spacing.sm }]}>
           <CollectorChip icon="trophy-outline" label={t("bookDetail.rank")} value={book.userStatus.personalRanking ? `#${book.userStatus.personalRanking}` : "—"} styles={styles} c={c} />
           <CollectorChip icon="chatbubble-ellipses-outline" label={t("bookDetail.quotes")} value={String(book.userStatus.favoriteQuotes.length)} styles={styles} c={c} />
+          {/* Ownership had no indicator anywhere on this screen: the only way
+              to see it was to open the status sheet. */}
+          <CollectorChip icon={isOwned ? "checkmark-circle-outline" : "ellipse-outline"} label={t("bookDetail.chipOwnership")} value={isOwned ? t("bookDetail.chipOwned") : t("bookDetail.chipNotOwned")} styles={styles} c={c} />
           <CollectorChip icon="pricetag-outline" label={t("bookDetail.labelFormat")} value={book.format.charAt(0).toUpperCase() + book.format.slice(1).replace(/-/g, " ")} styles={styles} c={c} />
           {book.pages ? <CollectorChip icon="document-text-outline" label={t("bookDetail.labelPages")} value={String(book.pages)} styles={styles} c={c} /> : null}
         </View>
@@ -582,7 +591,7 @@ export function BookDetailScreen() {
             ) : null}
             <MoreAction icon="bookmarks-outline" label={t("bookDetail.moreAddToList")} styles={styles} c={c}
               onPress={() => { setMoreSheetOpen(false); setListSheetOpen(true); }} />
-            {isWishlist ? (
+            {needsAcquiring ? (
               <MoreAction icon="cart-outline" label={t("bookDetail.moreGetOnAmazon")} styles={styles} c={c}
                 onPress={() => { setMoreSheetOpen(false); handleBuy(); }} />
             ) : null}
