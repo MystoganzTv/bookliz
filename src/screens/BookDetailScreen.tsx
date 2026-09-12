@@ -29,6 +29,14 @@ import { BookListSheet } from "../components/BookListSheet";
 import { SessionRow } from "../components/SessionRow";
 import { useDialog } from "../components/DialogProvider";
 import { useBookliz } from "../data/BooklizContext";
+import { BarChart } from "../components/BarChart";
+import {
+  addWeeks,
+  isCurrentWeek,
+  latestWeekWithReading,
+  pagesPerDay,
+  weekRangeLabel,
+} from "../utils/readingWeek";
 import { useReadingTimer } from "../data/ReadingTimerContext";
 import { RootStackParamList } from "../navigation/types";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
@@ -52,13 +60,14 @@ export function BookDetailScreen() {
   const route = useRoute<RouteProp<RootStackParamList, "BookDetail">>();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors: c, isDark } = useTheme();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
 
   const {
     deleteBook, getAuthor, getBook, getBookStats,
     getRecommendationsForBook, updateBookStatus, updateBookSynopsis, getReviewForBook,
+    getSessionsForBook,
   } = useBookliz();
   const dialog = useDialog();
 
@@ -97,6 +106,20 @@ export function BookDetailScreen() {
   const needsAcquiring = wantsToAcquire(book.userStatus);
   const isOwned = book.userStatus.ownership === "owned";
   const hasSessions = stats.totalSessions > 0;
+
+  // Pages per day for this book, one week at a time. Opens on the week of the
+  // last session rather than on today's: a book you finished in March has
+  // nothing to show in the current week, and an empty chart looks like a bug.
+  const bookSessions = useMemo(() => getSessionsForBook(route.params.bookId), [getSessionsForBook, route.params.bookId]);
+  const [weekStart, setWeekStart] = useState(() => latestWeekWithReading(bookSessions, new Date()));
+  const atCurrentWeek = isCurrentWeek(weekStart);
+  const weekChartData = useMemo(
+    () => pagesPerDay(bookSessions, weekStart).map((bucket) => ({
+      label: bucket.date.toLocaleDateString(locale, { weekday: "short", day: "numeric" }),
+      value: bucket.pages,
+    })),
+    [bookSessions, weekStart, locale]
+  );
   const statusLabel = t(statusLabelKey(book.userStatus.status));
 
   const primaryAction = (() => {
@@ -468,6 +491,45 @@ export function BookDetailScreen() {
           )}
         </View>
 
+        {/* ── PAGES PER DAY ────────────────────────────────────────────────
+            The library-wide charts never answered "how did THIS book go?",
+            which is the question you have while looking at it. Horizontal
+            bars rather than the vertical ones a phone usually shows: it is
+            the chart the rest of the app already uses, and one chart the
+            reader has learned beats two they have to learn. */}
+        {hasSessions ? (
+          <View style={[styles.sectionBlock, { marginTop: spacing.lg }]}>
+            <View style={styles.sectionBlockHeader}>
+              <Text style={styles.sectionTitle}>{t("bookDetail.pagesPerDay")}</Text>
+              <View style={styles.weekNav}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("bookDetail.previousWeek")}
+                  hitSlop={8}
+                  onPress={() => setWeekStart((current) => addWeeks(current, -1))}
+                >
+                  <Ionicons name="chevron-back" size={18} color={c.tealDark} />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("bookDetail.nextWeek")}
+                  hitSlop={8}
+                  disabled={atCurrentWeek}
+                  onPress={() => setWeekStart((current) => addWeeks(current, 1))}
+                >
+                  <Ionicons
+                    name="chevron-forward"
+                    size={18}
+                    color={atCurrentWeek ? c.border : c.tealDark}
+                  />
+                </Pressable>
+              </View>
+            </View>
+            <Text style={styles.weekRange}>{weekRangeLabel(weekStart, locale)}</Text>
+            <BarChart data={weekChartData} />
+          </View>
+        ) : null}
+
         {/* ── SESSIONS ─────────────────────────────────────────────────────── */}
         {hasSessions ? (
           <View style={[styles.sectionBlock, { marginTop: spacing.lg }]}>
@@ -798,6 +860,10 @@ function createStyles(c: AppColors, isDark: boolean) {
     sectionBlockHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.sm },
     sectionTitle: { color: c.ink, fontFamily: fonts.display, fontSize: 20, fontWeight: "900" },
     sectionAction: { color: c.gold, fontFamily: fonts.body, fontSize: 13, fontWeight: "800" },
+
+    // Pages per day
+    weekNav: { alignItems: "center", flexDirection: "row", gap: spacing.md },
+    weekRange: { color: c.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: "800", marginBottom: spacing.sm },
 
     // Review
     reviewStars: { alignItems: "center", flexDirection: "row", gap: 3, marginBottom: spacing.sm },
