@@ -1,7 +1,22 @@
 # Bookliz — lo que falta en App Store Connect
 
-Estado al 2026-09-12. App **6774150174** (`com.mystodev.booklio`), versión 1.0
-en *Prepare for Submission*. La build 1.0.0 (1) de mayo está **Expired**.
+Estado al 2026-09-12, **tarde**. App **6774150174** (`com.mystodev.booklio`),
+versión **1.1.0** en *Prepare for Submission*. La build 1.0.0 (1) de mayo está
+**Expired**.
+
+> **Comprobado en App Store Connect esta tarde.** Las secciones 1, 2 y 3 de
+> abajo están **hechas** — App Privacy publicada con los 6 tipos de dato,
+> edad 4+ en 172 países, categoría Books y Content Rights declarados. Se
+> quedan aquí como el porqué de cada respuesta, no como tareas.
+>
+> Hecho también: el registro de versión pasó de 1.0 a **1.1.0** (que es lo que
+> dicen `app.json`, `Info.plist` y el proyecto de Xcode), la descripción EN/ES
+> se actualizó con la frase del OCR de portadas, y la app va **solo para
+> iPhone** (`TARGETED_DEVICE_FAMILY = 1`), así que no hacen falta capturas de
+> iPad.
+>
+> **Lo único que falta es la sección 6: las capturas.** Guion en
+> `SCREENSHOTS.md`.
 
 Cada respuesta de abajo sale de auditar el código, no de una plantilla. Si
 alguna vez se añade un SDK de analítica, crash reporting o anuncios, o cambia
@@ -10,9 +25,9 @@ quedan mintiendo desde ese commit**.
 
 ---
 
-## 1. App Privacy · nutrition labels — BLOQUEANTE
+## 1. App Privacy · nutrition labels — HECHO (publicado)
 
-Sin esto no se puede enviar a revisión. Está sin rellenar.
+Publicado. Lo de abajo es de dónde sale cada respuesta.
 
 ### Lo primero, porque decide lo demás
 
@@ -98,7 +113,7 @@ pie tal cual.
 
 ---
 
-## 2. Age Rating — sin configurar
+## 2. Age Rating — HECHO (4+)
 
 Todo el cuestionario en **None / No**, con dos que conviene mirar dos veces:
 
@@ -114,7 +129,7 @@ Resultado esperado: **4+**.
 
 ---
 
-## 3. App Information — dos campos vacíos
+## 3. App Information — HECHO (Books + derechos de terceros)
 
 - **Category.** Está en *None*. Primaria: **Books**. Secundaria: opcional;
   *Lifestyle* encaja mejor que *Education*, pero se puede dejar vacía.
