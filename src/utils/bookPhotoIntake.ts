@@ -28,7 +28,7 @@ export type BookPhotoIntakeResult = {
 };
 
 const BARCODE_TYPES: BarcodeType[] = ["ean13", "ean8", "upc_a", "upc_e"];
-const VISION_ENDPOINT = process.env.EXPO_PUBLIC_BOOKLIO_VISION_ENDPOINT?.trim();
+const VISION_ENDPOINT = process.env.EXPO_PUBLIC_BOOKLIZ_VISION_ENDPOINT?.trim();
 
 export function getBookPhotoSupportSummary() {
   return {

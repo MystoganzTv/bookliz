@@ -313,7 +313,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       photoTips: "Photo intake tips",
       photoTipsIos: "On iPhone, static photo ISBN detection is limited. For the strongest match, use Scan ISBN or add a title after taking the photo.",
       photoTipsGeneral: "Best results come from the back cover, barcode area, or copyright page.",
-      coverOcrHint: "Cover OCR can also be connected later through `EXPO_PUBLIC_BOOKLIO_VISION_ENDPOINT` without redesigning this flow.",
+      coverOcrHint: "Cover OCR can also be connected later through `EXPO_PUBLIC_BOOKLIZ_VISION_ENDPOINT` without redesigning this flow.",
     },
     search: {
       metaPages: "{count} pages",
@@ -1203,7 +1203,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       photoTips: "Consejos para fotos",
       photoTipsIos: "En iPhone, la detección de ISBN desde fotos estáticas es limitada. Para mejores resultados, usa Escanear ISBN o añade un título después de tomar la foto.",
       photoTipsGeneral: "Los mejores resultados vienen de la contraportada, el área del código de barras o la página de créditos.",
-      coverOcrHint: "Más adelante también se puede conectar OCR de portada mediante `EXPO_PUBLIC_BOOKLIO_VISION_ENDPOINT` sin rediseñar este flujo.",
+      coverOcrHint: "Más adelante también se puede conectar OCR de portada mediante `EXPO_PUBLIC_BOOKLIZ_VISION_ENDPOINT` sin rediseñar este flujo.",
     },
     search: {
       metaPages: "{count} páginas",

@@ -1,5 +1,5 @@
 /**
- * Booklio offline queue — stores failed Supabase sync operations and replays
+ * Bookliz offline queue — stores failed Supabase sync operations and replays
  * them when network connectivity returns.
  *
  * Architecture:
@@ -139,7 +139,7 @@ export async function isOnline(): Promise<boolean> {
  * Successful operations are removed from the queue; failed ones have their
  * retry count incremented.
  *
- * Example usage (in BooklioRepository):
+ * Example usage (in BooklizRepository):
  * ```ts
  * await flushQueue(async (op) => {
  *   if (op.type === "upsert_book") {

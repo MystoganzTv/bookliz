@@ -171,7 +171,7 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
   constructor(
     private readonly storage = AsyncStorage,
     private readonly storageKey = STORAGE_KEY,
-    private readonly remoteBaseUrl = process.env.EXPO_PUBLIC_BOOKLIO_API_BASE_URL?.trim()
+    private readonly remoteBaseUrl = process.env.EXPO_PUBLIC_BOOKLIZ_API_BASE_URL?.trim()
   ) {
     this.status = createBaseStatus(Boolean(this.remoteBaseUrl || isSupabaseConfigured));
   }
@@ -269,7 +269,7 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
       this.status = {
         ...this.status,
         syncState: "error",
-        lastError: messageOf(error, "Failed to read the local Booklio snapshot."),
+        lastError: messageOf(error, "Failed to read the local Bookliz snapshot."),
         localReadFailed: true
       };
       return null;
@@ -466,7 +466,7 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
   async writeConflictBackup(snapshot: BooklizSnapshot): Promise<string> {
     const normalized = normalizeSnapshot(snapshot);
     if (!normalized) {
-      throw new Error("Booklio snapshot is invalid and could not be backed up.");
+      throw new Error("Bookliz snapshot is invalid and could not be backed up.");
     }
     const at = new Date().toISOString();
     await this.storage.setItem(CONFLICT_BACKUP_KEY, JSON.stringify({ backedUpAt: at, snapshot: normalized }));
@@ -486,7 +486,7 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     try {
       const normalized = normalizeSnapshot(snapshot);
       if (!normalized) {
-        throw new Error("Booklio snapshot is invalid and could not be saved.");
+        throw new Error("Bookliz snapshot is invalid and could not be saved.");
       }
       await this.storage.setItem(this.storageKey, JSON.stringify(normalized));
 
@@ -523,7 +523,7 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
       this.status = {
         ...this.status,
         syncState: "error",
-        lastError: error instanceof Error ? error.message : "Failed to save Booklio data."
+        lastError: error instanceof Error ? error.message : "Failed to save Bookliz data."
       };
       throw error;
     }
@@ -536,7 +536,7 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
   private async loadRemote() {
     if (!this.remoteBaseUrl) return null;
 
-    const response = await fetchWithTimeout(`${this.remoteBaseUrl.replace(/\/$/, "")}/booklio/snapshot`, {
+    const response = await fetchWithTimeout(`${this.remoteBaseUrl.replace(/\/$/, "")}/bookliz/snapshot`, {
       headers: { Accept: "application/json" }
     });
     if (!response.ok) {
@@ -551,7 +551,7 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
   private async saveRemote(snapshot: BooklizSnapshot) {
     if (!this.remoteBaseUrl) return;
 
-    const response = await fetchWithTimeout(`${this.remoteBaseUrl.replace(/\/$/, "")}/booklio/snapshot`, {
+    const response = await fetchWithTimeout(`${this.remoteBaseUrl.replace(/\/$/, "")}/bookliz/snapshot`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -740,7 +740,7 @@ async function pruneOrphans(table: string, userId: string, keepIds: string[]): P
   try {
     if (keepIds.length === 0) {
       const { error } = await supabase.from(table).delete().eq("user_id", userId);
-      if (error && __DEV__) console.warn(`[Booklio] prune ${table} failed: ${error.message}`);
+      if (error && __DEV__) console.warn(`[Bookliz] prune ${table} failed: ${error.message}`);
       return;
     }
     // The id list travels in the query string. A few hundred `b-<slug>-<ts>`
@@ -750,7 +750,7 @@ async function pruneOrphans(table: string, userId: string, keepIds: string[]): P
     // small batches.
     const { data: remoteRows, error: listError } = await supabase.from(table).select("id").eq("user_id", userId);
     if (listError) {
-      if (__DEV__) console.warn(`[Booklio] prune ${table} could not list ids: ${listError.message}`);
+      if (__DEV__) console.warn(`[Bookliz] prune ${table} could not list ids: ${listError.message}`);
       return;
     }
     const keep = new Set(keepIds);
@@ -758,7 +758,7 @@ async function pruneOrphans(table: string, userId: string, keepIds: string[]): P
     for (let i = 0; i < orphans.length; i += PRUNE_CHUNK) {
       const chunk = orphans.slice(i, i + PRUNE_CHUNK);
       const { error } = await supabase.from(table).delete().eq("user_id", userId).in("id", chunk);
-      if (error && __DEV__) console.warn(`[Booklio] prune ${table} failed: ${error.message}`);
+      if (error && __DEV__) console.warn(`[Bookliz] prune ${table} failed: ${error.message}`);
     }
   } catch {
     // Non-fatal: stale orphan rows will be pruned on the next successful save.

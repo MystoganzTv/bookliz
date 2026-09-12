@@ -927,7 +927,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
           : null
       );
     } catch (error) {
-      console.warn("[Booklio] Could not read the conflict backup", error);
+      console.warn("[Bookliz] Could not read the conflict backup", error);
       setConflictBackup(null);
     }
   };
@@ -965,7 +965,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
         // future load succeeds. The next launch gets another chance.
         if (status.localReadFailed) {
           persistBlockedRef.current = true;
-          console.warn("[Booklio] Local snapshot unreadable — persistence disabled to protect existing data.");
+          console.warn("[Bookliz] Local snapshot unreadable — persistence disabled to protect existing data.");
           // Also clear the seeds out of view. Presenting Le Guin and Sanderson
           // as if they were the user's own library is its own kind of lie, and
           // invites edits we have just decided we cannot save.
@@ -1000,7 +1000,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
           setOnboardingComplete(true);
         }
       } catch (error) {
-        console.warn("Booklio could not hydrate local library", error);
+        console.warn("Bookliz could not hydrate local library", error);
       } finally {
         if (mounted) {
           setRepositoryStatus(repositoryRef.current.getStatus());
@@ -1037,10 +1037,10 @@ export function BooklizProvider({ children }: PropsWithChildren) {
               lastRemoteFingerprintRef.current = snapshotFingerprint(latestStateRef.current);
               pendingRemoteRef.current = false;
               await clearQueue();
-              if (__DEV__) console.log("[Booklio] Offline queue flushed via full Supabase sync.");
+              if (__DEV__) console.log("[Bookliz] Offline queue flushed via full Supabase sync.");
             }
           } catch (err) {
-            console.warn("[Booklio] Could not flush offline queue", err);
+            console.warn("[Bookliz] Could not flush offline queue", err);
             // Count the attempt. A permanently failing push used to retry on
             // every foreground forever; after MAX_RETRIES the marker is dropped
             // and the next real edit re-queues it.
@@ -1112,7 +1112,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
           pushLocalAfterHydrationTick((tick) => tick + 1);
         }
       } catch (error) {
-        console.warn("Booklio could not refresh after auth change", error);
+        console.warn("Bookliz could not refresh after auth change", error);
         setRepositoryStatus(repositoryRef.current.getStatus());
       }
     });
@@ -1165,7 +1165,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
         if (result?.pushedToRemote) lastRemoteFingerprintRef.current = fingerprint;
       }
     } catch (error) {
-      console.warn("Booklio could not persist local library", error);
+      console.warn("Bookliz could not persist local library", error);
       if (!localOnly) {
         // Queue a full sync marker so the AppState listener retries when back online.
         // AsyncStorage was already written successfully — this only covers the
@@ -1818,7 +1818,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
           if (uid) {
             const { error } = await sb.rpc("booklio_delete_account");
             if (error) {
-              console.warn("[Booklio] booklio_delete_account RPC failed, deleting rows directly", error.message);
+              console.warn("[Bookliz] booklio_delete_account RPC failed, deleting rows directly", error.message);
               for (const table of [
                 "booklio_user_lists",
                 "booklio_reviews",

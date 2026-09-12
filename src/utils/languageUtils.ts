@@ -1,5 +1,5 @@
 /**
- * Language utilities for the Booklio Book Intelligence Engine.
+ * Language utilities for the Bookliz Book Intelligence Engine.
  *
  * Handles ISO 639-1 (2-letter) ↔ ISO 639-2 (3-letter) mapping, display names,
  * language code normalization, and translation detection.
@@ -102,7 +102,7 @@ const NAME_TO_CODE: Record<string, string> = Object.fromEntries(
 
 // ─── Priority languages ────────────────────────────────────────────────────────
 
-/** Languages with full i18n + edition detection support in Booklio */
+/** Languages with full i18n + edition detection support in Bookliz */
 export const PRIORITY_LANGUAGE_CODES = ["en", "es", "fr", "pt", "it", "de", "nl"] as const;
 export type PriorityLanguageCode = (typeof PRIORITY_LANGUAGE_CODES)[number];
 
