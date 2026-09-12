@@ -443,7 +443,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       termsTitle: "Terms of Use",
       lastUpdated: "Last updated: {date}",
       lastUpdatedDate: "September 2026",
-      fullPolicy: "Full policy: bookliz.app/privacy-policy.html",
+      fullPolicy: "Full policy: mystoganztv.github.io/bookliz/privacy-policy.html",
       privacy: {
         localHeading: "Your data lives on your device",
         localBody: "Bookliz is a local-first app. Your library, reading sessions, reviews, notes, quotes and statistics are stored on this device. We do not see or collect this data unless you explicitly sign in to enable cloud sync.",
@@ -1427,7 +1427,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       termsTitle: "Términos de uso",
       lastUpdated: "Última actualización: {date}",
       lastUpdatedDate: "Septiembre de 2026",
-      fullPolicy: "Política completa: bookliz.app/privacy-policy.es.html",
+      fullPolicy: "Política completa: mystoganztv.github.io/bookliz/privacy-policy.es.html",
       privacy: {
         localHeading: "Tus datos viven en tu dispositivo",
         localBody: "Bookliz funciona primero en local. Tu biblioteca, sesiones de lectura, reseñas, notas, citas y estadísticas se guardan en este dispositivo. No vemos ni recogemos estos datos a menos que inicies sesión explícitamente para activar la sincronización en la nube.",
