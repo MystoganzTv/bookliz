@@ -28,7 +28,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>bookliz</string>
-				<string>com.mystodev.bookliz</string>
+				<string>com.mystodev.booklio</string>
 			</array>
 		</dict>
 		<dict>

@@ -16,7 +16,7 @@
       "assets/**/*"
     ],
     "ios": {
-      "bundleIdentifier": "com.mystodev.bookliz",
+      "bundleIdentifier": "com.mystodev.booklio",
       "buildNumber": "1",
       "deploymentTarget": "16.0",
       "usesAppleSignIn": true,
@@ -27,7 +27,7 @@
       }
     },
     "android": {
-      "package": "com.mystodev.bookliz",
+      "package": "com.mystodev.booklio",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES"
