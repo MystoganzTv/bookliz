@@ -513,7 +513,7 @@
       <img src="./bookliz-logo.png" alt="Bookliz" />
     </a>
     <div class="nav-right">
-      <a class="nav-link" href="./privacy-policy.html">
+      <a class="nav-link" href="./privacy-policy.html" data-href-en="./privacy-policy.html" data-href-es="./privacy-policy.es.html">
         <span data-lang="en">Privacy Policy</span>
         <span data-lang="es">Privacidad</span>
       </a>
@@ -771,7 +771,7 @@
       <img src="./bookliz-navbar.png" alt="Bookliz" />
     </a>
     <div class="footer-links">
-      <a class="footer-link" href="./privacy-policy.html">
+      <a class="footer-link" href="./privacy-policy.html" data-href-en="./privacy-policy.html" data-href-es="./privacy-policy.es.html">
         <span data-lang="en">Privacy Policy</span>
         <span data-lang="es">Pol&iacute;tica de Privacidad</span>
       </a>
@@ -795,6 +795,12 @@
     document.documentElement.lang = lang;
     document.getElementById('btn-en').classList.toggle('active', lang === 'en');
     document.getElementById('btn-es').classList.toggle('active', lang === 'es');
+    // Links with a translated page of their own (the privacy policy) point at
+    // the version in the language being read. Everything else is one page with
+    // both languages inside it, so only these need swapping.
+    document.querySelectorAll('[data-href-' + lang + ']').forEach(function (el) {
+      el.setAttribute('href', el.getAttribute('data-href-' + lang));
+    });
   }
 
   // Waitlist form — async Formspree submission
