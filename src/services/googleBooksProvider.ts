@@ -24,6 +24,9 @@ import { googleBooksAppHeaders } from "../utils/googleBooksAppHeaders";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const GB_BASE = "https://www.googleapis.com/books/v1/volumes";
+
+/** The two orderings the Google Books API accepts. */
+export type CatalogOrder = "relevance" | "newest";
 const GB_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY ?? "";
 const MAX_RESULTS_ISBN = 5;
 const MAX_RESULTS_QUERY = 15;
@@ -280,11 +283,12 @@ export interface GenreBookResult {
 export async function fetchByGenre(
   genre: string,
   startIndex = 0,
-  maxResults = 40
+  maxResults = 40,
+  orderBy: CatalogOrder = "relevance"
 ): Promise<{ books: GenreBookResult[]; totalItems: number }> {
   try {
     const subject = GENRE_TO_SUBJECT[genre] ?? encodeURIComponent(genre.toLowerCase());
-    const url = `${GB_BASE}?q=subject:${subject}&startIndex=${startIndex}&maxResults=${maxResults}&orderBy=relevance&printType=books${apiKey()}`;
+    const url = `${GB_BASE}?q=subject:${subject}&startIndex=${startIndex}&maxResults=${maxResults}&orderBy=${orderBy}&printType=books${apiKey()}`;
     const res = await fetchWithTimeout(url, { headers: googleBooksAppHeaders() });
     if (!res.ok) {
       if (__DEV__) console.log("[GB] keyword HTTP " + res.status + (res.status === 429 ? " - QUOTA/RATE LIMITED" : ""));
@@ -341,11 +345,19 @@ export async function fetchByKeyword(
    * propagate instead of degrading to an empty result. Callers that cache
    * results need to tell "no data" apart from "couldn't ask right now".
    */
-  rethrowTransient = false
+  rethrowTransient = false,
+  /**
+   * Ask Google for a date-ordered page instead of a relevance-ordered one.
+   *
+   * This has to happen server-side: results arrive paginated, so sorting each
+   * page on the client would leave page 2's newer books sitting below page 1's
+   * older ones and the list would never be in date order overall.
+   */
+  orderBy: CatalogOrder = "relevance"
 ): Promise<{ books: GenreBookResult[]; totalItems: number }> {
   try {
     const langParam = langRestrict ? `&langRestrict=${encodeURIComponent(langRestrict)}` : "";
-    const url = `${GB_BASE}?q=${encodeURIComponent(query)}&startIndex=${startIndex}&maxResults=${maxResults}&orderBy=relevance&printType=books${langParam}${apiKey()}`;
+    const url = `${GB_BASE}?q=${encodeURIComponent(query)}&startIndex=${startIndex}&maxResults=${maxResults}&orderBy=${orderBy}&printType=books${langParam}${apiKey()}`;
     const res = await fetchWithTimeout(url, { headers: googleBooksAppHeaders() });
     if (!res.ok) {
       if (__DEV__) console.log("[GB] keyword HTTP " + res.status + (res.status === 429 ? " - QUOTA/RATE LIMITED" : ""));

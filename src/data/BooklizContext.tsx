@@ -157,7 +157,7 @@ type BooklizContextValue = {
   deleteReadingSession: (sessionId: string) => void;
   deleteBook: (bookId: string) => void;
   updateBook: (bookId: string, input: UpdateBookInput) => void;
-  updateBookStatus: (bookId: string, status: CoreTrackingStatus, rating?: number) => void;
+  updateBookStatus: (bookId: string, status: CoreTrackingStatus, rating?: number, owned?: boolean) => void;
   updateBookFormat: (bookId: string, format: Book["format"]) => void;
   updateBookSynopsis: (bookId: string, synopsis: string) => void;
   updateUserProfile: (input: UpdateUserProfileInput) => void;
@@ -1521,7 +1521,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       setBooks((current) => current.map((b) => (b.id === bookId ? { ...b, synopsis } : b)));
     };
 
-    const updateBookStatus = (bookId: string, newStatus: CoreTrackingStatus, rating?: number) => {
+    const updateBookStatus = (bookId: string, newStatus: CoreTrackingStatus, rating?: number, owned?: boolean) => {
       const today = localDateKey();
 
       // Detect series completion: if this book is the last unread book in a series
@@ -1563,6 +1563,12 @@ export function BooklizProvider({ children }: PropsWithChildren) {
               ...(newStatus === "wishlist"
                 ? { wishlist: true, ownership: "not-owned" as const, wantToBuy: false }
                 : { wishlist: false }),
+              // Ownership is its own axis and the caller states it explicitly.
+              // Placed after the wishlist rule so an explicit choice wins; the
+              // sheet never sends `owned: true` alongside a wishlist status.
+              ...(owned !== undefined && newStatus !== "wishlist"
+                ? { ownership: owned ? ("owned" as const) : ("not-owned" as const) }
+                : {}),
               ...(newStatus === "reading"
                 ? shouldStartReread
                   ? {

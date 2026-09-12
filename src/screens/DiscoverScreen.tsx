@@ -373,12 +373,18 @@ export function DiscoverScreen() {
     };
   }, [libraryIndex, recommendationSpecs, readingIdentity]);
 
-  function goToCatalog(query: string, title?: string, browseKey?: string) {
+  function goToCatalog(
+    query: string,
+    title?: string,
+    browseKey?: string,
+    sort?: "relevance" | "newest"
+  ) {
     if (!query.trim()) return;
     navigation.navigate("GenreBrowse", {
       genre: browseKey ?? title ?? query,
       title: title ?? query,
       catalogQuery: query,
+      sort,
     });
   }
 
@@ -502,7 +508,9 @@ export function DiscoverScreen() {
           <ScalePressable accessibilityRole="button"
             key={mood.id}
             style={styles.moodCard}
-            onPress={() => goToCatalog(mood.catalogQuery, mood.label)}
+            // Moods are a "what should I read right now" question, so they lead
+            // with what is actually out now. Genre browsing keeps relevance.
+            onPress={() => goToCatalog(mood.catalogQuery, mood.label, undefined, "newest")}
           >
             <View style={styles.moodImageWrap}>
               <Image

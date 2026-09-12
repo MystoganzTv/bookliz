@@ -854,6 +854,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       searching: "Barcode found — searching…",
     },
     statusSheet: {
+      owned: "I own a copy",
       title: "Update status",
       wantToRead: "Want to read",
       reading: "Reading",
@@ -1720,6 +1721,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       searching: "Código detectado — buscando…",
     },
     statusSheet: {
+      owned: "Lo tengo",
       title: "Actualizar estado",
       wantToRead: "Quiero leer",
       reading: "Leyendo",

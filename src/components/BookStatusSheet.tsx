@@ -24,27 +24,35 @@ type Props = {
   open: boolean;
   currentStatus: CoreTrackingStatus;
   currentRating?: number;
-  onSave: (status: CoreTrackingStatus, rating?: number) => void;
+  /** Whether the reader owns a copy. Independent of the reading status. */
+  currentOwned?: boolean;
+  onSave: (status: CoreTrackingStatus, rating?: number, owned?: boolean) => void;
   onClose: () => void;
 };
 
-export function BookStatusSheet({ open, currentStatus, currentRating, onSave, onClose }: Props) {
+export function BookStatusSheet({ open, currentStatus, currentRating, currentOwned, onSave, onClose }: Props) {
   const { t } = useI18n();
   const c = useColors();
   const styles = useMemo(() => createStyles(c), [c]);
   const [status, setStatus] = useState<CoreTrackingStatus>(currentStatus);
   const [rating, setRating] = useState<number | undefined>(currentRating);
+  const [owned, setOwned] = useState<boolean>(currentOwned ?? false);
+  // Wishlist means "I want this and do not have it", so the two cannot both be
+  // true. The toggle is hidden rather than disabled: an unavailable control the
+  // user cannot act on is just noise.
+  const ownershipApplies = status !== "wishlist";
 
   // Sync local state whenever the sheet (re-)opens
   useEffect(() => {
     if (open) {
       setStatus(currentStatus);
       setRating(currentRating);
+      setOwned(currentOwned ?? false);
     }
-  }, [open, currentStatus, currentRating]);
+  }, [open, currentStatus, currentRating, currentOwned]);
 
   const handleSave = () => {
-    onSave(status, status === "read" ? rating : undefined);
+    onSave(status, status === "read" ? rating : undefined, ownershipApplies ? owned : false);
     onClose();
   };
 
@@ -76,6 +84,25 @@ export function BookStatusSheet({ open, currentStatus, currentRating, onSave, on
               );
             })}
           </View>
+
+          {/* Ownership — a separate axis from the reading status: a book can be
+              owned and unread, or read and borrowed. Making it a fifth status
+              chip would silently overwrite whichever one was set. */}
+          {ownershipApplies && (
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityState={{ checked: owned }}
+              style={[styles.ownedRow, owned && { borderColor: c.teal, backgroundColor: `${c.teal}18` }]}
+              onPress={() => setOwned((prev) => !prev)}
+            >
+              <Ionicons
+                name={owned ? "checkbox" : "square-outline"}
+                size={22}
+                color={owned ? c.teal : c.muted}
+              />
+              <Text style={[styles.ownedLabel, owned && { color: c.teal }]}>{t("statusSheet.owned")}</Text>
+            </Pressable>
+          )}
 
           {/* Star rating — only when Read */}
           {status === "read" && (
@@ -165,6 +192,23 @@ function createStyles(c: AppColors) {
     fontSize: 12,
     fontWeight: "900",
     textAlign: "center"
+  },
+  ownedRow: {
+    alignItems: "center",
+    borderColor: c.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md
+  },
+  ownedLabel: {
+    color: c.ink,
+    fontFamily: fonts.body,
+    fontSize: 15,
+    fontWeight: "600"
   },
   ratingSection: {
     marginBottom: spacing.md

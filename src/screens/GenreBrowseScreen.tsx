@@ -147,6 +147,7 @@ export function GenreBrowseScreen() {
   const currentGenreRef = useRef<string>("");
 
   const isKeywordMode = !!params.catalogQuery;
+  const sortMode = params.sort ?? "relevance";
   const currentGenre = params.genre;
   const displayTitle = params.title ?? params.genre;
   const curatedTitleSet = useMemo(
@@ -186,8 +187,8 @@ export function GenreBrowseScreen() {
 
     try {
       const fetcher = params.catalogQuery
-        ? fetchByKeyword(params.catalogQuery, reset ? 0 : startIndexRef.current, PAGE_SIZE)
-        : fetchByGenre(genre, reset ? 0 : startIndexRef.current, PAGE_SIZE);
+        ? fetchByKeyword(params.catalogQuery, reset ? 0 : startIndexRef.current, PAGE_SIZE, undefined, true, false, sortMode)
+        : fetchByGenre(genre, reset ? 0 : startIndexRef.current, PAGE_SIZE, sortMode);
       const [{ books: fetched, totalItems: total }, curatedBooks] = await Promise.all([
         fetcher,
         reset && params.curatedTitles?.length
@@ -216,6 +217,13 @@ export function GenreBrowseScreen() {
       const withCover = merged.filter((b) => !!b.coverUrl && !COLLECTION_PATTERN.test(b.title));
       const filtered = highSignal.length >= 6 ? highSignal : withCover.length > 0 ? withCover : merged;
       const ranked = [...filtered].sort((a, b) => {
+        if (sortMode === "newest") {
+          // Google already returned this page in date order; this keeps that
+          // order after the quality filter reshuffles what survives. Unknown
+          // years sort last — an undated book is not evidence of being recent.
+          const yearDiff = (b.publishedYear ?? 0) - (a.publishedYear ?? 0);
+          if (yearDiff !== 0) return yearDiff;
+        }
         const scoreDiff = scoreCatalogBook(b, genre, curatedTitleSet) - scoreCatalogBook(a, genre, curatedTitleSet);
         if (scoreDiff !== 0) return scoreDiff;
         return (b.publishedYear ?? 0) - (a.publishedYear ?? 0);
@@ -244,7 +252,7 @@ export function GenreBrowseScreen() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [curatedTitleSet, params.catalogQuery, params.curatedTitles]);
+  }, [curatedTitleSet, params.catalogQuery, params.curatedTitles, sortMode]);
 
   useEffect(() => {
     loadGenre(currentGenre, true);

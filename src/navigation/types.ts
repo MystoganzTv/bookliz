@@ -42,6 +42,12 @@ export type RootStackParamList = {
     catalogQuery?: string;
     /** Optional editorial seed titles to prioritize first */
     curatedTitles?: Array<{ title: string; author?: string }>;
+    /**
+     * "newest" asks the catalogue for the most recent titles first. Moods use
+     * it: someone browsing for a feeling wants what is out now, not the same
+     * canon every time. Genres keep relevance, where the classics belong.
+     */
+    sort?: "relevance" | "newest";
   };
   AuthorBooks: {
     /** Library author id when known; catalog-only authors navigate by name alone. */

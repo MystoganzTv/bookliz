@@ -1,0 +1,6 @@
+module Pods_Booklio {
+  umbrella header "Pods-Booklio-umbrella.h"
+
+  export *
+  module * { export * }
+}

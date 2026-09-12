@@ -556,7 +556,8 @@ export function BookDetailScreen() {
         open={statusSheetOpen}
         currentStatus={book.userStatus.status}
         currentRating={book.userStatus.rating}
-        onSave={(status, rating) => updateBookStatus(book.id, status, rating)}
+        currentOwned={book.userStatus.ownership === "owned"}
+        onSave={(status, rating, owned) => updateBookStatus(book.id, status, rating, owned)}
         onClose={() => setStatusSheetOpen(false)}
       />
       <BookListSheet open={listSheetOpen} bookId={book.id} onClose={() => setListSheetOpen(false)} />

@@ -503,8 +503,9 @@ export function LibraryScreen() {
           open={Boolean(statusSheetBook)}
           currentStatus={statusSheetBook.userStatus.status}
           currentRating={statusSheetBook.userStatus.rating}
-          onSave={(status, rating) => {
-            updateBookStatus(statusSheetBook.id, status, rating);
+          currentOwned={statusSheetBook.userStatus.ownership === "owned"}
+          onSave={(status, rating, owned) => {
+            updateBookStatus(statusSheetBook.id, status, rating, owned);
             setStatusSheetBook(null);
           }}
           onClose={() => setStatusSheetBook(null)}
