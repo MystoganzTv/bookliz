@@ -508,11 +508,11 @@ export function ScanQueueCard({
 
       {asksQuestion ? (
         <>
-          <Text style={styles.scanQueueQuestion}>{t("scanQueue.question")}</Text>
+          <Text style={styles.scanQueueQuestion}>{t("shelf.question")}</Text>
           <View style={styles.scanQueueActions}>
             <ScalePressable
               accessibilityRole="button"
-              accessibilityLabel={t("scanQueue.owned")}
+              accessibilityLabel={t("shelf.owned")}
               disabled={busy}
               style={[styles.scanQueueBtn, entry.choice === "owned" && styles.scanQueueBtnOwned]}
               onPress={() => onChoose("owned")}
@@ -522,12 +522,12 @@ export function ScanQueueCard({
               ) : (
                 <Ionicons name="checkmark-circle-outline" size={15} color="#F8FAFC" />
               )}
-              <Text style={styles.scanQueueBtnText}>{t("scanQueue.owned")}</Text>
+              <Text style={styles.scanQueueBtnText}>{t("shelf.owned")}</Text>
             </ScalePressable>
 
             <ScalePressable
               accessibilityRole="button"
-              accessibilityLabel={t("scanQueue.wishlist")}
+              accessibilityLabel={t("shelf.wanted")}
               disabled={busy}
               style={[styles.scanQueueBtn, entry.choice === "wishlist" && styles.scanQueueBtnWishlist]}
               onPress={() => onChoose("wishlist")}
@@ -537,7 +537,7 @@ export function ScanQueueCard({
               ) : (
                 <Ionicons name="bookmark-outline" size={15} color="#F8FAFC" />
               )}
-              <Text style={styles.scanQueueBtnText}>{t("scanQueue.wishlist")}</Text>
+              <Text style={styles.scanQueueBtnText}>{t("shelf.wanted")}</Text>
             </ScalePressable>
           </View>
         </>

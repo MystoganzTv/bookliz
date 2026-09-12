@@ -233,7 +233,7 @@ export function BookPreviewScreen() {
               onPress={() => handleAdd("library")}
             >
               <Ionicons name="library-outline" size={18} color="#fff" />
-              <Text style={styles.ctaText}>{t("bookPreview.addToLibrary")}</Text>
+              <Text style={styles.ctaText}>{t("shelf.owned")}</Text>
             </ScalePressable>
             <ScalePressable
               accessibilityRole="button"
@@ -242,7 +242,7 @@ export function BookPreviewScreen() {
               onPress={() => handleAdd("wishlist")}
             >
               <Ionicons name="bookmark-outline" size={18} color={c.tealDark} />
-              <Text style={[styles.ctaText, { color: c.tealDark }]}>{t("bookPreview.addToWishlist")}</Text>
+              <Text style={[styles.ctaText, { color: c.tealDark }]}>{t("shelf.wanted")}</Text>
             </ScalePressable>
           </View>
         )}

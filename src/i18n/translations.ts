@@ -494,8 +494,6 @@ export const translations: Record<AppLocale, TranslationTree> = {
     bookPreview: {
       alreadyInLibrary: "Already in your library",
       openInLibrary: "Open in your library",
-      addToLibrary: "Add to library",
-      addToWishlist: "Add to wishlist",
       pagesCount: "{count} pages",
       ratingsCount: "{count} ratings",
       unknownAuthor: "Unknown author",
@@ -969,14 +967,22 @@ export const translations: Record<AppLocale, TranslationTree> = {
       notIsbn: "That barcode isn't an ISBN — try the one on the back cover.",
       searching: "Barcode found — searching…",
     },
+    /**
+     * The one question the app asks about a new book, worded the same way
+     * everywhere it is asked: on the scanner card, on the preview screen and
+     * on the way out of the scanner. Two vocabularies for one question is two
+     * questions as far as the reader is concerned.
+     */
+    shelf: {
+      question: "Do you own it?",
+      owned: "I own it",
+      wanted: "I want it",
+    },
     scanQueue: {
       exitTitle: "Still to answer",
       exitNote: "These were scanned but never placed on a shelf. Say where they go, or discard them — leaving would have thrown them away without asking.",
       exitKeepScanning: "Keep scanning",
       exitDiscard: "Discard these scans",
-      question: "Do you own it?",
-      owned: "I own it",
-      wishlist: "Wishlist",
       lookingUp: "Looking it up…",
       isbnLabel: "ISBN {isbn}",
       queuedOwned: "Will go to your books",
@@ -1504,8 +1510,6 @@ export const translations: Record<AppLocale, TranslationTree> = {
     bookPreview: {
       alreadyInLibrary: "Ya está en tu biblioteca",
       openInLibrary: "Abrir en tu biblioteca",
-      addToLibrary: "Añadir a biblioteca",
-      addToWishlist: "A lista de deseos",
       pagesCount: "{count} páginas",
       ratingsCount: "{count} valoraciones",
       unknownAuthor: "Autor desconocido",
@@ -1979,21 +1983,23 @@ export const translations: Record<AppLocale, TranslationTree> = {
       notIsbn: "Ese código no es un ISBN; prueba con el de la contraportada.",
       searching: "Código detectado — buscando…",
     },
+    shelf: {
+      question: "¿Lo tienes?",
+      owned: "Lo tengo",
+      wanted: "Lo quiero",
+    },
     scanQueue: {
       exitTitle: "Falta contestar",
       exitNote: "Estos se escanearon pero no llegaron a ninguna estantería. Di dónde van, o descártalos — salir los habría tirado sin preguntar.",
       exitKeepScanning: "Seguir escaneando",
       exitDiscard: "Descartar estos escaneos",
-      question: "¿Lo tienes?",
-      owned: "Lo tengo",
-      wishlist: "Deseados",
       lookingUp: "Buscándolo…",
       isbnLabel: "ISBN {isbn}",
       queuedOwned: "Irá a tus libros",
-      queuedWishlist: "Irá a tus deseados",
+      queuedWishlist: "Irá a tu lista de deseos",
       adding: "Añadiendo…",
       addedOwned: "Añadido a tus libros",
-      addedWishlist: "Guardado en deseados",
+      addedWishlist: "Guardado en tu lista de deseos",
       undo: "Deshacer",
       duplicate: "Ya está en tu biblioteca",
       failed: "No encontramos este libro",
