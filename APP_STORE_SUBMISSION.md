@@ -38,15 +38,42 @@ Advertising ni Developer's Marketing.
 
 ### Datos que NO se recogen — no marcar
 
-- **Photos or Videos.** Se pide acceso a cámara y fototeca, pero las fotos
-  **no salen del dispositivo**: el código de barras se decodifica en local y
-  una portada tomada de la fototeca guarda la *ruta* del archivo, no la
-  imagen. Apple solo considera "collect" lo que se transmite fuera, así que
-  marcarlo sería declarar algo falso.
 - **Usage Data, Diagnostics, Performance Data.** No hay telemetría de ningún
   tipo. Literalmente no sabemos cómo usa nadie la app.
 - **Location, Health, Financial Info, Contacts, Browsing History, Purchases,
   Sensitive Info.** Nada de eso se toca.
+
+### Photos or Videos — CORREGIDO 2026-09-12: sí salen del dispositivo
+
+Esto estaba mal en la versión anterior de este documento, que decía que las
+fotos no salen del dispositivo. Sí salen:
+
+`takeCoverPhoto` y `pickCoverPhoto` terminan los dos en `processPhotoAsset`
+→ `analyzeBookPhoto` → POST de la imagen en base64 a la Edge Function
+`book-vision` → **Google Cloud Vision**. Vale igual para *Hacer foto* que
+para *Importar foto*, y no hay ninguna ruta que ponga una portada sin ese
+viaje mientras `EXPO_PUBLIC_BOOKLIZ_VISION_ENDPOINT` esté puesta — y lo
+está en el `.env` con el que se compila.
+
+Lo que **no** ocurre: la imagen no se guarda, ni en la Edge Function ni en
+Supabase, ni se asocia a la cuenta. La portada que queda en la biblioteca
+es la ruta del archivo local, no una imagen subida.
+
+Con eso, la decisión de la etiqueta es un juicio, no un hecho:
+
+- **Marcar "Photos or Videos" → App Functionality, not linked to identity,
+  not used for tracking.** Es la opción conservadora y la recomendada. La
+  imagen se transmite fuera del dispositivo, y esa es la palabra que usa
+  Apple. Cuesta una fila más en la ficha y cierra el tema.
+- **No marcarla**, apoyándose en la excepción de Apple para datos que solo
+  se procesan en tiempo real, en un flujo opcional e infrecuente, iniciado
+  por el usuario, con aviso en el punto de uso, sin perfilado ni publicidad.
+  El flujo cumple esas condiciones — las tarjetas de *Añadir un libro* ahora
+  lo dicen — pero es una interpretación, y si Apple la lee al revés lo que
+  queda es una declaración de privacidad falsa, que es de las pocas cosas
+  que se castigan con retirada y no con un rechazo de revisión.
+
+Una declaración de más no cuesta nada; una de menos, sí.
 
 ### El único juicio discutible: Search History
 
