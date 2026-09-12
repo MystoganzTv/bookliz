@@ -213,6 +213,7 @@ Nota aparte: `ThemeContext` nunca consulta `useColorScheme()`, así que la app t
 | P2-4 | `mockData.ts` (725 líneas de libros demo) viaja en el bundle de producción y es el estado inicial de `useState` | `src/data/mockData.ts` |
 | P2-5 | `EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY` va en el bundle JS — extraíble. Inevitable en cliente, pero exige restricción por app/bundle ID y tope de cuota en Google Cloud | `googleBooksProvider.ts:20` |
 | P2-6 | Falta `ITSAppUsesNonExemptEncryption` → App Store Connect pregunta export compliance en cada subida | `ios/Booklio/Info.plist` |
+| ~~P2-12~~ *(resuelto 2026-09-12)* | **La búsqueda por título entraba en modo autor.** `detectQueryIntent` clasificaba por la *forma* de las palabras — dos o tres palabras capitalizadas y sin dígitos eran un nombre — así que "Dune", "Fourth Wing", "Project Hail Mary" e "It" lanzaban un `inauthor:` y devolvían libros de otra gente. Reescrito para exigir evidencia positiva de persona (catálogo, inicial, partícula, nombre de pila) y caer a búsqueda general ante la duda. 35 tests nuevos fijan la tabla | Cerrado |
 | P2-7 | Cero tests de componente o pantalla. Los 342 cubren lógica pura; ninguno monta un árbol React | `src/__tests__/` |
 | P2-8 | Jest avisa: *"A worker process has failed to exit gracefully"* — handles/timers abiertos sin limpiar en algún test | suite |
 | P2-9 | README desactualizado: dice que las tabs son "Home, Library, Add, Stats, Profile" (son Home, Library, Add, Discover, Profile) y describe la app como "mock data con 13 libros" | `README.md` |

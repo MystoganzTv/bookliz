@@ -645,6 +645,38 @@ export function lookupByTitle(title: string): KnownWorkMetadata | null {
 }
 
 /**
+ * Is this exactly the name of an author the catalog knows?
+ *
+ * Deliberately an exact match on the whole normalized string, against the
+ * canonical name and its aliases — not the loose two-way `includes` that
+ * `lookupSeriesByAuthor` uses for enrichment. This answer decides whether a
+ * user's query becomes an `inauthor:` search, and a substring match would fire
+ * on any query that happens to sit inside a name.
+ */
+export function isKnownAuthorName(query: string): boolean {
+  const wanted = normalizeForLookup(query);
+  if (!wanted) return false;
+  return KNOWN_SERIES.some((s) =>
+    [s.author, ...s.authorAliases].some((a) => normalizeForLookup(a) === wanted)
+  );
+}
+
+/**
+ * Is this the name of a series the catalog knows ("Harry Potter", "Dune")?
+ *
+ * Series names are the one class of title the shape rules get most wrong: they
+ * are short, capitalized, and frequently a character's name, so they look like
+ * people. The catalog settles it without guessing.
+ */
+export function isKnownSeriesName(query: string): boolean {
+  const wanted = normalizeForLookup(query);
+  if (!wanted) return false;
+  return KNOWN_SERIES.some((s) =>
+    [s.name, ...s.aliases].some((n) => normalizeForLookup(n) === wanted)
+  );
+}
+
+/**
  * All known title variants (original + translations) for a title we recognize.
  * Returns [] when the title isn't in the catalog.
  */

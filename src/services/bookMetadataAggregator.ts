@@ -38,10 +38,13 @@ import {
 import {
   lookupByIsbn as knownLookupByIsbn,
   lookupByTitle as knownLookupByTitle,
+  isKnownAuthorName,
+  isKnownSeriesName,
   inferSeriesData,
   getOriginalTitle,
   getTitleVariants,
 } from "../utils/knownWorks";
+import { isGivenName } from "../utils/givenNames";
 import { canUseFieldForLanguage, logMergeRejection } from "../utils/metadataMergePolicy";
 import {
   fetchByIsbn as gbFetchByIsbn,
@@ -90,57 +93,89 @@ function isLikelyTitle(query: string): boolean {
 }
 
 /**
- * Heuristic: does the raw query look like a person's name (→ author search)
- * or a book title / keyword (→ general search)?
+ * Does this query name a person (→ author search) or a book (→ general search)?
  *
- * Rules:
- * - Single capitalized word (not a known title word)  → author (e.g. "Yarros",
- *     "Sanderson"). Fallback 6b handles the case where inauthor: returns too
- *     few results and retries as intitle: — so "Dune", "Eragon" etc. still work.
- * - Single lowercase or known-title word              → general
- * - > 3 words                                         → general (too long for a name)
- * - Contains digits                                   → general (ISBN, year, etc.)
- * - Starts with an article                            → general ("The Da Vinci Code")
- * - Contains & : — – ,                               → general (subtitle punctuation)
- * - 2–3 words, all look like name parts              → author
- *     Accepts any case: "dan brown", "Dan Brown", "david baldacci"
- *     Accepts initials with or without dot: "J.", "J.K.", "J" (Sarah J Maas)
+ * The asymmetry that drives every rule below: the two searches fail very
+ * differently. A general, free-text query for an author's name still returns
+ * that author's books — Google ranks them first. An `inauthor:` query for a
+ * title returns whatever unrelated writer happens to share a word with it, and
+ * the author filter downstream then throws away the right answers. Searching
+ * "Dune" in author mode found the works of an author surnamed Dune; "Fourth
+ * Wing" found a crochet book. So general is the safe default, and this
+ * function's job is not to guess — it is to find positive evidence of a person
+ * before leaving that default.
+ *
+ * The old version inverted this. It asked whether the words were *shaped* like
+ * a name — letters only, capitalized, two or three of them — which is equally
+ * true of "Rebecca Yarros" and of "Fourth Wing", so it sent a large class of
+ * English titles to the author search.
+ *
+ * Evidence accepted, in order of how much it actually knows:
+ *   1. The offline catalog recognizes the string as a title, a series name, or
+ *      an author. This is knowledge, not inference, so it wins outright.
+ *   2. An initial: "J.K.", "J.", or a bare "J" between two words. Titles do not
+ *      contain initials; names do.
+ *   3. A nobiliary particle joining name parts: "de", "van", "von", "le"...
+ *   4. The first word is a common given name. Titles draw on the open
+ *      vocabulary of the language, given names come from a closed set.
+ *
+ * What remains ambiguous is a title that IS a person's name — "Jane Eyre",
+ * "Circe", "Pilar". No rule settles those, because nothing in the string does;
+ * the search screen's title/author toggle exists for exactly this and starts
+ * from whatever this function returned.
  */
+
+/** Particles that join the parts of a personal name. */
+const NAME_PARTICLES = new Set([
+  "de", "del", "della", "di", "da", "dos", "das", "du", "van", "von", "der",
+  "den", "ter", "le", "la", "bin", "ibn", "al", "mac", "mc", "st",
+]);
+
+/** "J", "J.", "J.K." — an initial, in any of the ways people type one. */
+const INITIAL = /^[A-Za-z]\.?$|^[A-Za-z]\.[A-Za-z]\.?$/;
+
 export function detectQueryIntent(query: string): "author" | "general" {
-  const words = query.trim().split(/\s+/);
-
-  if (words.length === 0 || words.length > 3) return "general";
-  if (/\d/.test(query)) return "general";
-  if (TITLE_STARTERS.has(words[0]!.toLowerCase())) return "general";
-  if (/[&:—–,]/.test(query)) return "general";
-  if (isLikelyTitle(query)) return "general";
-
-  // A name part is:
-  //   - A word made of letters only (any case, including accented), optionally
-  //     with internal hyphens or apostrophes (O'Brien, García-Márquez)
-  //   - OR a single letter (initial without dot, e.g. "J" in Sarah J Maas)
-  //   - OR a dotted initial: "J." or "J.K."
-  const isNameLike = (w: string) =>
-    /^[A-Za-záéíóúñüàèìòùâêîôûãõÁÉÍÓÚÑÜÀÈÌÒÙÂÊÎÔÛÃÕ][A-Za-záéíóúñüàèìòùâêîôûãõÁÉÍÓÚÑÜÀÈÌÒÙÂÊÎÔÛÃÕ'-]*$/.test(w) ||
-    /^[A-Za-z]\.?$/.test(w) ||          // single initial: "J" or "J."
-    /^[A-Za-z]\.[A-Za-z]\.?$/.test(w);  // double initial: "J.K." or "J.K"
-
-  // Single-word special case: only flag as author if it looks like a proper
-  // noun (starts with a capital letter) and passes the name-like check.
-  // Lowercase single words ("dune") stay general.
-  // If inauthor: returns < 3 results for a word like "Dune", fallback 6b
-  // automatically retries with intitle: so title searches are not broken.
-  if (words.length === 1) {
-    const w = words[0]!;
-    const isProperNoun = /^[A-ZÁÉÍÓÚÑÜÀÈÌÒÙÂÊÎÔÛÃÕ]/.test(w);
-    const intent = isProperNoun && isNameLike(w) ? "author" : "general";
-    if (__DEV__) console.log(`[QUERY_CLASSIFIER] query="${query}" intent=${intent} (single-word)`);
+  const raw = query.trim();
+  const words = raw.split(/\s+/).filter(Boolean);
+  const say = (intent: "author" | "general", why: string) => {
+    if (__DEV__) console.log(`[QUERY_CLASSIFIER] query="${raw}" intent=${intent} (${why})`);
     return intent;
-  }
+  };
 
-  const intent = words.every(isNameLike) ? "author" : "general";
-  if (__DEV__) console.log(`[QUERY_CLASSIFIER] query="${query}" intent=${intent}`);
-  return intent;
+  if (words.length === 0) return say("general", "empty");
+
+  // ── 1. What the catalog knows beats anything we could infer ───────────────
+  if (knownLookupByTitle(raw)) return say("general", "known title");
+  if (isKnownSeriesName(raw)) return say("general", "known series");
+  if (isKnownAuthorName(raw)) return say("author", "known author");
+
+  // ── 2. Shapes that cannot be a plain personal name ────────────────────────
+  if (words.length > 3) return say("general", "too long for a name");
+  if (/\d/.test(raw)) return say("general", "contains digits");
+  if (/[&:—–,]/.test(raw)) return say("general", "subtitle punctuation");
+  if (TITLE_STARTERS.has(words[0]!.toLowerCase())) return say("general", "starts with an article");
+  if (isLikelyTitle(raw)) return say("general", "contains a non-name word");
+
+  /**
+   * One word is never enough. "Dune", "It", "Circe" and "Sanderson" are the
+   * same shape, and only the general search survives being wrong about which
+   * it is. A one-word author query still finds its author.
+   */
+  if (words.length === 1) return say("general", "single word");
+
+  // ── 3. Positive evidence of a person ──────────────────────────────────────
+  const isNamePart = (w: string) =>
+    /^[A-Za-záéíóúñüàèìòùâêîôûãõÁÉÍÓÚÑÜÀÈÌÒÙÂÊÎÔÛÃÕ][A-Za-záéíóúñüàèìòùâêîôûãõÁÉÍÓÚÑÜÀÈÌÒÙÂÊÎÔÛÃÕ'-]*$/.test(w) ||
+    INITIAL.test(w);
+
+  if (!words.every(isNamePart)) return say("general", "not all words are name-shaped");
+
+  if (words.some((w) => INITIAL.test(w))) return say("author", "contains an initial");
+  if (words.slice(1).some((w) => NAME_PARTICLES.has(w.toLowerCase())))
+    return say("author", "contains a name particle");
+  if (isGivenName(words[0]!)) return say("author", "starts with a given name");
+
+  return say("general", "no evidence of a person");
 }
 
 // ─── Deduplication ────────────────────────────────────────────────────────────
@@ -660,7 +695,9 @@ export async function lookupByIsbn(rawIsbn: string): Promise<WorkLookupResult> {
       let localizedResult: WorkLookupResult | null = null;
 
       for (const candidateTitle of titles) {
-        const attempt = await lookupByQuery(candidateTitle, knownMeta.author);
+        const attempt = await lookupByQuery(candidateTitle, knownMeta.author, "auto", {
+          expandTranslations: false,
+        });
         if (!attempt.work) continue;
         firstResult ??= attempt;
         if (
@@ -857,6 +894,19 @@ export async function lookupByQuery(
      * before showing one.
      */
     language?: string;
+    /**
+     * Whether a recognized translated title may also search its original
+     * title — "Alas de sangre" also querying "Fourth Wing".
+     *
+     * On by default, because for a reader typing a title it widens a thin
+     * result set with the same work. The ISBN fallback turns it OFF: it has
+     * already decided, from the barcode's registration group, which language
+     * this edition is, and is walking the localized title variants in order
+     * on purpose. Pulling the English original back in would hand back the
+     * English edition for a Spanish barcode — the exact outcome that path
+     * exists to avoid.
+     */
+    expandTranslations?: boolean;
   } = {}
 ): Promise<WorkLookupResult> {
 
@@ -881,7 +931,7 @@ export async function lookupByQuery(
   // For known translated titles, also search the canonical English title in
   // parallel (tagged BUCKET_TRANSLATION so it sorts after the primary results).
   let extraTitle: string | null = null;
-  if (resolvedMode === "title") {
+  if (resolvedMode === "title" && options.expandTranslations !== false) {
     extraTitle = getOriginalTitle(title); // e.g. "Fourth Wing" for "Alas de sangre"
     const knownMeta = knownLookupByTitle(title);
     if (knownMeta && !author) author = knownMeta.author;
