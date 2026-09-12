@@ -1,24 +1,29 @@
 {
   "cli": {
-    "version": ">= 19.1.0"
+    "version": ">= 19.1.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "environment": "development"
     },
     "preview": {
       "distribution": "internal",
       "ios": {
         "image": "macos-sequoia-15.6-xcode-26.2"
-      }
+      },
+      "environment": "preview"
     },
     "production": {
       "distribution": "store",
       "ios": {
         "image": "macos-sequoia-15.6-xcode-26.2",
         "resourceClass": "m-medium"
-      }
+      },
+      "environment": "production",
+      "autoIncrement": true
     }
   },
   "submit": {
