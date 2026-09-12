@@ -3,6 +3,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../navigation/types";
 import { colors, fonts, radii, spacing } from "../../theme/theme";
+import { useI18n } from "../../i18n/LocalizationContext";
 
 const booklizLogo = require("../../../assets/brand/bookliz-onboarding-glow.png");
 
@@ -26,6 +27,7 @@ function StepDots({ current }: { current: number }) {
 
 export function OnboardingWelcomeScreen() {
   const navigation = useNavigation<Nav>();
+  const { t } = useI18n();
 
   return (
     <View style={styles.root}>
@@ -62,7 +64,7 @@ export function OnboardingWelcomeScreen() {
           onPress={() => navigation.navigate("OnboardingName")}
           activeOpacity={0.85}
         >
-          <Text style={styles.ctaText}>Get Started</Text>
+          <Text style={styles.ctaText}>{t("onboarding.getStarted")}</Text>
         </TouchableOpacity>
       </View>
     </View>

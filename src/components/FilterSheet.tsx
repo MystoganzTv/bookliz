@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AppColors, colors, fonts, radii, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
+import { useI18n } from "../i18n/LocalizationContext";
 
 // ── Format groups ────────────────────────────────────────────────────────────
 export const FORMAT_GROUPS = [
@@ -89,6 +90,7 @@ type Props = {
 export function FilterSheet({ open, filters, resultCount, onApply, onClose }: Props) {
   const c = useColors();
   const styles = useMemo(() => createStyles(c), [c]);
+  const { t } = useI18n();
 
   const [localFormats,   setLocalFormats]   = useState<Set<FormatKey>>(new Set(filters.formats));
   const [localLanguages, setLocalLanguages] = useState<Set<LanguageKey>>(new Set(filters.languages));
@@ -138,12 +140,12 @@ export function FilterSheet({ open, filters, resultCount, onApply, onClose }: Pr
         <Pressable accessibilityRole="button" style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={styles.sheet}>
           <View style={styles.handle} />
-          <Text style={styles.sheetTitle}>Filter by</Text>
+          <Text style={styles.sheetTitle}>{t("filters.filterBy")}</Text>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
             {/* ── Format ── */}
-            <Text style={styles.sectionLabel}>Format</Text>
+            <Text style={styles.sectionLabel}>{t("filters.format")}</Text>
             <View style={styles.chipRow}>
               {FORMAT_GROUPS.map((fg) => {
                 const active = localFormats.has(fg.key);
@@ -167,7 +169,7 @@ export function FilterSheet({ open, filters, resultCount, onApply, onClose }: Pr
             </View>
 
             {/* ── Language ── */}
-            <Text style={styles.sectionLabel}>Language</Text>
+            <Text style={styles.sectionLabel}>{t("filters.language")}</Text>
             <View style={styles.chipRow}>
               {LANGUAGE_OPTIONS.map((lang) => {
                 const active = localLanguages.has(lang.key);
@@ -187,7 +189,7 @@ export function FilterSheet({ open, filters, resultCount, onApply, onClose }: Pr
             </View>
 
             {/* ── Sort ── */}
-            <Text style={styles.sectionLabel}>Sort by</Text>
+            <Text style={styles.sectionLabel}>{t("filters.sortBy")}</Text>
             <View style={styles.chipRow}>
               {SORT_OPTIONS.map((opt) => {
                 const active = localSort === opt.key;
@@ -212,7 +214,7 @@ export function FilterSheet({ open, filters, resultCount, onApply, onClose }: Pr
           {/* ── Footer ── */}
           <View style={styles.footer}>
             <Pressable accessibilityRole="button" style={styles.clearBtn} onPress={handleClear}>
-              <Text style={styles.clearText}>Clear filters</Text>
+              <Text style={styles.clearText}>{t("filters.clear")}</Text>
             </Pressable>
             <Pressable accessibilityRole="button" style={styles.applyBtn} onPress={handleApply}>
               <Text style={styles.applyText}>Show {resultCount} results</Text>

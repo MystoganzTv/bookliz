@@ -12,6 +12,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../navigation/types";
 import { useBookliz } from "../../data/BooklizContext";
 import { colors, fonts, radii, spacing } from "../../theme/theme";
+import { useI18n } from "../../i18n/LocalizationContext";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "OnboardingGenres">;
 type Route = RouteProp<RootStackParamList, "OnboardingGenres">;
@@ -47,6 +48,7 @@ export function OnboardingGenresScreen() {
   const route = useRoute<Route>();
   const { completeOnboarding } = useBookliz();
   const { name } = route.params;
+  const { t } = useI18n();
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -89,7 +91,7 @@ export function OnboardingGenresScreen() {
           <Image source={onboardingLogo} style={styles.logo} resizeMode="contain" />
         </View>
 
-        <Text style={styles.eyebrow}>Your taste</Text>
+        <Text style={styles.eyebrow}>{t("onboarding.yourTaste")}</Text>
         <Text style={styles.heading}>
           Nice to meet you,{"\n"}
           <Text style={styles.nameHighlight}>{name}.</Text>

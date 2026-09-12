@@ -149,6 +149,7 @@ export function CompactLanguageModal({
   const c = useColors();
   const { isDark } = useTheme();
   const [custom, setCustom] = useState("");
+  const { t } = useI18n();
 
   // Build prioritized list: user's preferred languages first, then defaults, deduped
   const prioritized = Array.from(new Set([
@@ -161,7 +162,7 @@ export function CompactLanguageModal({
       <Pressable accessibilityRole="button" style={styles_modal.backdrop} onPress={onClose} />
       <View style={[styles_modal.sheet, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
         <View style={styles_modal.handle} />
-        <Text style={[styles_modal.title, { color: isDark ? "#F1F5F9" : "#0F172A" }]}>Language</Text>
+        <Text style={[styles_modal.title, { color: isDark ? "#F1F5F9" : "#0F172A" }]}>{t("scan.language")}</Text>
         <ScrollView style={styles_modal.list} showsVerticalScrollIndicator={false}>
           {prioritized.map((lang) => (
             <Pressable accessibilityRole="button"
@@ -190,7 +191,7 @@ export function CompactLanguageModal({
           ))}
           <View style={styles_modal.divider} />
           <TextInput
-            placeholder="Other language…"
+            placeholder={t("scan.otherLanguage")}
             placeholderTextColor="#94A3B8"
             style={[styles_modal.customInput, { color: isDark ? "#F1F5F9" : "#0F172A", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
             value={custom}
@@ -247,13 +248,14 @@ export function EditionPickerModal({
   const isSelected = (o: BookEditionOption) =>
     Boolean((selectedEditionKey && o.editionKey === selectedEditionKey) ||
       (selectedIsbn && o.isbn && o.isbn === selectedIsbn));
+  const { t } = useI18n();
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable accessibilityRole="button" style={styles_modal.backdrop} onPress={onClose} />
       <View style={[styles_modal.sheet, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
         <View style={styles_modal.handle} />
-        <Text style={[styles_modal.title, { color: isDark ? "#F1F5F9" : "#0F172A" }]}>Choose edition</Text>
+        <Text style={[styles_modal.title, { color: isDark ? "#F1F5F9" : "#0F172A" }]}>{t("scan.chooseEdition")}</Text>
         {loading ? (
           <View style={{ alignItems: "center", paddingVertical: 32 }}>
             <ActivityIndicator size="small" color="#14B8A6" />

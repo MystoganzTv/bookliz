@@ -1008,21 +1008,21 @@ export function BookIntakeScreen() {
 
         {showEditDetails ? (
           <>
-            <Field label="Title" value={reviewBook.title} onChangeText={(title) => updateReviewBook({ title })} />
-            <Field label="Author" value={reviewBook.authorName} onChangeText={(authorName) => updateReviewBook({ authorName })} />
+            <Field label={t("addBook.fieldTitle")} value={reviewBook.title} onChangeText={(title) => updateReviewBook({ title })} />
+            <Field label={t("addBook.fieldAuthor")} value={reviewBook.authorName} onChangeText={(authorName) => updateReviewBook({ authorName })} />
             <Field
-              label="Genres"
+              label={t("addBook.fieldGenres")}
               value={reviewBook.genre?.join(", ") ?? ""}
               onChangeText={(value) => updateReviewBook({ genre: splitList(value) })}
-              hint="Separate genres with commas"
+              hint={t("addBook.fieldGenresHint")}
             />
             <Field
-              label="Pages"
+              label={t("addBook.fieldPages")}
               keyboardType="number-pad"
               value={reviewBook.pages ? String(reviewBook.pages) : ""}
               onChangeText={(value) => updateReviewBook({ pages: Number(value) || undefined })}
             />
-            <Field label="Synopsis" value={reviewBook.synopsis ?? ""} onChangeText={(synopsis) => updateReviewBook({ synopsis })} multiline />
+            <Field label={t("addBook.fieldSynopsis")} value={reviewBook.synopsis ?? ""} onChangeText={(synopsis) => updateReviewBook({ synopsis })} multiline />
           </>
         ) : null}
 
@@ -1392,7 +1392,7 @@ export function BookIntakeScreen() {
           <Pressable accessibilityRole="button" style={styles.sortSheetOverlay} onPress={() => setShowSortSheet(false)}>
             <Pressable accessibilityRole="button" style={styles.sortSheet} onPress={(e) => e.stopPropagation()}>
               <View style={styles.sortSheetHandle} />
-              <Text style={styles.sortSheetTitle}>Sort by</Text>
+              <Text style={styles.sortSheetTitle}>{t("search.sortBy")}</Text>
               {(["relevance", "popular", "rating", "year_desc", "year_asc"] as const).map((option) => (
                 <Pressable accessibilityRole="button"
                   key={option}
@@ -1431,19 +1431,19 @@ export function BookIntakeScreen() {
             {dialogNode}
             <Pressable accessibilityRole="button" style={styles.backButton} onPress={() => setIsbnInputMode("camera")}>
               <Ionicons name="chevron-back" size={20} color={c.tealDark} />
-              <Text style={styles.backButtonText}>Scanner</Text>
+              <Text style={styles.backButtonText}>{t("scan.backToScanner")}</Text>
             </Pressable>
             <View style={styles.pageHeader}>
-              <Text style={styles.pageEyebrow}>Enter ISBN</Text>
-              <Text style={styles.pageTitle}>Type or paste ISBN</Text>
+              <Text style={styles.pageEyebrow}>{t("scan.enterIsbnEyebrow")}</Text>
+              <Text style={styles.pageTitle}>{t("scan.enterIsbnTitle")}</Text>
             </View>
             <Text style={[styles.cardCopy, { marginBottom: spacing.md }]}>
-              Find it on the back cover, above the barcode — 13 digits starting with 978 or 979.
+              {t("scan.enterIsbnHelp")}
             </Text>
             <TextInput
               autoFocus
               keyboardType="number-pad"
-              placeholder="9780756404741"
+              placeholder={t("scan.isbnPlaceholder")}
               placeholderTextColor={c.gray}
               style={[styles.input, { fontSize: 20, letterSpacing: 2, textAlign: "center", paddingVertical: 18 }]}
               value={manual.isbn}
@@ -1472,7 +1472,7 @@ export function BookIntakeScreen() {
             >
               {isBusy
                 ? <ActivityIndicator size="small" color="#fff" />
-                : <Text style={styles.primaryButtonText}>Search by ISBN</Text>
+                : <Text style={styles.primaryButtonText}>{t("scan.searchByIsbn")}</Text>
               }
             </Pressable>
           </Screen>
@@ -1491,15 +1491,15 @@ export function BookIntakeScreen() {
           onPress={() => leaveScanner("menu")}
         >
           <Ionicons name="chevron-back" size={22} color="#fff" />
-          <Text style={styles.scannerBackText}>Back</Text>
+          <Text style={styles.scannerBackText}>{t("scan.back")}</Text>
         </Pressable>
 
         {!permission?.granted ? (
           <View style={[styles.permissionCard, { margin: spacing.md, marginTop: 80 }]}>
-            <Text style={styles.cardTitle}>Camera access needed</Text>
-            <Text style={styles.cardCopy}>Allow camera access to scan ISBN barcodes.</Text>
+            <Text style={styles.cardTitle}>{t("scan.cameraNeededTitle")}</Text>
+            <Text style={styles.cardCopy}>{t("scan.cameraNeededBody")}</Text>
             <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={requestPermission}>
-              <Text style={styles.primaryButtonText}>Allow camera</Text>
+              <Text style={styles.primaryButtonText}>{t("scan.allowCamera")}</Text>
             </Pressable>
           </View>
         ) : (
@@ -1545,7 +1545,7 @@ export function BookIntakeScreen() {
           </View>
         ) : scanQueue.length === 0 ? (
           <View style={styles.scanHintBadge}>
-            <Text style={styles.scanHintText}>Point at the barcode on the back cover</Text>
+            <Text style={styles.scanHintText}>{t("scan.pointAtBarcode")}</Text>
           </View>
         ) : null}
 
@@ -1630,22 +1630,22 @@ export function BookIntakeScreen() {
         {dialogNode}
         <Pressable accessibilityRole="button" style={styles.backButton} onPress={() => setMode("menu")}>
           <Ionicons name="chevron-back" size={20} color={c.tealDark} />
-          <Text style={styles.backButtonText}>Add book</Text>
+          <Text style={styles.backButtonText}>{t("addBook.eyebrow")}</Text>
         </Pressable>
         <View style={styles.pageHeader}>
           <Text style={styles.pageEyebrow}>{t("addBook.manual")}</Text>
           <Text style={styles.pageTitle}>{t("addBook.manual")}</Text>
         </View>
 
-        <Field label="Title" value={manual.title} onChangeText={(v) => setManual((c) => ({ ...c, title: v }))} />
-        <Field label="Author" value={manual.authorName} onChangeText={(v) => setManual((c) => ({ ...c, authorName: v }))} />
-        <Field label="Pages" keyboardType="number-pad" value={manual.pages} onChangeText={(v) => setManual((c) => ({ ...c, pages: v }))} />
-        <Field label="Genre(s), comma separated" value={manual.genre} onChangeText={(v) => setManual((c) => ({ ...c, genre: v }))} />
-        <Field label="Publisher" value={manual.publisher} onChangeText={(v) => setManual((c) => ({ ...c, publisher: v }))} />
-        <Field label="ISBN (optional)" value={manual.isbn} onChangeText={(v) => setManual((c) => ({ ...c, isbn: v }))} />
+        <Field label={t("addBook.fieldTitle")} value={manual.title} onChangeText={(v) => setManual((c) => ({ ...c, title: v }))} />
+        <Field label={t("addBook.fieldAuthor")} value={manual.authorName} onChangeText={(v) => setManual((c) => ({ ...c, authorName: v }))} />
+        <Field label={t("addBook.fieldPages")} keyboardType="number-pad" value={manual.pages} onChangeText={(v) => setManual((c) => ({ ...c, pages: v }))} />
+        <Field label={t("addBook.fieldGenresList")} value={manual.genre} onChangeText={(v) => setManual((c) => ({ ...c, genre: v }))} />
+        <Field label={t("addBook.fieldPublisher")} value={manual.publisher} onChangeText={(v) => setManual((c) => ({ ...c, publisher: v }))} />
+        <Field label={t("addBook.fieldIsbnOptional")} value={manual.isbn} onChangeText={(v) => setManual((c) => ({ ...c, isbn: v }))} />
 
         <Pressable accessibilityRole="button" style={styles.saveButton} onPress={saveManual}>
-          <Text style={styles.saveButtonText}>Review book</Text>
+          <Text style={styles.saveButtonText}>{t("addBook.reviewBook")}</Text>
         </Pressable>
       </Screen>
     );
@@ -1659,7 +1659,7 @@ export function BookIntakeScreen() {
         {!launchedFromDiscover ? (
           <Pressable accessibilityRole="button" style={styles.backButton} onPress={() => setMode("menu")}>
             <Ionicons name="chevron-back" size={20} color={c.tealDark} />
-            <Text style={styles.backButtonText}>Add book</Text>
+            <Text style={styles.backButtonText}>{t("addBook.eyebrow")}</Text>
           </Pressable>
         ) : null}
 
@@ -1671,7 +1671,7 @@ export function BookIntakeScreen() {
         <View style={styles.searchRow}>
           <TextInput
             autoFocus
-            placeholder="Fourth Wing, Rebecca Yarros, Red Rising..."
+            placeholder={t("search.searchPlaceholder")}
             placeholderTextColor={c.gray}
             style={styles.searchInput}
             value={searchQuery}
@@ -1700,7 +1700,7 @@ export function BookIntakeScreen() {
               <Text style={styles.searchHelperTitle}>{t("search.helperTitle")}</Text>
               <Text style={styles.searchHelperText}>{t("search.helperBody")}</Text>
               <Text style={styles.searchHelperExamples}>
-                {t("search.helperTry")} <Text style={styles.searchHelperExamplesStrong}>Fourth Wing</Text>, <Text style={styles.searchHelperExamplesStrong}>Rebecca Yarros</Text>, <Text style={styles.searchHelperExamplesStrong}>Red Rising</Text>
+                {t("search.helperTry")} <Text style={styles.searchHelperExamplesStrong}>{t("search.helperExamples")}</Text>
               </Text>
             </View>
           </View>
@@ -1760,7 +1760,7 @@ export function BookIntakeScreen() {
       {isAnalyzingPhoto ? (
         <View style={styles.photoBusyCard}>
           <ActivityIndicator size="small" color={c.tealDark} />
-          <Text style={styles.photoBusyText}>Inspecting photo for ISBN and book clues…</Text>
+          <Text style={styles.photoBusyText}>{t("scan.inspectingPhoto")}</Text>
         </View>
       ) : null}
 

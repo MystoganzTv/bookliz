@@ -13,6 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../navigation/types";
 import { colors, fonts, radii, spacing } from "../../theme/theme";
+import { useI18n } from "../../i18n/LocalizationContext";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "OnboardingName">;
 const onboardingLogo = require("../../../assets/brand/bookliz-onboarding-glow.png");
@@ -31,6 +32,7 @@ export function OnboardingNameScreen() {
   const navigation = useNavigation<Nav>();
   const [name, setName] = useState("");
   const inputRef = useRef<TextInput>(null);
+  const { t } = useI18n();
 
   const canContinue = name.trim().length > 0;
 
@@ -59,7 +61,7 @@ export function OnboardingNameScreen() {
         </View>
 
         {/* Eyebrow */}
-        <Text style={styles.eyebrow}>Your identity</Text>
+        <Text style={styles.eyebrow}>{t("onboarding.yourIdentity")}</Text>
 
         {/* Heading */}
         <Text style={styles.heading}>What should{"\n"}we call you?</Text>
@@ -74,7 +76,7 @@ export function OnboardingNameScreen() {
             style={styles.input}
             value={name}
             onChangeText={setName}
-            placeholder="Your name…"
+            placeholder={t("onboarding.namePlaceholder")}
             placeholderTextColor="rgba(255,255,255,0.30)"
             autoCapitalize="words"
             autoFocus
@@ -99,7 +101,7 @@ export function OnboardingNameScreen() {
             </View>
             <View>
               <Text style={styles.previewName}>{name.trim()}</Text>
-              <Text style={styles.previewMeta}>Reader · Bookliz</Text>
+              <Text style={styles.previewMeta}>{t("onboarding.readerBadge")}</Text>
             </View>
           </View>
         )}
