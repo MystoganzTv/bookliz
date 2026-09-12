@@ -99,14 +99,6 @@ export function OnboardingGenresScreen() {
         <Text style={styles.sub}>
           Pick the genres you love — we'll shape your library around them.
         </Text>
-
-        {selected.size > 0 && (
-          <View style={styles.countRow}>
-            <View style={styles.countPill}>
-              <Text style={styles.countText}>{selected.size} selected</Text>
-            </View>
-          </View>
-        )}
       </View>
 
       {/* Genre grid — scrollable */}
@@ -269,25 +261,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginBottom: spacing.sm
-  },
-  countRow: {
-    flexDirection: "row",
-    marginBottom: spacing.xs
-  },
-  countPill: {
-    backgroundColor: "rgba(255,200,87,0.18)",
-    borderColor: "rgba(255,200,87,0.35)",
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 4
-  },
-  countText: {
-    color: colors.gold,
-    fontFamily: fonts.body,
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 0.5
   },
   scroll: {
     flex: 1,
