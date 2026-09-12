@@ -8,6 +8,7 @@ import { RootStackParamList } from "../navigation/types";
 import { GoogleConnectionCard } from "../components/GoogleConnectionCard";
 import { Screen } from "../components/Screen";
 import { useBookliz } from "../data/BooklizContext";
+import { findContradictedLanguages } from "../data/languageRepair";
 import { useI18n } from "../i18n/LocalizationContext";
 import { useTheme } from "../theme/ThemeContext";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
@@ -27,6 +28,7 @@ export function SettingsScreen() {
     userProfile,
     books,
     readingSessions,
+    clearBookLanguages,
     conflictBackup,
     restoreConflictBackup,
     discardConflictBackup,
@@ -51,6 +53,12 @@ export function SettingsScreen() {
 
   const themeTitle = isDark ? t("settings.themeDarkTitle") : t("settings.themeLightTitle");
   const themeBody = isDark ? t("settings.themeDarkBody") : t("settings.themeLightBody");
+
+  // ── Books the old "default to English" left mislabelled ─────────────────
+  // Evidence-based and memoised: only books whose ISBN registration group
+  // disagrees with what is stored. See src/data/languageRepair.ts for why the
+  // repair clears the value instead of writing the implied one.
+  const languageSuspects = useMemo(() => findContradictedLanguages(books), [books]);
 
   // ── Recovered copy (a snapshot a sync conflict had to set aside) ─────────
   const backupDate = conflictBackup ? formatBackupDate(conflictBackup.backedUpAt, locale) : "";
@@ -242,6 +250,48 @@ export function SettingsScreen() {
           <Ionicons name="chevron-forward" size={14} color={c.muted} />
         </Pressable>
       </View>
+
+      {/* ── Mislabelled languages ─────────────────────────────────────────
+          Only rendered when there is actual evidence. Clearing is the repair:
+          the ISBN group proves the stored value is doubtful, not what the
+          right answer is. */}
+      {languageSuspects.length > 0 ? (
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionIconWrap}>
+              <Ionicons name="language-outline" size={18} color={c.tealDark} />
+            </View>
+            <View style={styles.sectionCopy}>
+              <Text style={styles.sectionTitle}>{t("languageRepair.title")}</Text>
+              <Text style={styles.sectionBody}>{t("languageRepair.body")}</Text>
+            </View>
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            style={styles.settingRow}
+            onPress={() =>
+              dialog.confirm({
+                title: t("languageRepair.confirmTitle"),
+                body: t("languageRepair.confirmBody", {
+                  count: languageSuspects.length,
+                  titles: languageSuspects.slice(0, 3).map((s) => s.title).join(", "),
+                }),
+                confirmLabel: t("languageRepair.confirmAction"),
+                onConfirm: () => clearBookLanguages(languageSuspects.map((s) => s.bookId)),
+              })
+            }
+          >
+            <View style={styles.settingCopy}>
+              <Text style={styles.settingTitle}>{t("languageRepair.action")}</Text>
+              <Text style={styles.settingSub}>
+                {t("languageRepair.summary", { count: languageSuspects.length })}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={14} color={c.muted} />
+          </Pressable>
+        </View>
+      ) : null}
 
       {/* ── Recovered copy ────────────────────────────────────────────────
           Only rendered when a snapshot is actually parked. Sync conflicts are

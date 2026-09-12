@@ -427,6 +427,15 @@ export const translations: Record<AppLocale, TranslationTree> = {
       "pace.medium": "Steady reading sessions",
       "pace.long": "Long, immersive reading sessions",
     },
+    languageRepair: {
+      title: "Books labelled with the wrong language",
+      body: "Older versions filed a book as English whenever nobody had established its language. These ones have an ISBN that says otherwise.",
+      action: "Set their language back to unknown",
+      summary: "{count} books affected",
+      confirmTitle: "Clear the language on {count} books?",
+      confirmBody: "Their ISBN disagrees with what is stored — for example {titles}. Bookliz will mark the language unknown rather than guess a new one, and fill it in properly the next time you refresh their metadata. Nothing else about the books changes.",
+      confirmAction: "Clear the language",
+    },
     legal: {
       privacyTitle: "Privacy Policy",
       termsTitle: "Terms of Use",
@@ -1363,6 +1372,15 @@ export const translations: Record<AppLocale, TranslationTree> = {
       "pace.short": "Sesiones cortas y frecuentes",
       "pace.medium": "Sesiones de lectura constantes",
       "pace.long": "Sesiones largas e inmersivas",
+    },
+    languageRepair: {
+      title: "Libros con el idioma equivocado",
+      body: "Versiones anteriores marcaban un libro como inglés siempre que nadie había establecido su idioma. Estos tienen un ISBN que dice lo contrario.",
+      action: "Dejar su idioma como desconocido",
+      summary: "{count} libros afectados",
+      confirmTitle: "¿Quitar el idioma a {count} libros?",
+      confirmBody: "Su ISBN no coincide con lo que hay guardado — por ejemplo {titles}. Bookliz marcará el idioma como desconocido en vez de adivinar otro, y lo rellenará bien la próxima vez que actualices su metadata. No cambia nada más de los libros.",
+      confirmAction: "Quitar el idioma",
     },
     legal: {
       privacyTitle: "Política de privacidad",

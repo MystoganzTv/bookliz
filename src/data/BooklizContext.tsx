@@ -159,6 +159,13 @@ type BooklizContextValue = {
   deleteBook: (bookId: string) => void;
   updateBook: (bookId: string, input: UpdateBookInput) => void;
   updateBookStatus: (bookId: string, status: CoreTrackingStatus, rating?: number, owned?: boolean) => void;
+  /**
+   * Clears the stored language on the given books, setting it back to unknown.
+   * Used by the repair in Settings for rows the old "default to English"
+   * behaviour mislabelled; see src/data/languageRepair.ts for why this clears
+   * rather than writing a corrected language.
+   */
+  clearBookLanguages: (bookIds: readonly string[]) => void;
   updateBookFormat: (bookId: string, format: Book["format"]) => void;
   updateBookSynopsis: (bookId: string, synopsis: string) => void;
   updateUserProfile: (input: UpdateUserProfileInput) => void;
@@ -1528,6 +1535,18 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       setBooks((current) => current.map((b) => (b.id === bookId ? { ...b, synopsis } : b)));
     };
 
+    const clearBookLanguages = (bookIds: readonly string[]) => {
+      if (bookIds.length === 0) return;
+      const targets = new Set(bookIds);
+      setBooks((current) =>
+        current.map((book) =>
+          targets.has(book.id)
+            ? { ...book, language: "", languageCode: undefined }
+            : book
+        )
+      );
+    };
+
     const updateBookStatus = (bookId: string, newStatus: CoreTrackingStatus, rating?: number, owned?: boolean) => {
       const today = localDateKey();
 
@@ -1986,6 +2005,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       deleteBook,
       updateBook,
       updateBookStatus,
+      clearBookLanguages,
       updateBookFormat,
       updateBookSynopsis,
       updateUserProfile,
