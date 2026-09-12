@@ -108,10 +108,10 @@
   <h2>3. Camera and photos</h2>
   <p>Bookliz asks for camera access to scan ISBN barcodes, and for photo library access so you can use a picture as a book cover.</p>
   <ul>
-    <li>Barcodes are decoded locally. Only the resulting ISBN — a number that identifies the edition, not you — is used for a metadata lookup.</li>
-    <li>Photos you choose are not uploaded when you use them as a cover. We store the file's location on your device, not the image itself. That means a cover taken from your own photo will not appear on another device.</li>
+    <li><strong>Scan ISBN</strong> stays on your device. The barcode is decoded locally and only the resulting ISBN &mdash; a number that identifies the edition, not you &mdash; is used for a metadata lookup. No image is sent anywhere.</li>
+    <li><strong>Take Photo and Import Photo do send the image.</strong> Both options in <em>Add a book</em> run the picture through text recognition: it is sent to our server and forwarded to <strong>Google Cloud Vision</strong>, which reads the text printed on it so the app can suggest a title and, when it is printed there, an ISBN. This applies equally to a photo you take and to one you pick from your photo library, so pick a picture of the book, not of something else.</li>
+    <li><strong>We do not keep the image.</strong> It is sent for that single recognition request, is not stored on our servers, and is not attached to your account or your library. The cover you end up with is stored as the file's location on your device, not as an uploaded image &mdash; which is why a cover made from your own photo does not appear on another device.</li>
   </ul>
-  <p><strong>Cover recognition.</strong> There is one case where an image does leave your device. If you add a book by photographing its cover, that single image is sent to our server and forwarded to <strong>Google Cloud Vision</strong>, which reads the text printed on it so the app can suggest a title and, when the ISBN is printed there, an ISBN. The image is sent for that one request only: we do not store it, and it is not attached to your account or your library on our servers. Scanning a barcode with <em>Scan ISBN</em> never sends an image anywhere &mdash; it is decoded on your device.</p>
 
   <h2>4. Book metadata lookups</h2>
   <p>To fill in titles, authors, covers, page counts and synopses, Bookliz queries two public catalogues: the <strong>Google Books API</strong> and <strong>Open Library</strong> (Internet Archive). What we send is the search text, title, author or ISBN you are looking up. We never send your email, your user ID, or anything about the rest of your library.</p>
