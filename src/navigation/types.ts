@@ -24,6 +24,8 @@ export type RootStackParamList = {
           language?: string;
           synopsis?: string;
           coverImageUri?: string;
+          /** Which shelf the reader picked before the book was even staged. */
+          shelf?: "library" | "wishlist";
         };
       }
     | undefined;

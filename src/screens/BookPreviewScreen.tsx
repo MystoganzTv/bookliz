@@ -87,10 +87,11 @@ export function BookPreviewScreen() {
     .filter((g, i, arr) => arr.indexOf(g) === i)
     .slice(0, 3);
 
-  const handleAdd = () => {
+  const handleAdd = (shelf: "library" | "wishlist") => {
     hapticMedium();
     navigation.navigate("BookIntake", {
       initialBookSelection: {
+        shelf,
         title: book.title,
         authorName,
         coAuthorNames: book.authors.slice(1),
@@ -221,10 +222,29 @@ export function BookPreviewScreen() {
             <Text style={styles.ctaText}>{t("bookPreview.openInLibrary")}</Text>
           </ScalePressable>
         ) : (
-          <ScalePressable accessibilityRole="button" pressScale={0.97} style={[styles.ctaBtn, { backgroundColor: c.teal }]} onPress={handleAdd}>
-            <Ionicons name="add-circle-outline" size={19} color="#fff" />
-            <Text style={styles.ctaText}>{t("bookPreview.addToLibrary")}</Text>
-          </ScalePressable>
+          /* Two shelves, two buttons. "Add" alone had to guess, and it always
+             guessed "I own this" — which is how a book you were only thinking
+             of buying ended up counted as one you had. */
+          <View style={styles.ctaRow}>
+            <ScalePressable
+              accessibilityRole="button"
+              pressScale={0.97}
+              style={[styles.ctaBtn, styles.ctaBtnSplit, { backgroundColor: c.teal }]}
+              onPress={() => handleAdd("library")}
+            >
+              <Ionicons name="library-outline" size={18} color="#fff" />
+              <Text style={styles.ctaText}>{t("bookPreview.addToLibrary")}</Text>
+            </ScalePressable>
+            <ScalePressable
+              accessibilityRole="button"
+              pressScale={0.97}
+              style={[styles.ctaBtn, styles.ctaBtnSplit, styles.ctaBtnSecondary]}
+              onPress={() => handleAdd("wishlist")}
+            >
+              <Ionicons name="bookmark-outline" size={18} color={c.tealDark} />
+              <Text style={[styles.ctaText, { color: c.tealDark }]}>{t("bookPreview.addToWishlist")}</Text>
+            </ScalePressable>
+          </View>
         )}
       </View>
     </View>
@@ -280,6 +300,13 @@ function createStyles(c: AppColors, isDark: boolean) {
       fontSize: 15,
       fontWeight: "700",
       marginTop: 6,
+    },
+    ctaRow: { flexDirection: "row", gap: spacing.sm },
+    ctaBtnSplit: { flex: 1, paddingHorizontal: spacing.sm },
+    ctaBtnSecondary: {
+      backgroundColor: isDark ? "rgba(20,184,166,0.16)" : "rgba(20,184,166,0.10)",
+      borderColor: c.teal + "44",
+      borderWidth: 1,
     },
     ratingRow: { alignItems: "center", flexDirection: "row", gap: 3, marginTop: spacing.sm },
     ratingValue: { color: c.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: "900", marginLeft: 6 },

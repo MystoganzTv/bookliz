@@ -14,9 +14,10 @@ import { RootStackParamList } from "../navigation/types";
 import { buildLibraryIndex } from "../services/recommendationEngine";
 import { AppColors, colors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useColors, useTheme } from "../theme/ThemeContext";
-import { NewBookInput, ReadingFormat } from "../types/models";
+import { CoreTrackingStatus, NewBookInput, ReadingFormat } from "../types/models";
 import { analyzeBookPhoto, getBookPhotoSupportSummary } from "../utils/bookPhotoIntake";
 import { isSameLanguage, languageDisplayName, PRIORITY_LANGUAGE_CODES } from "../utils/languageUtils";
+import { shelfFieldsFor } from "../data/shelfRules";
 import {
   applyEditionOptionToBookInput,
   BookEditionOption,
@@ -192,6 +193,8 @@ export function BookIntakeScreen() {
   const [languageFilter, setLanguageFilter] = useState<string | undefined>(undefined);
   const [showSortSheet, setShowSortSheet] = useState(false);
   const [showLanguageSheet, setShowLanguageSheet] = useState(false);
+  /** The book that just landed, while the rating prompt is up. */
+  const [justAdded, setJustAdded] = useState<{ id: string; title: string; status: CoreTrackingStatus } | null>(null);
   // Grid / list toggle for results
   const [matchViewMode, setMatchViewMode] = useState<"list" | "grid">("list");
   const isAuthorQuery = useMemo(
@@ -279,6 +282,7 @@ export function BookIntakeScreen() {
       ...input,
       synopsis: sanitizeSynopsis(input.synopsis),
     };
+    if (__DEV__ && draft.wishlist) console.log("[INTAKE] staged onto the wishlist");
     setReviewBook(draft);
     setReviewInsight(insight ?? null);
     setMode("review");
@@ -287,6 +291,14 @@ export function BookIntakeScreen() {
   const confirmAndOpen = (input: NewBookInput) => {
     const book = addBook(input);
     hapticSuccess(); // book landed in the library
+    // Offer a rating before leaving. Skippable on purpose: a book added to be
+    // read later has nothing to rate yet, and a prompt that cannot be waved
+    // away would collect stars that are not about having read anything.
+    setJustAdded({ id: book.id, title: book.title, status: book.userStatus.status });
+  };
+
+  const openAddedBook = (bookId: string) => {
+    setJustAdded(null);
     // Reset so back-press from BookDetail lands on Library, not the Add tab
     navigation.reset({
       index: 1,
@@ -304,7 +316,7 @@ export function BookIntakeScreen() {
             ]
           }
         },
-        { name: "BookDetail", params: { bookId: book.id } }
+        { name: "BookDetail", params: { bookId } }
       ]
     });
   };
@@ -323,12 +335,18 @@ export function BookIntakeScreen() {
     initialSearchRequestRef.current = requestKey;
 
     if (request.initialBookSelection) {
+      const { shelf, ...selection } = request.initialBookSelection;
+      // shelfRules owns the three flags; the screen only says which shelf.
+      const shelfFields = shelf === "wishlist"
+        ? shelfFieldsFor("wishlist")
+        : shelfFieldsFor("want-to-read", true);
       void stageBook(
         {
-          ...request.initialBookSelection,
+          ...selection,
+          ...shelfFields,
           source: "search",
         },
-        "Picked from Discover."
+        t(shelf === "wishlist" ? "search.stagedWishlist" : "search.stagedLibrary")
       );
       return;
     }
@@ -1490,6 +1508,46 @@ export function BookIntakeScreen() {
               ))}
             </Pressable>
           </Pressable>
+        </Modal>
+
+        {/* Rating prompt — the book is already saved; this only adds stars */}
+        <Modal
+          visible={Boolean(justAdded)}
+          transparent
+          animationType="fade"
+          onRequestClose={() => justAdded && openAddedBook(justAdded.id)}
+        >
+          <View style={styles.ratePromptOverlay}>
+            <View style={styles.ratePrompt}>
+              <Ionicons name="checkmark-circle" size={32} color={c.teal} />
+              <Text style={styles.ratePromptTitle}>{t("search.ratePromptTitle")}</Text>
+              <Text style={styles.ratePromptBody} numberOfLines={2}>{justAdded?.title}</Text>
+              <View style={styles.ratePromptStars}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Pressable
+                    key={star}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("search.rateStars", { count: star })}
+                    hitSlop={6}
+                    onPress={() => {
+                      if (!justAdded) return;
+                      updateBookStatus(justAdded.id, justAdded.status, star);
+                      openAddedBook(justAdded.id);
+                    }}
+                  >
+                    <Ionicons name="star-outline" size={32} color={c.gold} />
+                  </Pressable>
+                ))}
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                style={styles.ratePromptSkip}
+                onPress={() => justAdded && openAddedBook(justAdded.id)}
+              >
+                <Text style={styles.ratePromptSkipText}>{t("search.rateNotNow")}</Text>
+              </Pressable>
+            </View>
+          </View>
         </Modal>
 
         {/* Language bottom sheet */}

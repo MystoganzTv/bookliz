@@ -1512,7 +1512,11 @@ export function BooklizProvider({ children }: PropsWithChildren) {
         languageCode: input.languageCode ?? (input.language ? languageCode(input.language) : undefined),
         tags: input.tags ?? [],
           userStatus: {
-            status: "want-to-read",
+            // A book added to the wishlist is on the wishlist, not on the
+            // "want to read" shelf: the two shelves answer different questions
+            // ("do I have it?" vs "will I read it?") and shelfRules keeps them
+            // consistent from here on.
+            status: input.wishlist ? "wishlist" : "want-to-read",
             ownership: input.ownership ?? "owned",
             wishlist: input.wishlist ?? false,
             wantToBuy: input.wantToBuy ?? false,
