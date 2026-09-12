@@ -26,11 +26,6 @@
 const GOOGLE_BOOKS = "https://www.googleapis.com/books/v1/volumes";
 
 /**
- * Only these reach Google. An allowlist rather than a passthrough: forwarding
- * whatever arrives would let a caller aim the project's key at other parameters
- * (or other endpoints, via a crafted path) on our quota.
- */
-/**
  * Google's partial-response parameter, fixed here rather than accepted from
  * the caller.
  *
@@ -50,34 +45,35 @@ const GOOGLE_BOOKS = "https://www.googleapis.com/books/v1/volumes";
  * Direct mode (no proxy URL, i.e. development) is unaffected and still
  * receives the full payload.
  */
-const FIELDS = [
-  "kind",
-  "totalItems",
-  "items(id,volumeInfo(",
-  [
-    "title",
-    "subtitle",
-    "authors",
-    "publisher",
-    "publishedDate",
-    "description",
-    "industryIdentifiers",
-    "pageCount",
-    "categories",
-    "language",
-    "imageLinks",
-    "seriesInfo",
-    "printType",
-    "averageRating",
-    "ratingsCount",
-  ].join(","),
-  "))",
-].join("");
+const VOLUME_FIELDS = [
+  "title",
+  "subtitle",
+  "authors",
+  "publisher",
+  "publishedDate",
+  "description",
+  "industryIdentifiers",
+  "pageCount",
+  "categories",
+  "language",
+  "imageLinks",
+  "seriesInfo",
+  "printType",
+  "averageRating",
+  "ratingsCount",
+].join(",");
+
+const FIELDS = `kind,totalItems,items(id,volumeInfo(${VOLUME_FIELDS}))`;
 
 /** Google's own ceiling. Asking for more is silently truncated anyway, and a
  * client bug asking for 500 would still have cost a full round trip. */
 const MAX_RESULTS_CAP = 40;
 
+/**
+ * Only these reach Google. An allowlist rather than a passthrough: forwarding
+ * whatever arrives would let a caller aim the project's key at other parameters
+ * (or other endpoints, via a crafted path) on our quota.
+ */
 const ALLOWED_PARAMS = [
   "q",
   "maxResults",
