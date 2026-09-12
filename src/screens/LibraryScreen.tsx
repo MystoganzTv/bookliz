@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useScrollToTop } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useCallback, useDeferredValue, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
 import { FlatList, Image, Linking, ListRenderItem, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Badge } from "../components/Badge";
 import { BooklizDialog } from "../components/BooklizDialog";
@@ -366,10 +366,15 @@ export function LibraryScreen() {
     );
 
   const isGrid = viewMode === "grid";
+  // Library owns its scroll (a FlatList, not the Screen's ScrollView), so it
+  // has to register for the tap-the-active-tab-to-go-up behaviour itself.
+  const listRef = useRef<FlatList<Book>>(null);
+  useScrollToTop(listRef);
 
   return (
     <Screen scroll={false}>
       <FlatList
+        ref={listRef}
         /* numColumns cannot change on a mounted list — remounting on view mode
            switch is the supported way to flip between grid and rows. */
         key={viewMode}
