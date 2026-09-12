@@ -8,6 +8,7 @@ import {
   resolveBookMetadata
 } from "./bookMetadata";
 import { fetchWithTimeout } from "./fetchWithTimeout";
+import { languageDisplayName } from "./languageUtils";
 
 type VisionProviderResponse = {
   title?: string;
@@ -29,6 +30,7 @@ export type BookPhotoIntakeResult = {
 
 const BARCODE_TYPES: BarcodeType[] = ["ean13", "ean8", "upc_a", "upc_e"];
 const VISION_ENDPOINT = process.env.EXPO_PUBLIC_BOOKLIZ_VISION_ENDPOINT?.trim();
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
 
 export function getBookPhotoSupportSummary() {
   return {
@@ -82,12 +84,19 @@ export async function analyzeBookPhoto(input: {
 
   const providerResult = await scanWithVisionProvider(input);
   if (providerResult) {
+    // Vision reports a code ("es"); everywhere else in the app language is a
+    // display name. Normalise once here so the language lock compares like
+    // with like instead of failing open.
+    const providerLanguage = providerResult.language
+      ? languageDisplayName(providerResult.language)
+      : undefined;
+
     const metadata = await resolveBookMetadata({
       isbn: providerResult.isbn,
       title: providerResult.title,
       authorName: providerResult.authorName,
       // Lock enrichment to the language the provider read off the cover.
-      language: providerResult.language
+      language: providerLanguage
     });
 
     const providerDraft = {
@@ -97,7 +106,7 @@ export async function analyzeBookPhoto(input: {
       genre: providerResult.genre ?? ["Uncategorized"],
       publisher: providerResult.publisher,
       publishedDate: providerResult.publishedDate,
-      language: providerResult.language,
+      language: providerLanguage,
       synopsis: providerResult.synopsis,
       coverImageUri: input.uri,
       source: "photo" as const,
@@ -175,7 +184,13 @@ async function scanWithVisionProvider(input: {
     const response = await fetchWithTimeout(VISION_ENDPOINT, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        // Edge Functions verify a JWT by default. Sending the anon key keeps
+        // that on, so the endpoint is not an open relay for anyone who finds
+        // the URL and wants free OCR on our bill.
+        ...(SUPABASE_ANON_KEY
+          ? { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, apikey: SUPABASE_ANON_KEY }
+          : {}),
       },
       body: JSON.stringify({
         imageBase64: input.base64,
