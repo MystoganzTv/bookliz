@@ -66,11 +66,29 @@ export function AddReadingSessionScreen() {
   );
   const [pageInputOpen, setPageInputOpen] = useState(false);
   const [pageInputText, setPageInputText] = useState(String(editingSession?.endPage ?? lastPage));
-  const pagesRead = Math.max(0, currentPage - lastPage);
+  /**
+   * Where this session began.
+   *
+   * Normally the page after the last tracked one, which is right almost
+   * always and wrong in the cases that matter: an omnibus you are reading
+   * from page 100, a book you picked up in the middle, a session logged after
+   * reading somewhere the app never saw. Empty means "carry on from where the
+   * book was" — the old behaviour, unchanged.
+   */
+  const [startPageText, setStartPageText] = useState(
+    editingSession ? String(editingSession.startPage) : ""
+  );
+  const typedStart = parseInt(startPageText, 10);
+  const startPage = Number.isFinite(typedStart) && typedStart > 0
+    ? Math.min(totalPages, typedStart)
+    : lastPage + 1;
+  /** The last page NOT read in this session — the floor every control clamps to. */
+  const pageFloor = Math.max(0, startPage - 1);
+  const pagesRead = Math.max(0, currentPage - pageFloor);
   const progressPct = Math.min(100, Math.round((currentPage / totalPages) * 100));
 
   const nudgePage = (delta: number) => {
-    setCurrentPage((p) => Math.min(totalPages, Math.max(lastPage, p + delta)));
+    setCurrentPage((p) => Math.min(totalPages, Math.max(pageFloor, p + delta)));
   };
 
   // ── Audiobook mode ────────────────────────────────────────────────────
@@ -227,7 +245,7 @@ export function AddReadingSessionScreen() {
     const sessionInput: NewReadingSessionInput = {
       bookId,
       date: trimmedDate,
-      startPage: lastPage + 1,
+      startPage: startPage,
       endPage: currentPage,
       minutesRead: effectiveMinutes,
       location: effectiveLocation,
@@ -410,12 +428,12 @@ export function AddReadingSessionScreen() {
         <View style={styles.stepperCard}>
           <Text style={styles.stepperLabel}>{t("logSession.readUpTo")}</Text>
           <View style={styles.stepper}>
-            <Pressable accessibilityRole="button" style={styles.stepBtn} onPress={() => { nudgePage(-10); setPageInputText(String(Math.max(lastPage, currentPage - 10))); }}>
+            <Pressable accessibilityRole="button" style={styles.stepBtn} onPress={() => { nudgePage(-10); setPageInputText(String(Math.max(pageFloor, currentPage - 10))); }}>
               <Text style={[styles.stepBtnText, { color: c.ink }]}>−10</Text>
             </Pressable>
             <Pressable
               style={styles.stepBtnSm}
-              onPress={() => { nudgePage(-1); setPageInputText(String(Math.max(lastPage, currentPage - 1))); }}
+              onPress={() => { nudgePage(-1); setPageInputText(String(Math.max(pageFloor, currentPage - 1))); }}
               accessibilityRole="button"
               accessibilityLabel={t("a11y.decreasePage")}
             >
@@ -431,13 +449,13 @@ export function AddReadingSessionScreen() {
                   value={pageInputText}
                   onChangeText={setPageInputText}
                   onBlur={() => {
-                    const v = Math.min(totalPages, Math.max(lastPage, parseInt(pageInputText, 10) || lastPage));
+                    const v = Math.min(totalPages, Math.max(pageFloor, parseInt(pageInputText, 10) || pageFloor));
                     setCurrentPage(v);
                     setPageInputText(String(v));
                     setPageInputOpen(false);
                   }}
                   onSubmitEditing={() => {
-                    const v = Math.min(totalPages, Math.max(lastPage, parseInt(pageInputText, 10) || lastPage));
+                    const v = Math.min(totalPages, Math.max(pageFloor, parseInt(pageInputText, 10) || pageFloor));
                     setCurrentPage(v);
                     setPageInputText(String(v));
                     setPageInputOpen(false);
@@ -466,13 +484,27 @@ export function AddReadingSessionScreen() {
           {hasPageCount ? (
             <ValueSlider
               value={currentPage}
-              min={lastPage}
+              min={pageFloor}
               max={totalPages}
               accessibilityLabel={t("logSession.readUpTo")}
               onChange={(next) => { setCurrentPage(next); setPageInputText(String(next)); }}
             />
           ) : null}
           <Text style={styles.fieldHint}>{t("logSession.hintCurrentPage")}</Text>
+
+          {/* Optional start page — empty means "carry on from where the book was" */}
+          <View style={styles.startPageRow}>
+            <Text style={styles.startPageLabel}>{t("logSession.startPageLabel")}</Text>
+            <TextInput
+              keyboardType="number-pad"
+              placeholder={String(lastPage + 1)}
+              placeholderTextColor={c.gray}
+              style={[styles.customInput, styles.startPageInput]}
+              value={startPageText}
+              onChangeText={setStartPageText}
+            />
+          </View>
+          <Text style={styles.fieldHint}>{t("logSession.hintStartPage")}</Text>
           {pagesRead > 0 && (
             <Text style={styles.pagesReadPill}>+{pagesRead} {t("logSession.pagesFrom")}</Text>
           )}
@@ -863,6 +895,23 @@ function createStyles(c: AppColors, isDark: boolean) {
     fontSize: 12,
     lineHeight: 17,
     marginTop: spacing.sm
+  },
+  startPageRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.md
+  },
+  startPageLabel: {
+    color: c.muted,
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  startPageInput: {
+    minWidth: 96,
+    textAlign: "center"
   },
   pageCountHint: {
     color: c.coral,
