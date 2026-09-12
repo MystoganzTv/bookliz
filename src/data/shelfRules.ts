@@ -80,3 +80,32 @@ export function isOnWishlist(userStatus: { ownership?: OwnershipStatus; wishlist
 export function wantsToBuy(userStatus: { ownership?: OwnershipStatus; wantToBuy?: boolean }): boolean {
   return userStatus.ownership !== "owned" && Boolean(userStatus.wantToBuy);
 }
+
+/**
+ * Should this book's cover render grey — "you don't have a copy of this yet"?
+ *
+ * The covers used to ask the reading status and nothing else: `want-to-read`,
+ * `wishlist`, `want-to-buy` and `upcoming-release` were all drawn grey. That is
+ * the same mistake BookDetail made with its "Get on Amazon" button — deriving
+ * "you do not have this" from a field that never says so. A book you own and
+ * have not started is `want-to-read`, so it sat greyed out on the shelf beside
+ * the ones still to buy, and the reader read the grey as "the app thinks I
+ * don't own this".
+ *
+ * Ownership decides, exactly as in {@link wantsToAcquire}. `read`, `reading`
+ * and `dnf` are never grey: you had the book in hand to get that far.
+ */
+const AWAITING_COPY_STATUSES: CoreTrackingStatus[] = [
+  "want-to-read",
+  "wishlist",
+  "want-to-buy",
+  "upcoming-release"
+];
+
+export function isAwaitingCopy(userStatus: {
+  status: CoreTrackingStatus;
+  ownership?: OwnershipStatus;
+}): boolean {
+  if (userStatus.ownership === "owned") return false;
+  return AWAITING_COPY_STATUSES.includes(userStatus.status);
+}

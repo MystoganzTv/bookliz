@@ -96,3 +96,34 @@ describe("wantsToAcquire", () => {
     expect(wantsToBuy(wanted)).toBe(false);
   });
 });
+
+import { isAwaitingCopy } from "../shelfRules";
+
+describe("isAwaitingCopy", () => {
+  it("is false for an owned book you have not started — the greyed-out shelf bug", () => {
+    // The report was "tengo el libro y sale sombreado como que no lo tengo".
+    // An owned, unstarted book is `want-to-read`, and the covers used to grey
+    // that status unconditionally.
+    expect(isAwaitingCopy({ status: "want-to-read", ownership: "owned" })).toBe(false);
+    expect(isAwaitingCopy({ status: "want-to-buy", ownership: "owned" })).toBe(false);
+    expect(isAwaitingCopy({ status: "upcoming-release", ownership: "owned" })).toBe(false);
+  });
+
+  it("is true for the same statuses when there is no copy yet", () => {
+    for (const status of ["want-to-read", "wishlist", "want-to-buy", "upcoming-release"] as const) {
+      expect(isAwaitingCopy({ status, ownership: "not-owned" })).toBe(true);
+    }
+  });
+
+  it("is never true once the book has been opened", () => {
+    for (const status of ["reading", "read", "dnf"] as const) {
+      expect(isAwaitingCopy({ status, ownership: "not-owned" })).toBe(false);
+      expect(isAwaitingCopy({ status, ownership: "owned" })).toBe(false);
+    }
+  });
+
+  it("treats a missing ownership field as no copy, so old rows still grey out", () => {
+    expect(isAwaitingCopy({ status: "wishlist" })).toBe(true);
+    expect(isAwaitingCopy({ status: "reading" })).toBe(false);
+  });
+});

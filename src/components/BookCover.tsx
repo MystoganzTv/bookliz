@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { ImageBackground, StyleProp, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { Book, ReadingFormat } from "../types/models";
 import { colors, fonts, radii, shadows } from "../theme/theme";
+import { isAwaitingCopy } from "../data/shelfRules";
 import { statusLabelKey } from "../utils/statusLabels";
 import { useI18n } from "../i18n/LocalizationContext";
 import { Badge } from "./Badge";
@@ -21,9 +22,12 @@ const dimensions = {
   lg: { width: 176, height: 252 }
 };
 
-/** Wishlist-ish statuses render dimmed. Exported so grid & list views stay consistent. */
-export const isMutedBook = (book: Book) =>
-  ["want-to-read", "wishlist", "want-to-buy", "upcoming-release"].includes(book.userStatus.status);
+/**
+ * Covers render grey when the reader has no copy yet. Exported so the grid and
+ * the list rows stay consistent; the rule itself lives in shelfRules because
+ * status alone cannot answer it — an owned, unstarted book is `want-to-read`.
+ */
+export const isMutedBook = (book: Book) => isAwaitingCopy(book.userStatus);
 
 const isMuted = isMutedBook;
 
