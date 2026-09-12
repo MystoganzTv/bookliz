@@ -83,78 +83,96 @@
       <img src="./bookliz-logo.png" alt="Bookliz" />
     </a>
     <h1>Privacy Policy</h1>
-    <p class="meta">Last updated: May 28, 2026 &nbsp;·&nbsp; Effective: May 28, 2026</p>
+    <p class="meta">Last updated: September 12, 2026 &nbsp;·&nbsp; Effective: September 12, 2026</p>
   </header>
 
   <div class="callout">
-    Bookliz is a free personal reading tracker supported by advertising. We collect only what is necessary to save your library, sync it across your devices, and serve relevant ads. We do not sell your personal data.
+    Bookliz is a free personal reading tracker. <strong>It shows no ads, contains no advertising SDK, and runs no analytics, tracking or crash-reporting service of any kind.</strong> We collect only what is needed to store your library and sync it across your devices. We do not sell your personal data, and we do not share it with anyone for advertising.
   </div>
 
   <h2>1. Who we are</h2>
   <p>Bookliz is developed and operated by Mysto Dev ("<strong>we</strong>", "<strong>us</strong>", or "<strong>our</strong>"). If you have questions about this policy, contact us at <a href="mailto:enrique.padron853@gmail.com">enrique.padron853@gmail.com</a>.</p>
 
   <h2>2. What data we collect</h2>
-  <p>When you use Bookliz, we collect the following categories of information:</p>
+  <p>Bookliz works offline and stores your library on your device. If you create an account, that library is also synced to our server so you can restore it or use it on another device. In that case we hold:</p>
   <ul>
-    <li><strong>Account identifiers</strong> — email address and display name, provided during sign-up or through Apple Sign-In / Google Sign-In.</li>
-    <li><strong>User ID</strong> — a randomly generated UUID that links your data to your account.</li>
-    <li><strong>Reading content you create</strong> — books you add to your library, reading sessions (pages read, time, notes), reviews, favorite quotes, series tracking data, and personal rankings.</li>
-    <li><strong>App preferences</strong> — language choice (English or Spanish), theme (light or dark), and annual reading goal. These are stored locally on your device and optionally synced to your account.</li>
+    <li><strong>Account identifiers</strong> — your email address and display name, provided when you sign up or supplied by Apple Sign In / Google Sign In.</li>
+    <li><strong>User ID</strong> — a randomly generated UUID that links your rows to your account.</li>
+    <li><strong>The reading data you create</strong> — books and authors in your library, reading sessions (pages, minutes, dates, notes), reviews and ratings, saved quotes, custom lists, series tracking and ownership or wishlist flags.</li>
+    <li><strong>App preferences</strong> — interface language (English or Spanish), theme, and your annual reading goal.</li>
   </ul>
-  <p>We do <strong>not</strong> collect location data, payment information, health data, contacts, or photos.</p>
+  <p>We do <strong>not</strong> collect location data, payment information, health data, contacts, browsing history, advertising identifiers, or any usage or telemetry data. The app contains no analytics or crash-reporting SDK, so we cannot see how you use it.</p>
+  <p>If you never sign in, nothing leaves your device except the metadata lookups described in section 4.</p>
 
-  <h2>3. How we use your data</h2>
+  <h2>3. Camera and photos</h2>
+  <p>Bookliz asks for camera access to scan ISBN barcodes, and for photo library access so you can use a picture as a book cover. Both are handled entirely on your device:</p>
+  <ul>
+    <li>Barcodes are decoded locally. Only the resulting ISBN — a number that identifies the edition, not you — is used for a metadata lookup.</li>
+    <li>Photos you choose are never uploaded. If you set one as a cover, we store the file's location on your device, not the image itself. That means a cover taken from your own photo will not appear on another device.</li>
+  </ul>
+
+  <h2>4. Book metadata lookups</h2>
+  <p>To fill in titles, authors, covers, page counts and synopses, Bookliz queries two public catalogues: the <strong>Google Books API</strong> and <strong>Open Library</strong> (Internet Archive). What we send is the search text, title, author or ISBN you are looking up. We never send your email, your user ID, or anything about the rest of your library.</p>
+  <p>These requests go directly from your device to those services, so they receive your device's IP address and can apply their own logging, as any website you visit would. Their handling of that is governed by their own policies, linked in section 8.</p>
+
+  <h2>5. Affiliate links</h2>
+  <p>When a book is on your wishlist, Bookliz can open it on Amazon. Those links carry our Amazon Associates tag (<code>bookliz-20</code>), which means we may earn a small commission if you buy something after following one. The price you pay is not affected.</p>
+  <p>Following such a link leaves the app and opens Amazon in your browser. From that point Amazon's own privacy policy applies and we receive nothing about you personally — only aggregate, anonymous commission reporting from Amazon.</p>
+
+  <h2>6. Notifications</h2>
+  <p>If you enable the daily reading reminder, it is scheduled locally by your device's operating system. Bookliz does not operate a push server, does not register a push token, and sends you nothing remotely.</p>
+
+  <h2>7. How we use your data</h2>
   <ul>
     <li>To create and maintain your account.</li>
-    <li>To store your library and sync it across devices where you sign in with the same account.</li>
-    <li>To calculate your reading statistics, streaks, and achievements within the app.</li>
-    <li>To restore your data if you reinstall the app or switch devices.</li>
-    <li>To show you advertisements that help keep Bookliz free.</li>
+    <li>To store your library and sync it to any device where you sign in with the same account.</li>
+    <li>To calculate your reading statistics, streaks and achievements, which happens on your device.</li>
+    <li>To restore your data if you reinstall the app or change devices.</li>
   </ul>
+  <p>We do not profile you, build an advertising audience, or use your reading data for any purpose other than running the features above.</p>
 
-  <h2>4. Advertising</h2>
-  <p>Bookliz displays ads provided by third-party advertising networks. These networks may use cookies, device identifiers (such as the Advertising ID / IDFA on iOS), and similar technologies to serve ads that are relevant to your interests, measure ad performance, and prevent fraud.</p>
-  <p>On iOS, when you first open the app you will see Apple's App Tracking Transparency (ATT) prompt asking for permission to use your Advertising Identifier (IDFA). If you allow tracking, our ad partner may use the IDFA to show personalized ads and measure campaign performance. If you decline, you will still see ads, but they will be less personalized.</p>
-  <p>You can change your ATT preference at any time in <strong>Settings → Privacy & Security → Tracking</strong> on your iPhone.</p>
-  <p>The data collected by our advertising partner for ad delivery is governed by their own privacy policy — see the Third-party services section below.</p>
-
-  <h2>5. Third-party services</h2>
-  <p>Bookliz relies on the following third-party services:</p>
+  <h2>8. Third-party services</h2>
   <ul>
     <li>
-      <strong>Supabase</strong> (<a href="https://supabase.com/privacy" target="_blank" rel="noopener">privacy policy</a>) — our backend database and authentication provider. Your email, user ID, and reading data are stored on Supabase servers hosted in the EU (AWS eu-central-1) by default.
+      <strong>Supabase</strong> (<a href="https://supabase.com/privacy" target="_blank" rel="noopener">privacy policy</a>) — our database and authentication provider. Your email, user ID and reading data are stored on Supabase infrastructure in the United States (AWS <code>us-east-1</code>).
     </li>
     <li>
-      <strong>Apple Sign-In</strong> (<a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noopener">privacy policy</a>) — optional sign-in method. Apple may share a relay email address instead of your real email.
+      <strong>Apple Sign In</strong> (<a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noopener">privacy policy</a>) — optional sign-in method. If you choose to hide your address, Apple gives us a private relay address instead of your real one, and that is all we ever see.
     </li>
     <li>
-      <strong>Google Sign-In</strong> (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>) — optional sign-in method. Google provides your name and email to complete account creation.
+      <strong>Google Sign In</strong> (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>) — optional sign-in method. Google provides your name and email address to create the account.
     </li>
     <li>
-      <strong>Advertising network</strong> — <em>[insert network name and privacy policy link here before publishing]</em> — serves ads within the app and may collect device identifiers and usage data for ad targeting and measurement.
+      <strong>Google Books API</strong> (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>) — book metadata and cover images. Receives your lookup terms and your device's IP address.
     </li>
     <li>
-      <strong>Open Library (Internet Archive)</strong> (<a href="https://archive.org/about/terms.php" target="_blank" rel="noopener">terms</a>) — when you tap "Fetch missing info", the book title or ISBN is sent to Open Library's public API to retrieve metadata (cover image, page count, synopsis). No personal data is sent.
+      <strong>Open Library / Internet Archive</strong> (<a href="https://archive.org/about/terms.php" target="_blank" rel="noopener">terms</a>) — book metadata and cover images. Receives your lookup terms and your device's IP address.
+    </li>
+    <li>
+      <strong>Amazon</strong> (<a href="https://www.amazon.com/gp/help/customer/display.html?nodeId=468496" target="_blank" rel="noopener">privacy notice</a>) — only when you follow a purchase link, as described in section 5.
     </li>
   </ul>
+  <p>There is no advertising network, no analytics provider and no crash-reporting provider in this list, because the app integrates none.</p>
 
-  <h2>6. Data retention</h2>
-  <p>Your data is retained for as long as your account exists. You can delete your account at any time from <strong>Settings → Delete account</strong> inside the app. This permanently erases your library, reading sessions, achievements, and profile from our servers. The deletion is irreversible.</p>
+  <h2>9. Data retention and deletion</h2>
+  <p>Your data is kept for as long as your account exists. You can delete your account at any time from <strong>Settings &rarr; Delete account</strong> inside the app. This erases your profile, books, authors, reading sessions, reviews and lists from our servers, and removes your authentication record, so the account cannot be recovered. The copy stored on your device is cleared at the same time.</p>
+  <p>Deleting the app without deleting your account removes the local copy only; the synced copy remains until you delete the account or ask us to.</p>
 
-  <h2>7. Data security</h2>
-  <p>All data in transit between the app and Supabase is encrypted with TLS. Supabase enforces row-level security so that each user can only access their own data. Sensitive credentials (auth tokens) are stored in the iOS Secure Enclave via <code>expo-secure-store</code>, not in plain UserDefaults.</p>
+  <h2>10. Data security</h2>
+  <p>All traffic between the app and Supabase is encrypted with TLS. Every table enforces PostgreSQL row-level security, so a signed-in user can read and write only rows carrying their own user ID.</p>
+  <p>On your device, your library is stored unencrypted in the app's private storage area, which the operating system isolates from other apps. Your session token is held in the same private app storage; the credentials used for Google Sign In are kept in the system keychain via <code>expo-secure-store</code>. Anyone with your unlocked device and your passcode can therefore read your library, as with most apps of this kind.</p>
 
-  <h2>8. Children's privacy</h2>
-  <p>Bookliz is not directed at children under 13. We do not knowingly collect personal information from children under 13. If you believe a child has provided us with personal data, please contact us and we will delete it promptly.</p>
+  <h2>11. Children's privacy</h2>
+  <p>Bookliz is not directed at children under 13, and we do not knowingly collect personal information from them. If you believe a child has provided us with personal data, contact us and we will delete it promptly.</p>
 
-  <h2>9. Your rights</h2>
-  <p>Depending on your location you may have the right to access, correct, or delete the personal data we hold about you. To exercise any of these rights, contact us at <a href="mailto:enrique.padron853@gmail.com">enrique.padron853@gmail.com</a>. We will respond within 30 days.</p>
-  <p>If you are in the European Economic Area, you have additional rights under the GDPR, including the right to data portability and the right to lodge a complaint with your local supervisory authority.</p>
+  <h2>12. Your rights</h2>
+  <p>Depending on where you live you may have the right to access, correct, export or delete the personal data we hold about you. The in-app account deletion covers the deletion right in full; for anything else, write to <a href="mailto:enrique.padron853@gmail.com">enrique.padron853@gmail.com</a> and we will respond within 30 days.</p>
+  <p>If you are in the European Economic Area or the United Kingdom, you also have rights under the GDPR, including data portability and the right to complain to your local supervisory authority. If you are a California resident, note that we do not sell or share personal information as those terms are defined by the CCPA/CPRA.</p>
 
-  <h2>10. Changes to this policy</h2>
-  <p>If we make material changes to this policy, we will update the "Last updated" date at the top of this page. For significant changes, we will notify you via an in-app message on your next launch.</p>
+  <h2>13. Changes to this policy</h2>
+  <p>If we make material changes we will update the "Last updated" date above, and for significant changes we will show an in-app notice on your next launch.</p>
 
-  <h2>11. Contact</h2>
+  <h2>14. Contact</h2>
   <p>Questions or requests: <a href="mailto:enrique.padron853@gmail.com">enrique.padron853@gmail.com</a></p>
 
   <footer>
