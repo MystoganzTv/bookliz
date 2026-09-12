@@ -3,833 +3,536 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bookliz — Your Reading Life, Beautifully Organized</title>
-  <meta name="description" content="Bookliz is a personal reading tracker for iOS. Build your library, log sessions, discover your next great read, and hit your reading goals." />
-  <meta property="og:title" content="Bookliz — Your Reading Life, Beautifully Organized" />
-  <meta property="og:description" content="Track physical books, ebooks, and audiobooks. Log reading sessions, discover books, and build a library you're proud of." />
+  <title>Bookliz — Every book you read, beautifully tracked.</title>
+  <meta name="description" content="Bookliz is a reading tracker for iPhone. Scan your shelf, log every reading session, follow your series, and watch your stats grow. In English and Spanish." />
+  <meta name="theme-color" content="#FBF7F0" />
+  <meta property="og:title" content="Bookliz — Every book you read, beautifully tracked." />
+  <meta property="og:description" content="Scan your shelf, log reading sessions, track series, and watch your stats grow. Built for iPhone, in English and Spanish." />
   <meta property="og:type" content="website" />
+  <meta property="og:image" content="./bookliz-logo.png" />
+  <link rel="icon" href="./bookliz-icon-only.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --navy:  #0F172A;
-      --teal:  #14B8A6;
-      --teal2: #0D9488;
-      --gold:  #FFC857;
-      --coral: #FF7A59;
-      --ink:   #F8F4EC;
-      --muted: #94A3B8;
-      --border: rgba(255,255,255,0.10);
-      --panel:  rgba(255,255,255,0.055);
-      --shadow: 0 24px 60px rgba(0,0,0,0.36);
-      --r-md: 24px;
-      --r-lg: 32px;
-      --fd: 'Lora', Georgia, serif;
-      --fb: 'Nunito', -apple-system, sans-serif;
+      --cream:  #FBF7F0;
+      --cream2: #F4EEE3;
+      --white:  #FFFFFF;
+      --ink:    #14213A;
+      --ink2:   #3E4C63;
+      --muted:  #7A8798;
+      --teal:   #14B8A6;
+      --teal-d: #0D9488;
+      --teal-t: #E7F6F3;
+      --gold:   #F5C24A;
+      --line:   rgba(20,33,58,0.10);
+      --line2:  rgba(20,33,58,0.06);
+      --card-sh: 0 1px 2px rgba(20,33,58,0.04), 0 8px 24px rgba(20,33,58,0.05);
+      --phone-sh: 0 2px 6px rgba(20,33,58,0.06), 0 30px 70px rgba(20,33,58,0.16);
+      --fd: 'Lora', Georgia, 'Times New Roman', serif;
+      --fb: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 
     body {
-      background:
-        radial-gradient(ellipse 65% 45% at 2% 0%,   rgba(20,184,166,0.22) 0%, transparent 55%),
-        radial-gradient(ellipse 50% 35% at 98% 4%,  rgba(255,200,87,0.18) 0%, transparent 50%),
-        linear-gradient(180deg, #111c31 0%, var(--navy) 55%, #0b1122 100%);
+      background: var(--cream);
       color: var(--ink);
       font-family: var(--fb);
-      line-height: 1.6;
-      min-height: 100vh;
-      padding: 24px 20px;
+      font-size: 17px;
+      line-height: 1.62;
+      -webkit-font-smoothing: antialiased;
     }
     a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; height: auto; display: block; }
 
-    .page { max-width: 1100px; margin: 0 auto; }
+    .wrap { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 
-    /* ── Nav ── */
-    nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 8px 0 22px;
-      flex-wrap: wrap;
+    /* ───────── Nav ───────── */
+    .nav {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(251,247,240,0.82);
+      backdrop-filter: saturate(180%) blur(14px);
+      -webkit-backdrop-filter: saturate(180%) blur(14px);
+      border-bottom: 1px solid var(--line2);
     }
-    .brand-logo,
-    .footer-brand {
-      display: inline-flex;
-      align-items: center;
-      text-decoration: none;
+    .nav-in {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; height: 68px;
     }
-    .brand-logo img,
-    .footer-brand img {
-      display: block;
-      flex-shrink: 0;
+    .brand img { height: 38px; width: auto; }
+    .nav-right { display: flex; align-items: center; gap: 6px; }
+    .nav-link {
+      color: var(--ink2); font-size: 14.5px; font-weight: 700;
+      padding: 8px 12px; border-radius: 999px; transition: background .18s, color .18s;
     }
-    .brand-logo img { height: 40px; width: auto; }
-    .nav-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .nav-link { color: var(--muted); font-size: 14px; font-weight: 700; transition: color 0.2s; }
-    .nav-link:hover { color: var(--ink); }
+    .nav-link:hover { background: var(--cream2); color: var(--ink); }
 
-    .lang-toggle {
-      display: flex;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      overflow: hidden;
+    .lang {
+      display: inline-flex; margin-left: 6px;
+      border: 1px solid var(--line); border-radius: 999px;
+      overflow: hidden; background: var(--white);
     }
-    .lang-btn {
-      padding: 5px 13px;
-      cursor: pointer;
-      background: transparent;
-      border: none;
-      color: var(--muted);
-      font-family: var(--fb);
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: 0.06em;
-      transition: background 0.18s, color 0.18s;
+    .lang button {
+      padding: 6px 13px; cursor: pointer; background: transparent; border: 0;
+      font-family: var(--fb); font-size: 11.5px; font-weight: 900;
+      letter-spacing: .07em; color: var(--muted);
+      transition: background .18s, color .18s;
     }
-    .lang-btn.active { background: var(--teal); color: var(--navy); }
+    .lang button.active { background: var(--ink); color: var(--white); }
 
-    /* ── Glass util ── */
-    .glass {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      box-shadow: var(--shadow);
-    }
-
-    /* ── Hero ── */
-    .hero {
-      display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
-      gap: 20px;
-      align-items: stretch;
-      padding-bottom: 20px;
-    }
-
-    /* Left: copy */
-    .hero-copy {
-      border-radius: var(--r-lg);
-      padding: 48px 44px;
-    }
+    /* ───────── Shared type ───────── */
+    h1, h2, h3 { font-family: var(--fd); font-weight: 700; line-height: 1.14; letter-spacing: -0.015em; }
+    .em { font-style: italic; color: var(--teal-d); font-weight: 600; }
     .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border: 1px solid rgba(20,184,166,0.30);
-      border-radius: 999px;
-      color: var(--teal);
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: 0.09em;
-      padding: 7px 14px;
-      text-transform: uppercase;
-      margin-bottom: 22px;
+      font-family: var(--fb); font-size: 12px; font-weight: 900;
+      letter-spacing: .14em; text-transform: uppercase; color: var(--teal-d);
     }
-    .eyebrow-dot { width: 6px; height: 6px; background: var(--teal); border-radius: 50%; }
+    .lede { color: var(--ink2); font-size: 18.5px; }
 
-    h1 {
-      font-family: var(--fd);
-      font-size: clamp(38px, 5.2vw, 70px);
-      font-weight: 700;
-      line-height: 1.0;
-      letter-spacing: -0.03em;
-      margin-bottom: 22px;
-    }
-    h1 .accent { color: var(--gold); }
+    /* ───────── Hero ───────── */
+    .hero { text-align: center; padding: 76px 0 0; }
+    .hero h1 { font-size: clamp(38px, 6.4vw, 64px); max-width: 15ch; margin: 18px auto 0; }
+    .hero .lede { max-width: 56ch; margin: 22px auto 0; }
 
-    .hero-sub {
-      color: var(--muted);
-      font-size: 17px;
-      line-height: 1.65;
-      max-width: 34rem;
-      margin-bottom: 34px;
+    .cta-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 12px;
+      background: var(--ink); color: var(--white);
+      padding: 12px 22px 12px 20px; border-radius: 14px;
+      box-shadow: 0 8px 22px rgba(20,33,58,0.18);
+      transition: transform .18s, box-shadow .18s;
     }
+    .badge:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(20,33,58,0.24); }
+    .badge svg { flex-shrink: 0; }
+    .badge-txt { text-align: left; line-height: 1.15; }
+    .badge-txt small { display: block; font-size: 11px; font-weight: 700; opacity: .72; letter-spacing: .02em; }
+    .badge-txt strong { display: block; font-size: 19px; font-weight: 800; letter-spacing: -0.01em; }
 
-    .actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 28px;
-    }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 50px;
-      border-radius: 999px;
-      padding: 0 24px;
-      font-family: var(--fb);
-      font-size: 15px;
-      font-weight: 800;
-    }
-    .btn-primary { background: var(--gold); color: #1a2130; }
-    .badge-soon {
-      background: rgba(255,200,87,0.13);
-      border: 1px solid rgba(255,200,87,0.30);
-      border-radius: 999px;
-      color: var(--gold);
-      font-size: 10px;
-      font-weight: 900;
-      letter-spacing: 0.10em;
-      padding: 4px 11px;
-      text-transform: uppercase;
-    }
+    .trust { margin-top: 18px; font-size: 14.5px; color: var(--muted); font-weight: 600; }
+    .trust b { color: var(--ink2); font-weight: 800; }
+    .dot { opacity: .45; margin: 0 8px; }
 
-    .hero-pills { display: flex; gap: 10px; flex-wrap: wrap; }
-    .pill {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 700;
-      padding: 5px 14px;
+    /* ───────── Phone frame ───────── */
+    .phone {
+      position: relative; flex: 0 0 auto; min-width: 0;
+      width: 100%; max-width: 300px; align-self: center;
+      border-radius: 44px; padding: 9px;
+      background: linear-gradient(160deg, #2A3550 0%, #14213A 46%, #0C1425 100%);
+      box-shadow: var(--phone-sh);
     }
+    .phone img { border-radius: 36px; width: 100%; }
+    .phone.tilt-l { transform: rotate(-2deg); }
+    .phone.tilt-r { transform: rotate(2deg); }
 
-    /* Right: library card */
-    .hero-card {
-      border-radius: var(--r-lg);
-      padding: 28px 26px;
+    .hero-shot { display: flex; justify-content: center; padding: 54px 0 0; }
+    .hero-shot .phone { max-width: 322px; }
+    .hero-glow {
       position: relative;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
     }
-    .card-glow {
+    .hero-glow::before {
+      content: ''; position: absolute; left: 50%; top: 22%; transform: translateX(-50%);
+      width: min(760px, 96vw); height: 460px; border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(20,184,166,0.16) 0%, rgba(245,194,74,0.10) 42%, transparent 70%);
+      filter: blur(8px); pointer-events: none; z-index: -1;
+    }
+
+    /* ───────── Feature rows ───────── */
+    .rows { padding: 26px 0 0; }
+    .row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 64px; align-items: center;
+      padding: 74px 0;
+      border-top: 1px solid var(--line2);
+    }
+    .row:first-child { border-top: 0; }
+    .row .shot { display: flex; justify-content: center; }
+    .row.flip .txt { order: 2; }
+    .row.flip .shot { order: 1; }
+    .row h2 { font-size: clamp(27px, 3.6vw, 37px); margin: 14px 0 0; max-width: 17ch; }
+    .row p { margin-top: 16px; color: var(--ink2); font-size: 17.5px; }
+    .row ul { margin-top: 20px; list-style: none; display: grid; gap: 10px; }
+    .row li { display: flex; gap: 11px; align-items: flex-start; font-size: 16px; color: var(--ink2); }
+    .row li::before {
+      content: ''; flex-shrink: 0; width: 7px; height: 7px; margin-top: 11px;
+      border-radius: 50%; background: var(--teal);
+    }
+
+    /* ───────── Grid ───────── */
+    .grid-sec { padding: 84px 0; border-top: 1px solid var(--line2); }
+    .sec-head { text-align: center; max-width: 44ch; margin: 0 auto 48px; }
+    .sec-head h2 { font-size: clamp(29px, 4vw, 41px); margin-top: 14px; }
+    .sec-head p { margin-top: 16px; color: var(--ink2); }
+
+    .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .card {
+      background: var(--white); border: 1px solid var(--line2);
+      border-radius: 22px; padding: 30px 28px; box-shadow: var(--card-sh);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .card:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(20,33,58,.05), 0 16px 36px rgba(20,33,58,.09); }
+    .card .ico {
+      width: 46px; height: 46px; border-radius: 14px; background: var(--teal-t);
+      display: grid; place-items: center; font-size: 22px; margin-bottom: 18px;
+    }
+    .card h3 { font-size: 21px; }
+    .card p { margin-top: 9px; color: var(--ink2); font-size: 16px; line-height: 1.58; }
+
+    /* ───────── Closing CTA ───────── */
+    .close-sec { padding: 0 0 84px; }
+    .close-box {
+      background: linear-gradient(165deg, #16324A 0%, var(--ink) 52%, #0C1425 100%);
+      border-radius: 34px; padding: 72px 40px; text-align: center; color: var(--cream);
+      position: relative; overflow: hidden;
+    }
+    .close-box::after {
+      content: ''; position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 44% 62% at 12% 4%, rgba(20,184,166,.30) 0%, transparent 62%),
+        radial-gradient(ellipse 38% 54% at 92% 96%, rgba(245,194,74,.20) 0%, transparent 60%);
       pointer-events: none;
-      position: absolute;
-      bottom: -18%; right: -12%;
-      width: 260px; height: 260px;
-      background: radial-gradient(circle, rgba(20,184,166,0.28), transparent 65%);
+    }
+    .close-box > * { position: relative; z-index: 1; }
+    .close-box h2 { font-size: clamp(30px, 4.4vw, 45px); max-width: 16ch; margin: 0 auto; }
+    .close-box h2 .em { color: var(--gold); }
+    .close-box p { margin: 20px auto 0; max-width: 48ch; color: rgba(251,247,240,.80); font-size: 17.5px; }
+    .close-box .badge { background: var(--cream); color: var(--ink); margin-top: 32px; }
+    .close-box .trust { color: rgba(251,247,240,.62); }
+    .close-box .trust b { color: rgba(251,247,240,.92); }
+
+    /* ───────── Footer ───────── */
+    footer { border-top: 1px solid var(--line); padding: 56px 0 48px; }
+    .foot-top { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 40px; }
+    .foot-brand img { height: 50px; width: auto; }
+    .foot-brand p { margin-top: 14px; color: var(--muted); font-size: 15px; max-width: 34ch; }
+    .foot-col h4 {
+      font-family: var(--fb); font-size: 11.5px; font-weight: 900;
+      letter-spacing: .13em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
+    }
+    .foot-col a { display: block; padding: 5px 0; font-size: 15px; font-weight: 600; color: var(--ink2); }
+    .foot-col a:hover { color: var(--teal-d); }
+    .foot-bot {
+      margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--line2);
+      font-size: 14px; color: var(--muted);
+      display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap;
     }
 
-    /* Stats row */
-    .card-stats {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-      font-weight: 800;
-      color: var(--muted);
-      flex-wrap: wrap;
-      position: relative;
-      z-index: 1;
-    }
-    .stat-val { color: var(--ink); }
-    .stat-sep { color: var(--border); }
-
-    /* Shelf grid */
-    .shelf {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      position: relative;
-      z-index: 1;
-    }
-    .shelf-book {
-      position: relative;
-      border-radius: 10px;
-      overflow: hidden;
-      aspect-ratio: 0.67;
-      box-shadow: 0 10px 28px rgba(0,0,0,0.42);
-      background: rgba(255,255,255,0.04);
-    }
-    .shelf-book img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-    /* Reading indicator on first book */
-    .shelf-book.reading::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border: 2px solid var(--teal);
-      border-radius: 10px;
-      box-shadow: 0 0 12px rgba(20,184,166,0.40);
-    }
-
-    /* Currently reading chip */
-    .reading-chip {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.09);
-      border-radius: 14px;
-      padding: 12px 14px;
-      position: relative;
-      z-index: 1;
-    }
-    .chip-icon {
-      font-size: 20px;
-      flex-shrink: 0;
-      width: 36px; height: 36px;
-      background: rgba(20,184,166,0.16);
-      border-radius: 9px;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .chip-body { flex: 1; min-width: 0; }
-    .chip-label {
-      font-size: 10px;
-      font-weight: 900;
-      color: var(--teal);
-      letter-spacing: 0.10em;
-      text-transform: uppercase;
-      margin-bottom: 1px;
-    }
-    .chip-title {
-      font-size: 13px;
-      font-weight: 800;
-      color: var(--ink);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .chip-bar {
-      height: 3px;
-      background: rgba(255,255,255,0.09);
-      border-radius: 999px;
-      margin-top: 6px;
-      overflow: hidden;
-    }
-    .chip-fill {
-      height: 100%;
-      width: 62%;
-      background: linear-gradient(90deg, var(--teal), var(--teal2));
-      border-radius: 999px;
-    }
-    .chip-pct {
-      font-size: 12px;
-      font-weight: 900;
-      color: var(--teal);
-      flex-shrink: 0;
-    }
-
-    /* ── Features ── */
-    .section { padding: 52px 0 8px; }
-    .section-tag {
-      color: var(--teal);
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: 0.10em;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-    }
-    h2 {
-      font-family: var(--fd);
-      font-size: clamp(28px, 4vw, 46px);
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      line-height: 1.05;
-      margin-bottom: 10px;
-    }
-    .section-intro {
-      color: var(--muted);
-      font-size: 16px;
-      max-width: 46rem;
-      margin-bottom: 28px;
-      line-height: 1.7;
-    }
-
-    .features {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0,1fr));
-      gap: 16px;
-    }
-    .feature { border-radius: var(--r-md); padding: 26px; }
-    .feature-icon { font-size: 28px; margin-bottom: 12px; line-height: 1; }
-    .feature-kicker {
-      color: var(--teal);
-      font-size: 11px;
-      font-weight: 900;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      margin-bottom: 8px;
-    }
-    h3 {
-      font-family: var(--fd);
-      font-size: 19px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      line-height: 1.2;
-      margin-bottom: 8px;
-    }
-    .feature p { color: var(--muted); font-size: 14px; line-height: 1.65; }
-
-    /* ── CTA strip ── */
-    .cta-strip {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-      border-radius: var(--r-md);
-      padding: 32px 36px;
-      margin: 40px 0 20px;
-      flex-wrap: wrap;
-    }
-    .cta-strip h2 { font-size: clamp(22px, 3vw, 32px); margin-bottom: 6px; }
-    .cta-strip p { color: var(--muted); font-size: 15px; }
-    .cta-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex-shrink: 0; }
-
-    .store-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 12px 20px;
-      font-size: 14px;
-      font-weight: 800;
-    }
-    .store-label { display: flex; flex-direction: column; line-height: 1.2; }
-    .store-label small { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
-
-    /* ── Footer ── */
-    footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-      padding: 16px 0 6px;
-      border-top: 1px solid var(--border);
-    }
-    .footer-links { display: flex; gap: 16px; flex-wrap: wrap; }
-    .footer-link { color: var(--muted); font-size: 13px; font-weight: 700; transition: color 0.2s; }
-    .footer-link:hover { color: var(--ink); }
-    .footer-copy { color: var(--muted); font-size: 12px; width: 100%; padding-top: 4px; }
-    .footer-brand img { height: 48px; width: auto; }
-
-    /* ── Waitlist ── */
-    .waitlist-card {
-      border-radius: var(--r-lg);
-      padding: 48px 52px;
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 52px;
-      align-items: center;
-      margin: 32px 0 20px;
-    }
-    .waitlist-form {
-      display: flex;
-      gap: 10px;
-      margin-top: 20px;
-    }
-    .waitlist-input {
-      flex: 1;
-      min-width: 0;
-      background: rgba(255,255,255,0.07);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      color: var(--ink);
-      font-family: var(--fb);
-      font-size: 14px;
-      font-weight: 700;
-      height: 50px;
-      outline: none;
-      padding: 0 20px;
-      transition: border-color 0.2s;
-    }
-    .waitlist-input:focus { border-color: var(--teal); }
-    .waitlist-input::placeholder { color: var(--muted); opacity: 1; }
-    .waitlist-submit {
-      background: var(--gold);
-      border: none;
-      border-radius: 999px;
-      color: #1a2130;
-      cursor: pointer;
-      font-family: var(--fb);
-      font-size: 14px;
-      font-weight: 900;
-      padding: 0 22px;
-      height: 50px;
-      white-space: nowrap;
-      transition: opacity 0.2s;
-    }
-    .waitlist-submit:hover { opacity: 0.88; }
-    .waitlist-fine {
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      margin-top: 10px;
-    }
-    .waitlist-success {
-      display: none;
-      align-items: center;
-      gap: 10px;
-      background: rgba(20,184,166,0.12);
-      border: 1px solid rgba(20,184,166,0.28);
-      border-radius: 14px;
-      color: var(--teal);
-      font-size: 14px;
-      font-weight: 800;
-      margin-top: 20px;
-      padding: 14px 18px;
-    }
-    .waitlist-highlight { color: var(--teal); }
-
-    /* ── Responsive ── */
+    /* ───────── Responsive ───────── */
     @media (max-width: 860px) {
-      .hero { grid-template-columns: 1fr; }
-      .features { grid-template-columns: repeat(2, minmax(0,1fr)); }
-      .hero-copy { padding: 32px 28px; }
-      .cta-strip { padding: 28px 24px; }
-      .cta-right { align-items: flex-start; }
-      .waitlist-card { grid-template-columns: 1fr; gap: 24px; padding: 32px 28px; }
-      .waitlist-form { flex-direction: column; }
-      .waitlist-submit { height: 50px; }
+      .row { grid-template-columns: 1fr; gap: 40px; padding: 60px 0; }
+      .row.flip .txt, .row.flip .shot { order: initial; }
+      .row h2 { max-width: none; }
+      .phone.tilt-l, .phone.tilt-r { transform: none; }
+      .foot-top { grid-template-columns: 1fr 1fr; }
+      .foot-brand { grid-column: 1 / -1; }
     }
-    @media (max-width: 560px) {
-      body { padding: 18px 16px; }
-      nav { flex-direction: column; align-items: flex-start; }
-      .features { grid-template-columns: 1fr; }
-      footer { flex-direction: column; align-items: flex-start; }
-      .brand-logo img { height: 78px; }
-      .footer-brand img { height: 52px; }
+    @media (max-width: 620px) {
+      body { font-size: 16.5px; }
+      .wrap { padding: 0 18px; }
+      .hero { padding-top: 52px; }
+      .hero-shot { padding-top: 42px; }
+      .nav-link { padding: 8px 9px; font-size: 14px; }
+      .brand img { height: 32px; }
+      .cards { grid-template-columns: 1fr; }
+      .close-box { padding: 56px 24px; border-radius: 26px; }
+      .grid-sec { padding: 64px 0; }
+      .badge { width: 100%; max-width: 300px; justify-content: center; }
+    }
+    @media (max-width: 430px) {
+      .nav-link { padding: 8px 6px; font-size: 13px; }
+      .brand img { height: 28px; }
+      .lang button { padding: 6px 10px; }
+    }
+    @media (max-width: 340px) {
+      .nav-link { display: none; }
     }
 
-    /* ── i18n ── */
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { transition: none !important; }
+    }
+
+    /* ───────── i18n ───────── */
     [data-lang] { display: none; }
     .lang-en [data-lang="en"],
     .lang-es [data-lang="es"] { display: contents; }
   </style>
 </head>
 <body class="lang-en">
-<div class="page">
 
-  <!-- Nav -->
-  <nav>
-    <a href="." class="brand-logo" aria-label="Bookliz home">
-      <img src="./bookliz-logo.png" alt="Bookliz" />
-    </a>
-    <div class="nav-right">
-      <a class="nav-link" href="./privacy-policy.html" data-href-en="./privacy-policy.html" data-href-es="./privacy-policy.es.html">
-        <span data-lang="en">Privacy Policy</span>
-        <span data-lang="es">Privacidad</span>
-      </a>
-      <a class="nav-link" href="./terms.html">
-        <span data-lang="en">Terms</span>
-        <span data-lang="es">T&eacute;rminos</span>
-      </a>
-      <a class="nav-link" href="./contact.html">
-        <span data-lang="en">Contact</span>
-        <span data-lang="es">Contacto</span>
-      </a>
-      <div class="lang-toggle" role="group" aria-label="Language">
-        <button class="lang-btn active" id="btn-en" onclick="setLang('en')">EN</button>
-        <button class="lang-btn"        id="btn-es" onclick="setLang('es')">ES</button>
+  <!-- ══ Nav ══ -->
+  <div class="nav">
+    <div class="wrap nav-in">
+      <a class="brand" href="./index.html"><img src="./bookliz-logo.png" alt="Bookliz" /></a>
+      <div class="nav-right">
+        <a class="nav-link" href="./privacy-policy.html" data-href-en="./privacy-policy.html" data-href-es="./privacy-policy.es.html">
+          <span data-lang="en">Privacy</span><span data-lang="es">Privacidad</span>
+        </a>
+        <a class="nav-link" href="./terms.html">
+          <span data-lang="en">Terms</span><span data-lang="es">Términos</span>
+        </a>
+        <a class="nav-link" href="./contact.html">
+          <span data-lang="en">Contact</span><span data-lang="es">Contacto</span>
+        </a>
+        <div class="lang">
+          <button id="btn-en" class="active" onclick="setLang('en')" aria-label="English">EN</button>
+          <button id="btn-es" onclick="setLang('es')" aria-label="Español">ES</button>
+        </div>
       </div>
     </div>
-  </nav>
+  </div>
 
-  <main>
+  <!-- ══ Hero ══ -->
+  <header class="hero-glow">
+    <div class="wrap hero">
+      <span class="eyebrow"><span data-lang="en">Reading tracker · iPhone</span><span data-lang="es">Diario de lectura · iPhone</span></span>
 
-    <!-- Hero -->
-    <section class="hero">
+      <h1>
+        <span data-lang="en">Every book you read, <span class="em">beautifully</span> tracked.</span>
+        <span data-lang="es">Cada libro que lees, <span class="em">bien</span> registrado.</span>
+      </h1>
 
-      <!-- Copy -->
-      <div class="hero-copy glass">
-        <div class="eyebrow">
-          <div class="eyebrow-dot"></div>
-          <span data-lang="en">Personal Reading Tracker &middot; iOS</span>
-          <span data-lang="es">Tu Tracker de Lectura &middot; iOS</span>
-        </div>
-
-        <h1>
-          <span data-lang="en">Your library,<br>your <span class="accent">reading life.</span></span>
-          <span data-lang="es">Tu biblioteca,<br>tu <span class="accent">vida lectora.</span></span>
-        </h1>
-
-        <p class="hero-sub">
-          <span data-lang="en">Bookliz helps you organize every book you own, log reading sessions, hit your goals, and discover what to read next &mdash; all in one beautiful place.</span>
-          <span data-lang="es">Bookliz te ayuda a organizar tus libros, registrar sesiones de lectura, cumplir tus metas y descubrir tu pr&oacute;xima lectura, todo en un solo lugar.</span>
-        </p>
-
-        <div class="actions">
-          <div class="btn btn-primary">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-            <span data-lang="en">Coming to the App Store</span>
-            <span data-lang="es">Pr&oacute;ximamente en App Store</span>
-          </div>
-          <span class="badge-soon">
-            <span data-lang="en">Soon</span>
-            <span data-lang="es">Pronto</span>
-          </span>
-        </div>
-
-        <div class="hero-pills">
-          <span class="pill"><span data-lang="en">&#128218; Build your library</span><span data-lang="es">&#128218; Construye tu biblioteca</span></span>
-          <span class="pill"><span data-lang="en">&#128293; Streaks &amp; goals</span><span data-lang="es">&#128293; Rachas y metas</span></span>
-          <span class="pill"><span data-lang="en">&#10024; Smart discovery</span><span data-lang="es">&#10024; Descubrimiento inteligente</span></span>
-        </div>
-      </div>
-
-      <!-- Library card -->
-      <div class="hero-card glass">
-        <div class="card-glow"></div>
-
-        <div class="card-stats">
-          <span><span class="stat-val">147</span> <span data-lang="en">books</span><span data-lang="es">libros</span></span>
-          <span class="stat-sep">&middot;</span>
-          <span><span class="stat-val">&#128293; 23</span> <span data-lang="en">day streak</span><span data-lang="es">d&iacute;as seguidos</span></span>
-          <span class="stat-sep">&middot;</span>
-          <span><span class="stat-val">31</span> <span data-lang="en">this year</span><span data-lang="es">este a&ntilde;o</span></span>
-        </div>
-
-        <div class="shelf">
-          <div class="shelf-book reading">
-            <img src="https://covers.openlibrary.org/b/isbn/9780441013593-M.jpg" alt="Dune" loading="lazy" />
-          </div>
-          <div class="shelf-book">
-            <img src="https://covers.openlibrary.org/b/isbn/9780735211292-M.jpg" alt="Atomic Habits" loading="lazy" />
-          </div>
-          <div class="shelf-book">
-            <img src="https://covers.openlibrary.org/b/isbn/9780062315007-M.jpg" alt="The Alchemist" loading="lazy" />
-          </div>
-          <div class="shelf-book">
-            <img src="https://covers.openlibrary.org/b/isbn/9780385737951-M.jpg" alt="The Fault in Our Stars" loading="lazy" />
-          </div>
-          <div class="shelf-book">
-            <img src="https://covers.openlibrary.org/b/isbn/9780525559474-M.jpg" alt="The Midnight Library" loading="lazy" />
-          </div>
-          <div class="shelf-book">
-            <img src="https://covers.openlibrary.org/b/isbn/9780590353427-M.jpg" alt="Harry Potter" loading="lazy" />
-          </div>
-        </div>
-
-        <div class="reading-chip">
-          <div class="chip-icon">&#128214;</div>
-          <div class="chip-body">
-            <div class="chip-label">
-              <span data-lang="en">Currently reading</span>
-              <span data-lang="es">Leyendo ahora</span>
-            </div>
-            <div class="chip-title">
-              <span data-lang="en">Dune &middot; Frank Herbert</span>
-              <span data-lang="es">Dune &middot; Frank Herbert</span>
-            </div>
-            <div class="chip-bar"><div class="chip-fill"></div></div>
-          </div>
-          <div class="chip-pct">62%</div>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- Features -->
-    <section class="section">
-      <div class="section-tag">
-        <span data-lang="en">Features</span>
-        <span data-lang="es">Funciones</span>
-      </div>
-      <h2>
-        <span data-lang="en">Everything your reading life needs.</span>
-        <span data-lang="es">Todo lo que necesita tu vida lectora.</span>
-      </h2>
-      <p class="section-intro">
-        <span data-lang="en">Built for readers who care about their books &mdash; from the ones on the nightstand to the ones still on the wishlist.</span>
-        <span data-lang="es">Hecho para lectores que cuidan sus libros &mdash; desde los de la mesita hasta los que a&uacute;n est&aacute;n en la lista de deseos.</span>
+      <p class="lede">
+        <span data-lang="en">Scan your shelf, log every reading session, follow your series, and watch your stats grow. One app for the books on your nightstand and the ones still on the wish list.</span>
+        <span data-lang="es">Escanea tu estantería, registra cada sesión de lectura, sigue tus sagas y mira crecer tus estadísticas. Una sola app para los libros de la mesita y los que aún están en la lista de deseos.</span>
       </p>
 
-      <div class="features">
-
-        <article class="feature glass">
-          <div class="feature-icon">&#128247;</div>
-          <div class="feature-kicker"><span data-lang="en">Scan</span><span data-lang="es">Escanear</span></div>
-          <h3><span data-lang="en">Add books instantly by ISBN.</span><span data-lang="es">Agrega libros al instante por ISBN.</span></h3>
-          <p><span data-lang="en">Point your camera at any barcode and the book &mdash; cover, author, and metadata &mdash; appears in seconds.</span><span data-lang="es">Apunta la c&aacute;mara a cualquier c&oacute;digo de barras y el libro aparece en segundos con portada y todos sus datos.</span></p>
-        </article>
-
-        <article class="feature glass">
-          <div class="feature-icon">&#9201;</div>
-          <div class="feature-kicker"><span data-lang="en">Track</span><span data-lang="es">Registrar</span></div>
-          <h3><span data-lang="en">Log sessions with time and pages.</span><span data-lang="es">Registra sesiones con tiempo y p&aacute;ginas.</span></h3>
-          <p><span data-lang="en">Build a full reading history. See exactly when you read, how long, and watch your pace improve over time.</span><span data-lang="es">Construye un historial completo. Ve exactamente cu&aacute;ndo y cu&aacute;nto le&iacute;ste, y observa c&oacute;mo mejora tu ritmo.</span></p>
-        </article>
-
-        <article class="feature glass">
-          <div class="feature-icon">&#128293;</div>
-          <div class="feature-kicker"><span data-lang="en">Goals</span><span data-lang="es">Metas</span></div>
-          <h3><span data-lang="en">Set goals and keep your streak alive.</span><span data-lang="es">Fija metas y mant&eacute;n tu racha activa.</span></h3>
-          <p><span data-lang="en">Annual reading goals, daily streaks, and weekly stats keep you motivated without pressure.</span><span data-lang="es">Metas anuales, rachas diarias y estad&iacute;sticas semanales te mantienen motivado sin presi&oacute;n.</span></p>
-        </article>
-
-        <article class="feature glass">
-          <div class="feature-icon">&#10024;</div>
-          <div class="feature-kicker"><span data-lang="en">Discover</span><span data-lang="es">Descubrir</span></div>
-          <h3><span data-lang="en">Find books by mood, genre, or taste.</span><span data-lang="es">Encuentra libros por estado de &aacute;nimo, g&eacute;nero o gusto.</span></h3>
-          <p><span data-lang="en">Curated lanes and personalized picks shaped by the books you&rsquo;ve already loved.</span><span data-lang="es">Colecciones curadas y selecciones personalizadas basadas en los libros que ya disfrutaste.</span></p>
-        </article>
-
-        <article class="feature glass">
-          <div class="feature-icon">&#128218;</div>
-          <div class="feature-kicker"><span data-lang="en">Series</span><span data-lang="es">Series</span></div>
-          <h3><span data-lang="en">Track series and never lose your place.</span><span data-lang="es">Sigue series y nunca pierdas el hilo.</span></h3>
-          <p><span data-lang="en">Bookliz groups books by series and shows exactly where you are across multi-volume stories.</span><span data-lang="es">Bookliz agrupa libros por serie y te muestra exactamente d&oacute;nde est&aacute;s en historias de m&uacute;ltiples vol&uacute;menes.</span></p>
-        </article>
-
-        <article class="feature glass">
-          <div class="feature-icon">&#127769;</div>
-          <div class="feature-kicker"><span data-lang="en">Library</span><span data-lang="es">Biblioteca</span></div>
-          <h3><span data-lang="en">Organize by status, format, or list.</span><span data-lang="es">Organiza por estado, formato o lista.</span></h3>
-          <p><span data-lang="en">Physical, ebook, or audio. Reading, finished, or wishlist. Beautiful in light and dark mode.</span><span data-lang="es">F&iacute;sico, ebook o audiolibro. Leyendo, terminado o lista de deseos. Hermoso en modo claro y oscuro.</span></p>
-        </article>
-
-      </div>
-    </section>
-
-    <!-- Waitlist -->
-    <div class="waitlist-card glass" id="waitlist">
-      <div>
-        <div class="section-tag">
-          <span data-lang="en">Join the waitlist</span>
-          <span data-lang="es">Únete a la lista</span>
-        </div>
-        <h2 style="font-size: clamp(24px, 3.2vw, 38px); margin-bottom: 0;">
-          <span data-lang="en">Be the first to know<br>when we <span class="accent">launch.</span></span>
-          <span data-lang="es">Sé el primero en saber<br>cuando <span class="accent">lancemos.</span></span>
-        </h2>
-      </div>
-      <div>
-        <p style="color: var(--muted); font-size: 15px; line-height: 1.7;">
-          <span data-lang="en">Bookliz is heading to the App Store soon. Drop your email and we'll send you one notification — the moment it's live.</span>
-          <span data-lang="es">Bookliz llega pronto al App Store. Deja tu correo y te avisamos en cuanto esté disponible.</span>
-        </p>
-        <!-- Action: replace YOUR_FORM_ID with your Formspree form ID at formspree.io -->
-        <form class="waitlist-form" id="waitlist-form"
-              action="https://formspree.io/f/YOUR_FORM_ID"
-              method="POST">
-          <input
-            class="waitlist-input"
-            type="email"
-            name="email"
-            required
-            autocomplete="email"
-            placeholder="you@email.com"
-          />
-          <button class="waitlist-submit" type="submit">
-            <span data-lang="en">Notify me</span>
-            <span data-lang="es">Avísame</span>
-          </button>
-        </form>
-        <div class="waitlist-success" id="waitlist-success">
-          <span>✓</span>
-          <span>
-            <span data-lang="en">You're on the list! We'll be in touch.</span>
-            <span data-lang="es">¡Ya estás en la lista! Nos pondremos en contacto.</span>
+      <div class="cta-row">
+        <span class="badge">
+          <svg width="26" height="30" viewBox="0 0 16 20" fill="currentColor" aria-hidden="true"><path d="M13.32 10.6c-.02-2.02 1.65-2.99 1.72-3.04-.94-1.37-2.4-1.56-2.92-1.58-1.24-.13-2.42.73-3.05.73-.63 0-1.6-.71-2.63-.69-1.35.02-2.6.79-3.29 2-1.4 2.44-.36 6.05 1.01 8.03.67.97 1.47 2.06 2.51 2.02 1.01-.04 1.39-.65 2.61-.65 1.22 0 1.56.65 2.63.63 1.09-.02 1.77-.99 2.43-1.96.77-1.12 1.08-2.21 1.1-2.27-.02-.01-2.11-.81-2.13-3.22zM11.3 4.67c.56-.68.94-1.62.83-2.56-.81.03-1.79.54-2.37 1.21-.52.6-.97 1.56-.85 2.48.9.07 1.82-.46 2.39-1.13z"/></svg>
+          <span class="badge-txt">
+            <small><span data-lang="en">Coming soon to the</span><span data-lang="es">Próximamente en el</span></small>
+            <strong>App Store</strong>
           </span>
-        </div>
-        <p class="waitlist-fine">
-          <span data-lang="en">No spam · One email · Unsubscribe anytime</span>
-          <span data-lang="es">Sin spam · Un correo · Cancela cuando quieras</span>
-        </p>
-      </div>
-    </div>
-
-    <!-- CTA strip -->
-    <section class="cta-strip glass" aria-label="Coming soon">
-      <div class="cta-copy">
-        <h2>
-          <span data-lang="en">Available soon on iOS.</span>
-          <span data-lang="es">Disponible pronto en iOS.</span>
-        </h2>
-        <p>
-          <span data-lang="en">Bookliz is finishing up and heading to the App Store. Get in touch or follow along.</span>
-          <span data-lang="es">Bookliz est&aacute; en sus &uacute;ltimos ajustes antes de llegar al App Store. Cont&aacute;ctanos o s&iacute;guenos.</span>
-        </p>
-      </div>
-      <div class="cta-right">
-        <div class="store-badge">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-          <span class="store-label">
-            <small><span data-lang="en">Download on the</span><span data-lang="es">Disponible en</span></small>
-            <span>App Store</span>
-          </span>
-        </div>
-        <span class="badge-soon" style="align-self:flex-start">
-          <span data-lang="en">Coming Soon</span>
-          <span data-lang="es">Pr&oacute;ximamente</span>
         </span>
       </div>
-    </section>
 
+      <p class="trust">
+        <span data-lang="en"><b>No ads.</b> <span class="dot">·</span> English &amp; Spanish <span class="dot">·</span> Built solo by an independent developer.</span>
+        <span data-lang="es"><b>Sin anuncios.</b> <span class="dot">·</span> Español e inglés <span class="dot">·</span> Hecho por un desarrollador independiente.</span>
+      </p>
+    </div>
+
+    <div class="wrap hero-shot">
+      <div class="phone">
+        <img src="./screens/home.webp" width="620" height="1341" alt="Bookliz home screen showing reading streak, annual goal and the book in progress" />
+      </div>
+    </div>
+  </header>
+
+  <!-- ══ Feature rows ══ -->
+  <main>
+  <section class="wrap rows">
+
+    <div class="row">
+      <div class="txt">
+        <span class="eyebrow"><span data-lang="en">Library</span><span data-lang="es">Biblioteca</span></span>
+        <h2>
+          <span data-lang="en">A collection you can actually search.</span>
+          <span data-lang="es">Una colección que sí puedes buscar.</span>
+        </h2>
+        <p>
+          <span data-lang="en">Filter by in progress, finished or wish list. Search by title, author, genre, saga or list. Every row shows its progress, its series and whether the book is already yours.</span>
+          <span data-lang="es">Filtra por en curso, terminados o lista de deseos. Busca por título, autor, género, saga o lista. Cada fila muestra su progreso, su serie y si el libro ya es tuyo.</span>
+        </p>
+        <ul>
+          <li><span data-lang="en">Physical, ebook and audiobook in one shelf</span><span data-lang="es">Físico, ebook y audiolibro en un mismo estante</span></li>
+          <li><span data-lang="en">Custom lists and tags alongside the built-in states</span><span data-lang="es">Listas y etiquetas propias junto a los estados de siempre</span></li>
+          <li><span data-lang="en">Light and dark mode, both hand-tuned</span><span data-lang="es">Modo claro y oscuro, los dos cuidados a mano</span></li>
+        </ul>
+      </div>
+      <div class="shot">
+        <div class="phone tilt-r">
+          <img src="./screens/library.webp" width="620" height="1341" loading="lazy" alt="Library screen: search bar, status filters and book rows with progress bars" />
+        </div>
+      </div>
+    </div>
+
+    <div class="row flip">
+      <div class="txt">
+        <span class="eyebrow"><span data-lang="en">Each book</span><span data-lang="es">Cada libro</span></span>
+        <h2>
+          <span data-lang="en">Every book keeps its own history.</span>
+          <span data-lang="es">Cada libro guarda su propia historia.</span>
+        </h2>
+        <p>
+          <span data-lang="en">Sessions, pages logged, reading pace, quotes, rating, format and ownership. Start the timer from the book itself and Bookliz does the arithmetic for you.</span>
+          <span data-lang="es">Sesiones, páginas registradas, ritmo de lectura, citas, valoración, formato y propiedad. Arranca el temporizador desde el libro y Bookliz hace las cuentas por ti.</span>
+        </p>
+        <ul>
+          <li><span data-lang="en">Pages per hour, worked out from your real sessions</span><span data-lang="es">Páginas por hora, calculadas con tus sesiones reales</span></li>
+          <li><span data-lang="en">Save the quotes worth keeping</span><span data-lang="es">Guarda las citas que valen la pena</span></li>
+          <li><span data-lang="en">Re-reads counted, not overwritten</span><span data-lang="es">Las relecturas se cuentan, no se sobrescriben</span></li>
+        </ul>
+      </div>
+      <div class="shot">
+        <div class="phone tilt-l">
+          <img src="./screens/book.webp" width="620" height="1341" loading="lazy" alt="Book detail: cover, reading progress, session stats, quotes, format and page count" />
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ══ Feature grid ══ -->
+  <section class="grid-sec">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow"><span data-lang="en">Features</span><span data-lang="es">Funciones</span></span>
+        <h2>
+          <span data-lang="en">Everything you need to track your reading.</span>
+          <span data-lang="es">Todo lo que necesitas para seguir tu lectura.</span>
+        </h2>
+        <p>
+          <span data-lang="en">Built for iPhone. Designed for people who take their shelves seriously.</span>
+          <span data-lang="es">Hecho para iPhone. Diseñado para quien se toma en serio su estantería.</span>
+        </p>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <div class="ico">📷</div>
+          <h3><span data-lang="en">Scan the barcode</span><span data-lang="es">Escanea el código</span></h3>
+          <p>
+            <span data-lang="en">Point the camera at any ISBN and the cover, author, page count and metadata fill themselves in. Add a whole shelf in a sitting.</span>
+            <span data-lang="es">Apunta la cámara a cualquier ISBN y la portada, el autor, las páginas y los datos se rellenan solos. Agrega un estante entero de una sentada.</span>
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="ico">📚</div>
+          <h3><span data-lang="en">Series and sagas</span><span data-lang="es">Series y sagas</span></h3>
+          <p>
+            <span data-lang="en">Bookliz groups multi-volume stories, shows which one you're on and what's left, and celebrates the saga when you finish it.</span>
+            <span data-lang="es">Bookliz agrupa las historias de varios tomos, te muestra en cuál vas y qué te falta, y celebra la saga cuando la terminas.</span>
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="ico">🔥</div>
+          <h3><span data-lang="en">Streaks and goals</span><span data-lang="es">Rachas y metas</span></h3>
+          <p>
+            <span data-lang="en">Set an annual reading goal, keep a daily streak alive, and see how close you are the moment you open the app.</span>
+            <span data-lang="es">Fija una meta anual de lectura, mantén viva tu racha diaria y ve lo cerca que estás en cuanto abres la app.</span>
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="ico">📊</div>
+          <h3><span data-lang="en">Stats worth reading</span><span data-lang="es">Estadísticas que dicen algo</span></h3>
+          <p>
+            <span data-lang="en">Pages, hours, pace and achievements, all worked out from the sessions you actually logged — no guessing, no averages invented for you.</span>
+            <span data-lang="es">Páginas, horas, ritmo y logros, calculados con las sesiones que de verdad registraste. Sin adivinar ni promedios inventados.</span>
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="ico">☁️</div>
+          <h3><span data-lang="en">Syncs with your account</span><span data-lang="es">Sincroniza con tu cuenta</span></h3>
+          <p>
+            <span data-lang="en">Sign in with Apple or Google and your library follows you to a new phone. No ads, and nothing sold to anyone.</span>
+            <span data-lang="es">Inicia sesión con Apple o Google y tu biblioteca te sigue a un teléfono nuevo. Sin anuncios y sin vender nada a nadie.</span>
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="ico">🌎</div>
+          <h3><span data-lang="en">Fully bilingual</span><span data-lang="es">Totalmente bilingüe</span></h3>
+          <p>
+            <span data-lang="en">The whole app in English and Spanish — not just the menus. Switch language in Settings whenever you like.</span>
+            <span data-lang="es">Toda la app en español e inglés, no solo los menús. Cambia de idioma en Ajustes cuando quieras.</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ Closing CTA ══ -->
+  <section class="close-sec">
+    <div class="wrap">
+      <div class="close-box">
+        <h2>
+          <span data-lang="en">Bookliz is <span class="em">nearly</span> here.</span>
+          <span data-lang="es">Bookliz ya <span class="em">casi</span> está.</span>
+        </h2>
+        <p>
+          <span data-lang="en">Last details before the App Store. No ads, no upsells, no feed — just your books and the time you spend with them.</span>
+          <span data-lang="es">Ultimando detalles antes del App Store. Sin anuncios, sin ventas cruzadas, sin feed: solo tus libros y el tiempo que pasas con ellos.</span>
+        </p>
+        <div class="cta-row">
+          <span class="badge">
+            <svg width="26" height="30" viewBox="0 0 16 20" fill="currentColor" aria-hidden="true"><path d="M13.32 10.6c-.02-2.02 1.65-2.99 1.72-3.04-.94-1.37-2.4-1.56-2.92-1.58-1.24-.13-2.42.73-3.05.73-.63 0-1.6-.71-2.63-.69-1.35.02-2.6.79-3.29 2-1.4 2.44-.36 6.05 1.01 8.03.67.97 1.47 2.06 2.51 2.02 1.01-.04 1.39-.65 2.61-.65 1.22 0 1.56.65 2.63.63 1.09-.02 1.77-.99 2.43-1.96.77-1.12 1.08-2.21 1.1-2.27-.02-.01-2.11-.81-2.13-3.22zM11.3 4.67c.56-.68.94-1.62.83-2.56-.81.03-1.79.54-2.37 1.21-.52.6-.97 1.56-.85 2.48.9.07 1.82-.46 2.39-1.13z"/></svg>
+            <span class="badge-txt">
+              <small><span data-lang="en">Coming soon to the</span><span data-lang="es">Próximamente en el</span></small>
+              <strong>App Store</strong>
+            </span>
+          </span>
+        </div>
+        <p class="trust">
+          <span data-lang="en">Questions before launch? <a href="./contact.html" style="text-decoration:underline">Get in touch</a>.</span>
+          <span data-lang="es">¿Dudas antes del lanzamiento? <a href="./contact.html" style="text-decoration:underline">Escríbenos</a>.</span>
+        </p>
+      </div>
+    </div>
+  </section>
   </main>
 
-  <!-- Footer -->
+  <!-- ══ Footer ══ -->
   <footer>
-    <a href="." class="footer-brand" aria-label="Bookliz home">
-      <img src="./bookliz-navbar.png" alt="Bookliz" />
-    </a>
-    <div class="footer-links">
-      <a class="footer-link" href="./privacy-policy.html" data-href-en="./privacy-policy.html" data-href-es="./privacy-policy.es.html">
-        <span data-lang="en">Privacy Policy</span>
-        <span data-lang="es">Pol&iacute;tica de Privacidad</span>
-      </a>
-      <a class="footer-link" href="./terms.html">
-        <span data-lang="en">Terms of Use</span>
-        <span data-lang="es">T&eacute;rminos de Uso</span>
-      </a>
-      <a class="footer-link" href="./contact.html">
-        <span data-lang="en">Contact</span>
-        <span data-lang="es">Contacto</span>
-      </a>
+    <div class="wrap">
+      <div class="foot-top">
+        <div class="foot-brand">
+          <img src="./bookliz-logo.png" alt="Bookliz" />
+          <p>
+            <span data-lang="en">Your library, your reading life. A reading tracker for iPhone, in English and Spanish.</span>
+            <span data-lang="es">Tu biblioteca, tu vida lectora. Un diario de lectura para iPhone, en español e inglés.</span>
+          </p>
+        </div>
+
+        <div class="foot-col">
+          <h4><span data-lang="en">Bookliz</span><span data-lang="es">Bookliz</span></h4>
+          <a href="./contact.html"><span data-lang="en">Contact</span><span data-lang="es">Contacto</span></a>
+        </div>
+
+        <div class="foot-col">
+          <h4><span data-lang="en">Legal</span><span data-lang="es">Legal</span></h4>
+          <a href="./privacy-policy.html" data-href-en="./privacy-policy.html" data-href-es="./privacy-policy.es.html">
+            <span data-lang="en">Privacy Policy</span><span data-lang="es">Política de Privacidad</span>
+          </a>
+          <a href="./terms.html"><span data-lang="en">Terms of Use</span><span data-lang="es">Términos de Uso</span></a>
+        </div>
+      </div>
+
+      <div class="foot-bot">
+        <span>© 2026 Bookliz</span>
+        <span><span data-lang="en">Made with care for readers.</span><span data-lang="es">Hecho con cariño para lectores.</span></span>
+      </div>
     </div>
-    <p class="footer-copy">&copy; 2026 Bookliz &middot; All rights reserved</p>
   </footer>
 
-</div>
+  <script>
+    function setLang(lang) {
+      document.body.className = 'lang-' + lang;
+      document.documentElement.lang = lang;
+      document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+      document.getElementById('btn-es').classList.toggle('active', lang === 'es');
+      // Pages that have their own translated file (the privacy policy) point at
+      // the version in the language being read. Everything else is one page with
+      // both languages inside it, so only these need swapping.
+      document.querySelectorAll('[data-href-' + lang + ']').forEach(function (el) {
+        el.setAttribute('href', el.getAttribute('data-href-' + lang));
+      });
+      try { localStorage.setItem('bookliz-lang', lang); } catch (e) {}
+    }
 
-<script>
-  function setLang(lang) {
-    document.body.className = 'lang-' + lang;
-    document.documentElement.lang = lang;
-    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
-    document.getElementById('btn-es').classList.toggle('active', lang === 'es');
-    // Links with a translated page of their own (the privacy policy) point at
-    // the version in the language being read. Everything else is one page with
-    // both languages inside it, so only these need swapping.
-    document.querySelectorAll('[data-href-' + lang + ']').forEach(function (el) {
-      el.setAttribute('href', el.getAttribute('data-href-' + lang));
-    });
-  }
-
-  // Waitlist form — async Formspree submission
-  const wForm = document.getElementById('waitlist-form');
-  const wSuccess = document.getElementById('waitlist-success');
-  if (wForm) {
-    wForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btn = wForm.querySelector('button[type=submit]');
-      btn.disabled = true;
-      try {
-        const res = await fetch(wForm.action, {
-          method: 'POST',
-          body: new FormData(wForm),
-          headers: { 'Accept': 'application/json' }
-        });
-        if (res.ok) {
-          wForm.style.display = 'none';
-          wSuccess.style.display = 'flex';
-        } else {
-          btn.disabled = false;
-        }
-      } catch {
-        // Offline / network error — still show success for UX
-        wForm.style.display = 'none';
-        wSuccess.style.display = 'flex';
-      }
-    });
-  }
-</script>
+    (function () {
+      var saved = null;
+      try { saved = localStorage.getItem('bookliz-lang'); } catch (e) {}
+      var lang = saved || ((navigator.language || 'en').toLowerCase().indexOf('es') === 0 ? 'es' : 'en');
+      setLang(lang);
+    })();
+  </script>
 </body>
 </html>

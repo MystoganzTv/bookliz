@@ -17,3 +17,7 @@ _audit*.tar.gz
 # Estado local del CLI de Supabase: ref del proyecto enlazado y versiones
 # cacheadas. Es por máquina, no del proyecto.
 supabase/.temp/
+
+# Carpetas de trabajo locales (no forman parte del proyecto)
+_to_delete/
+Claude outputs/
