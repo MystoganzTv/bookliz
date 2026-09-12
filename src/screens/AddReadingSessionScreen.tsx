@@ -14,6 +14,7 @@ import { useColors, useTheme } from "../theme/ThemeContext";
 import { NewReadingSessionInput, ReadingFormat } from "../types/models";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { localDateKey, parseDateKey } from "../utils/dateUtils";
+import { ValueSlider } from "../components/ValueSlider";
 
 const QUICK_MINUTES = [15, 30, 45, 60, 90, 120];
 const LOCATION_PRESETS = ["Home", "Cafe", "Library"];
@@ -243,7 +244,7 @@ export function AddReadingSessionScreen() {
     hapticSuccess();
     dialog.alert(
       editingSession ? t("logSession.sessionUpdated") : t("logSession.sessionLogged"),
-      `${pagesRead} ${t("readingLog.pages")} · ${speed} ${t("logSession.ppH")} · ${progressPct}% through the book`,
+      `${pagesRead} ${t("readingLog.pages")} · ${speed} ${t("logSession.ppH")} · ${t("logSession.percentThrough", { percent: progressPct })}`,
       () => navigation.goBack()
     );
   };
@@ -379,7 +380,7 @@ export function AddReadingSessionScreen() {
               ) : (
                 <Text style={[styles.pageNumber, { color: c.ink }]}>{currentPct}%</Text>
               )}
-              <Text style={[styles.pageOf, { color: c.muted }]}>{pctInputOpen ? "tap ✓ to confirm" : t("logSession.ofBook") + " · tap to edit"}</Text>
+              <Text style={[styles.pageOf, { color: c.muted }]}>{pctInputOpen ? t("logSession.tapToConfirm") : `${t("logSession.ofBook")} · ${t("logSession.tapToEdit")}`}</Text>
             </Pressable>
             <Pressable
               style={styles.stepBtnSm}
@@ -393,6 +394,14 @@ export function AddReadingSessionScreen() {
               <Text style={[styles.stepBtnText, { color: c.ink }]}>+5%</Text>
             </Pressable>
           </View>
+          <ValueSlider
+            value={currentPct}
+            min={lastPct}
+            max={100}
+            accessibilityLabel={t("logSession.listenedTo")}
+            onChange={(next) => { setCurrentPct(next); setPctInputText(String(next)); }}
+          />
+          <Text style={styles.fieldHint}>{t("logSession.hintPercent")}</Text>
           {gainedPct > 0 && (
             <Text style={styles.pagesReadPill}>+{gainedPct}{t("logSession.pctFrom")}</Text>
           )}
@@ -439,7 +448,7 @@ export function AddReadingSessionScreen() {
                 <Text style={[styles.pageNumber, { color: c.ink }]}>{currentPage}</Text>
               )}
               <Text style={[styles.pageOf, { color: c.muted }]}>
-                {pageInputOpen ? "tap ✓ to confirm" : `/ ${totalPages} · tap to edit`}
+                {pageInputOpen ? t("logSession.tapToConfirm") : `/ ${totalPages} · ${t("logSession.tapToEdit")}`}
               </Text>
             </Pressable>
             <Pressable
@@ -454,6 +463,16 @@ export function AddReadingSessionScreen() {
               <Text style={[styles.stepBtnText, { color: c.ink }]}>+10</Text>
             </Pressable>
           </View>
+          {hasPageCount ? (
+            <ValueSlider
+              value={currentPage}
+              min={lastPage}
+              max={totalPages}
+              accessibilityLabel={t("logSession.readUpTo")}
+              onChange={(next) => { setCurrentPage(next); setPageInputText(String(next)); }}
+            />
+          ) : null}
+          <Text style={styles.fieldHint}>{t("logSession.hintCurrentPage")}</Text>
           {pagesRead > 0 && (
             <Text style={styles.pagesReadPill}>+{pagesRead} {t("logSession.pagesFrom")}</Text>
           )}
@@ -473,6 +492,7 @@ export function AddReadingSessionScreen() {
           value={date}
           onChangeText={setDate}
         />
+        <Text style={styles.fieldHint}>{t("logSession.hintDate")}</Text>
       </View>
 
       <View style={styles.minutesCard}>
@@ -511,6 +531,7 @@ export function AddReadingSessionScreen() {
             onChangeText={setCustomMinutes}
           />
         )}
+        <Text style={styles.fieldHint}>{t("logSession.hintMinutes")}</Text>
       </View>
 
       <View style={styles.locationCard}>
@@ -569,6 +590,7 @@ export function AddReadingSessionScreen() {
         ) : (
           <Text style={styles.locationSummary}>{t("logSession.loggingAt")} {effectiveLocation}.</Text>
         )}
+        <Text style={styles.fieldHint}>{t("logSession.hintLocation")}</Text>
       </View>
 
       <Pressable accessibilityRole="button" style={styles.noteToggle} onPress={() => setNoteOpen((v) => !v)}>
@@ -591,6 +613,7 @@ export function AddReadingSessionScreen() {
           onChangeText={setNote}
         />
       )}
+      {noteOpen ? <Text style={styles.fieldHint}>{t("logSession.hintNote")}</Text> : null}
 
       {hasProgress && effectiveMinutes > 0 && (
         <View style={styles.statsRow}>
@@ -831,6 +854,15 @@ function createStyles(c: AppColors, isDark: boolean) {
     marginTop: spacing.md,
     paddingHorizontal: spacing.md,
     paddingVertical: 6
+  },
+  /** The one-line explanation under a field. Quiet by design: it should be
+      there when you look for it and invisible when you are not. */
+  fieldHint: {
+    color: c.muted,
+    fontFamily: fonts.bodyRegular,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: spacing.sm
   },
   pageCountHint: {
     color: c.coral,
