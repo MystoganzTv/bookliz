@@ -17,6 +17,7 @@ import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
 import { Book } from "../types/models";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
+import { buildAmazonUrl } from "../utils/amazonLink";
 import { useColors, useTheme } from "../theme/ThemeContext";
 import { wantsToAcquire } from "../data/shelfRules";
 import { normalizeBookGenres } from "../utils/genres";
@@ -60,24 +61,7 @@ export function LibraryScreen() {
   const deferredQuery = useDeferredValue(query);
 
   const openAmazon = (book: Book, authorName: string) => {
-    const raw = book.isbn?.replace(/[^0-9X]/gi, "") ?? "";
-    // Amazon /dp/ requires an ISBN-10 (ASIN). Convert ISBN-13 → ISBN-10 when prefix is 978.
-    let asin: string | null = null;
-    if (raw.length === 10) {
-      asin = raw;
-    } else if (raw.length === 13 && raw.startsWith("978")) {
-      const nine = raw.slice(3, 12);
-      let sum = 0;
-      for (let i = 0; i < 9; i++) sum += parseInt(nine[i]) * (10 - i);
-      const check = (11 - (sum % 11)) % 11;
-      asin = nine + (check === 10 ? "X" : String(check));
-    }
-    const url = asin
-      ? `https://www.amazon.com/dp/${asin}?tag=bookliz-20`
-      : raw.length > 0
-        ? `https://www.amazon.com/s?k=${raw}&tag=bookliz-20`
-        : `https://www.amazon.com/s?k=${encodeURIComponent(`${book.title} ${authorName}`)}&tag=bookliz-20`;
-    void Linking.openURL(url);
+    void Linking.openURL(buildAmazonUrl({ isbn: book.isbn, title: book.title, authorName }));
   };
 
   const clearFilters = () => {

@@ -14,6 +14,10 @@
  *     API key inside a file anyone can download and unzip. The proxy exists
  *     precisely so the key stays server-side; setting this would undo it
  *     silently, because the app keeps working.
+ *
+ * And one warning that does not stop the build: the Amazon Associates tag. A
+ * build without it still links to Amazon, it just earns nothing — which is a
+ * business decision, not a broken app, so it is said out loud and waved past.
  */
 import { execFileSync } from "node:child_process";
 
@@ -26,6 +30,9 @@ const REQUIRED = [
 
 /** Must never be defined for a build: it would ride into the bundle. */
 const FORBIDDEN = ["EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY"];
+
+/** Nice to have. Absent = links without a tag; the app is unaffected. */
+const ADVISORY = ["EXPO_PUBLIC_AMAZON_ASSOCIATES_TAG"];
 
 const environment = process.argv[2] ?? "production";
 
@@ -60,6 +67,16 @@ for (const name of REQUIRED) {
 }
 for (const name of FORBIDDEN) {
   console.log(`${defined.has(name) ? "✗" : "✓"} ${name} (must NOT be set)`);
+}
+for (const name of ADVISORY) {
+  console.log(`${defined.has(name) ? "✓" : "!"} ${name} (optional)`);
+}
+
+const unset = ADVISORY.filter((name) => !defined.has(name));
+if (unset.length) {
+  console.warn(`\n! Not set in "${environment}": ${unset.join(", ")}`);
+  console.warn("  Amazon links will go out without an affiliate tag. The app works;");
+  console.warn("  the \"Get\" button just does not pay. Set it once you have the real tag.\n");
 }
 
 if (missing.length) {

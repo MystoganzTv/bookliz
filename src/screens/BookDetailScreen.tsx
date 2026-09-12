@@ -42,6 +42,7 @@ import { RootStackParamList } from "../navigation/types";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useTheme } from "../theme/ThemeContext";
 import { useI18n } from "../i18n/LocalizationContext";
+import { buildAmazonUrl } from "../utils/amazonLink";
 import { hapticLight, hapticMedium } from "../utils/haptics";
 import { isPlaceholderText, resolveBookMetadata } from "../utils/bookMetadata";
 import { isSameLanguage } from "../utils/languageUtils";
@@ -130,24 +131,9 @@ export function BookDetailScreen() {
   })();
 
   const handleBuy = () => {
-    const raw = book.isbn?.replace(/[^0-9X]/gi, "") ?? "";
-    let asin: string | null = null;
-    if (raw.length === 10) {
-      asin = raw;
-    } else if (raw.length === 13 && raw.startsWith("978")) {
-      const nine = raw.slice(3, 12);
-      let sum = 0;
-      for (let i = 0; i < 9; i++) sum += parseInt(nine[i]) * (10 - i);
-      const check = (11 - (sum % 11)) % 11;
-      asin = nine + (check === 10 ? "X" : String(check));
-    }
-    const authorName = author?.name ?? "";
-    const url = asin
-      ? `https://www.amazon.com/dp/${asin}?tag=bookliz-20`
-      : raw.length > 0
-        ? `https://www.amazon.com/s?k=${raw}&tag=bookliz-20`
-        : `https://www.amazon.com/s?k=${encodeURIComponent(`${book.title} ${authorName}`)}&tag=bookliz-20`;
-    void Linking.openURL(url);
+    void Linking.openURL(
+      buildAmazonUrl({ isbn: book.isbn, title: book.title, authorName: author?.name ?? "" })
+    );
   };
 
   const relatedRecs = getRecommendationsForBook(book.id, 4)
