@@ -18,7 +18,9 @@ import {
   View,
 } from "react-native";
 import { BookMatch } from "../../services/bookLookupService";
+import { formatIsbn13 } from "../../utils/isbnUtils";
 import { matchMetaLine } from "./matchLogic";
+import { ScanQueueEntry, ScanShelfChoice } from "./scanQueue";
 import { fonts, radii, spacing } from "../../theme/theme";
 import { useColors, useTheme } from "../../theme/ThemeContext";
 import { BookEditionOption } from "../../utils/bookMetadata";
@@ -357,6 +359,210 @@ export function MatchGridCard({ match, onSelect }: { match: BookMatch; onSelect:
       <Text numberOfLines={1} style={styles.matchGridAuthor}>{match.authors[0] ?? ""}</Text>
       {meta ? <Text style={styles.matchGridMeta} numberOfLines={1}>{meta}</Text> : null}
     </ScalePressable>
+  );
+}
+
+// ─── Scan queue card ──────────────────────────────────────────────────────────
+
+/**
+ * One scanned barcode, rendered over the live camera.
+ *
+ * The card asks exactly one question — "do you own it?" — and both buttons are
+ * tappable from the very first frame, while the metadata is still resolving.
+ * Nothing here invents data: until a lookup returns, the card shows the ISBN
+ * and a spinner, never a placeholder title.
+ */
+export function ScanQueueCard({
+  entry,
+  onChoose,
+  onUndo,
+  onDismiss,
+  onRetry,
+  onEditManually,
+}: {
+  entry: ScanQueueEntry;
+  onChoose: (choice: ScanShelfChoice) => void;
+  onUndo: () => void;
+  onDismiss: () => void;
+  onRetry: () => void;
+  onEditManually: () => void;
+}) {
+  const c = useColors();
+  const { isDark } = useTheme();
+  const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
+  const { t } = useI18n();
+
+  const isbnLabel = t("scanQueue.isbnLabel", { isbn: formatIsbn13(entry.isbn13) });
+  const resolvedTitle = entry.book?.title?.trim();
+  const author = entry.book?.authorName?.trim();
+  const cover = entry.book?.coverImageUri;
+  // Empty means unknown: the ISBN stands in for a title we do not have yet.
+  const headline =
+    entry.status === "duplicate"
+      ? entry.duplicateTitle?.trim() || resolvedTitle || isbnLabel
+      : resolvedTitle || isbnLabel;
+  const asksQuestion =
+    entry.status === "resolving" || entry.status === "ready" || entry.status === "adding";
+  const busy = entry.status === "adding";
+
+  const meta = () => {
+    switch (entry.status) {
+      case "resolving":
+        return (
+          <View style={styles.scanQueueMetaRow}>
+            <ActivityIndicator size="small" color={c.teal} />
+            <Text style={styles.scanQueueMeta} numberOfLines={1}>
+              {entry.choice
+                ? entry.choice === "owned"
+                  ? t("scanQueue.queuedOwned")
+                  : t("scanQueue.queuedWishlist")
+                : t("scanQueue.lookingUp")}
+            </Text>
+          </View>
+        );
+      case "adding":
+        return (
+          <View style={styles.scanQueueMetaRow}>
+            <ActivityIndicator size="small" color={c.teal} />
+            <Text style={styles.scanQueueMeta} numberOfLines={1}>{t("scanQueue.adding")}</Text>
+          </View>
+        );
+      case "added":
+        return (
+          <View style={styles.scanQueueMetaRow}>
+            <Ionicons name="checkmark-circle" size={13} color="#4ADE80" />
+            <Text style={[styles.scanQueueMeta, styles.scanQueueMetaOk]} numberOfLines={1}>
+              {entry.choice === "wishlist" ? t("scanQueue.addedWishlist") : t("scanQueue.addedOwned")}
+            </Text>
+          </View>
+        );
+      case "duplicate":
+        return (
+          <View style={styles.scanQueueMetaRow}>
+            <Ionicons name="library-outline" size={13} color="#FBBF24" />
+            <Text style={[styles.scanQueueMeta, styles.scanQueueMetaWarn]} numberOfLines={1}>
+              {t("scanQueue.duplicate")}
+            </Text>
+          </View>
+        );
+      case "failed":
+        return (
+          <View style={styles.scanQueueMetaRow}>
+            <Ionicons name="alert-circle-outline" size={13} color="#FCA5A5" />
+            <Text style={[styles.scanQueueMeta, styles.scanQueueMetaError]} numberOfLines={1}>
+              {t("scanQueue.failed")}
+            </Text>
+          </View>
+        );
+      default:
+        return author ? (
+          <View style={styles.scanQueueMetaRow}>
+            <Text style={styles.scanQueueMeta} numberOfLines={1}>{author}</Text>
+          </View>
+        ) : null;
+    }
+  };
+
+  return (
+    <View style={styles.scanQueueCard}>
+      <View style={styles.scanQueueRow}>
+        {cover ? (
+          <Image
+            source={{ uri: cover.replace(/zoom=1(?=&|$)/, "zoom=0") }}
+            style={styles.scanQueueCover}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={[styles.scanQueueCover, styles.scanQueueCoverFallback]}>
+            <Ionicons name="barcode-outline" size={16} color="rgba(255,255,255,0.45)" />
+          </View>
+        )}
+
+        <View style={styles.scanQueueCopy}>
+          <Text style={styles.scanQueueTitle} numberOfLines={1}>{headline}</Text>
+          {meta()}
+          {/* The lookup fell back to a title search — say so rather than
+              presenting a guess as the book that was scanned. */}
+          {entry.unverified && entry.status !== "failed" ? (
+            <View style={styles.scanQueueMetaRow}>
+              <Ionicons name="help-circle-outline" size={13} color="#FBBF24" />
+              <Text style={[styles.scanQueueMeta, styles.scanQueueMetaWarn]} numberOfLines={2}>
+                {t("scanQueue.unverified")}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        <Pressable
+          style={styles.scanQueueDismiss}
+          onPress={onDismiss}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel={t("scanQueue.dismiss")}
+        >
+          <Ionicons name="close" size={16} color="rgba(255,255,255,0.55)" />
+        </Pressable>
+      </View>
+
+      {asksQuestion ? (
+        <>
+          <Text style={styles.scanQueueQuestion}>{t("scanQueue.question")}</Text>
+          <View style={styles.scanQueueActions}>
+            <ScalePressable
+              accessibilityRole="button"
+              accessibilityLabel={t("scanQueue.owned")}
+              disabled={busy}
+              style={[styles.scanQueueBtn, entry.choice === "owned" && styles.scanQueueBtnOwned]}
+              onPress={() => onChoose("owned")}
+            >
+              {busy && entry.choice === "owned" ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="checkmark-circle-outline" size={15} color="#F8FAFC" />
+              )}
+              <Text style={styles.scanQueueBtnText}>{t("scanQueue.owned")}</Text>
+            </ScalePressable>
+
+            <ScalePressable
+              accessibilityRole="button"
+              accessibilityLabel={t("scanQueue.wishlist")}
+              disabled={busy}
+              style={[styles.scanQueueBtn, entry.choice === "wishlist" && styles.scanQueueBtnWishlist]}
+              onPress={() => onChoose("wishlist")}
+            >
+              {busy && entry.choice === "wishlist" ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="bookmark-outline" size={15} color="#F8FAFC" />
+              )}
+              <Text style={styles.scanQueueBtnText}>{t("scanQueue.wishlist")}</Text>
+            </ScalePressable>
+          </View>
+        </>
+      ) : null}
+
+      {entry.status === "added" ? (
+        <View style={styles.scanQueueLinkRow}>
+          <ScalePressable accessibilityRole="button" style={styles.scanQueueLink} onPress={onUndo}>
+            <Ionicons name="arrow-undo-outline" size={14} color="#F8FAFC" />
+            <Text style={styles.scanQueueLinkText}>{t("scanQueue.undo")}</Text>
+          </ScalePressable>
+        </View>
+      ) : null}
+
+      {entry.status === "failed" ? (
+        <View style={styles.scanQueueLinkRow}>
+          <ScalePressable accessibilityRole="button" style={styles.scanQueueLink} onPress={onRetry}>
+            <Ionicons name="refresh-outline" size={14} color="#F8FAFC" />
+            <Text style={styles.scanQueueLinkText}>{t("scanQueue.retry")}</Text>
+          </ScalePressable>
+          <ScalePressable accessibilityRole="button" style={styles.scanQueueLink} onPress={onEditManually}>
+            <Ionicons name="create-outline" size={14} color="#F8FAFC" />
+            <Text style={styles.scanQueueLinkText}>{t("scanQueue.editManually")}</Text>
+          </ScalePressable>
+        </View>
+      ) : null}
+    </View>
   );
 }
 

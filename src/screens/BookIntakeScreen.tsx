@@ -3,7 +3,7 @@ import { CameraView, BarcodeScanningResult, useCameraPermissions } from "expo-ca
 import * as ImagePicker from "expo-image-picker";
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { BooklizDialog } from "../components/BooklizDialog";
 import { ScalePressable } from "../components/ScalePressable";
@@ -34,6 +34,7 @@ import {
   lookupByIsbn as aggregatorLookupByIsbn,
   lookupByQuery as aggregatorLookupByQuery,
   detectQueryIntent,
+  workEditionToNewBookInput,
 } from "../services/bookMetadataAggregator";
 import { buildUserTasteProfile, UserTasteProfile } from "../services/userTasteProfile";
 import { parseIsbn, formatIsbn13 } from "../utils/isbnUtils";
@@ -57,8 +58,15 @@ import {
   MatchCard,
   MatchGridCard,
   ScanLine,
+  ScanQueueCard,
   splitList,
 } from "./bookIntake/components";
+import {
+  ScanQueueEntry,
+  ScanShelfChoice,
+  entriesAwaitingCommit,
+  scanQueueReducer,
+} from "./bookIntake/scanQueue";
 import { createStyles } from "./bookIntake/styles";
 import { findEditionsInLanguage } from "../utils/metadataResolver";
 import { buildEditionSwitchPatch } from "../utils/editionSwitch";
@@ -108,7 +116,16 @@ export function BookIntakeScreen() {
   const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<BookIntakeRouteProp>();
-  const { addBook, findDuplicateBook, authors, books, readingSessions, userProfile } = useBookliz();
+  const {
+    addBook,
+    deleteBook,
+    findDuplicateBook,
+    updateBookStatus,
+    authors,
+    books,
+    readingSessions,
+    userProfile,
+  } = useBookliz();
   const tasteProfile = useMemo(
     () => buildUserTasteProfile({ authors, books, readingSessions, userProfile }),
     [authors, books, readingSessions, userProfile]
@@ -139,6 +156,18 @@ export function BookIntakeScreen() {
   const [isbnInputMode, setIsbnInputMode] = useState<"camera" | "manual">("camera");
   const scanLineAnim = useRef(new Animated.Value(0)).current;
   const [scanFeedback, setScanFeedback] = useState<string | null>(null);
+  // ── Continuous scanner queue ───────────────────────────────────────────────
+  // Scanning a barcode never navigates away: each ISBN becomes an entry that
+  // resolves underneath the user while the camera keeps reading.
+  const [scanQueue, dispatchScanQueue] = useReducer(scanQueueReducer, [] as ScanQueueEntry[]);
+  // Read inside camera callbacks, which close over a stale render otherwise.
+  const scanQueueRef = useRef<ScanQueueEntry[]>(scanQueue);
+  // Latest duplicate predicate — the library changes while scans are in flight.
+  const findDuplicateRef = useRef(findDuplicateBook);
+  // ISBNs already handed to addBook. Belt-and-braces against a second commit
+  // (re-entrant effect, StrictMode double-invoke): adding a book twice is the
+  // one mistake this flow must never make.
+  const committedScansRef = useRef<Set<string>>(new Set());
   // Book lookup / match confirmation
   const [matches, setMatches] = useState<BookMatch[]>([]);
   const [matchLookupLabel, setMatchLookupLabel] = useState("");
@@ -181,6 +210,8 @@ export function BookIntakeScreen() {
     useCallback(() => {
       return () => {
         if (liveSearchTimerRef.current) clearTimeout(liveSearchTimerRef.current);
+        if (notIsbnTimerRef.current) clearTimeout(notIsbnTimerRef.current);
+        notIsbnTimerRef.current = null;
         searchSeqRef.current += 1; // invalidate any in-flight lookup
         initialSearchRequestRef.current = null;
         setMode("menu");
@@ -197,6 +228,8 @@ export function BookIntakeScreen() {
         setScanZoom(0);
         setIsbnInputMode("camera");
         setScanFeedback(null);
+        dispatchScanQueue({ type: "clear" });
+        committedScansRef.current.clear();
         setMatches([]);
         setMatchLookupLabel("");
         setMatchViewMode("list");
@@ -505,8 +538,155 @@ export function BookIntakeScreen() {
     void stageBook(input, insight);
   };
 
+  // ── Continuous scanner ─────────────────────────────────────────────────────
+
+  // Keep the refs the async scan pipeline reads in step with each render.
+  useEffect(() => { scanQueueRef.current = scanQueue; }, [scanQueue]);
+  useEffect(() => { findDuplicateRef.current = findDuplicateBook; }, [findDuplicateBook]);
+
+  /** Transient badge over the camera (not-an-ISBN, already-scanned…). */
+  const flashScanFeedback = (message: string) => {
+    setScanFeedback(message);
+    if (notIsbnTimerRef.current) clearTimeout(notIsbnTimerRef.current);
+    notIsbnTimerRef.current = setTimeout(() => {
+      notIsbnTimerRef.current = null;
+      setScanFeedback(null);
+    }, 1800);
+  };
+
+  /**
+   * Resolve one scanned ISBN in the background. The user is never blocked by
+   * this: they can answer "owned / wishlist" while it runs.
+   *
+   * Nothing is fabricated — when the aggregator has no work for the barcode the
+   * entry fails instead of inventing a title.
+   */
+  const resolveScannedIsbn = async (isbn13: string) => {
+    try {
+      const result = await aggregatorLookupByIsbn(isbn13);
+      const work = result.work ?? result.works[0] ?? null;
+      // Same edition choice as the match list makes for an ISBN lookup.
+      const edition = work?.bestEdition ?? work?.editions[0];
+      if (!work || !edition) {
+        dispatchScanQueue({ type: "failed", isbn13 });
+        return;
+      }
+
+      const input: NewBookInput = {
+        ...workEditionToNewBookInput(work, edition, "isbn"),
+        seriesName: work.seriesName,
+        seriesNumber: work.seriesOrder,
+        languageCode: edition.languageCode,
+        // The barcode was on a physical object — no format question needed.
+        format: "physical",
+        // The scanned code is ground truth when the edition record has none.
+        isbn: edition.isbn13 ?? edition.isbn10 ?? isbn13,
+        synopsis: sanitizeSynopsis(work.description),
+      };
+
+      const dupe = findDuplicateRef.current(input);
+      if (dupe) {
+        dispatchScanQueue({ type: "duplicate", isbn13, existingTitle: dupe.title });
+        return;
+      }
+
+      dispatchScanQueue({
+        type: "resolved",
+        isbn13,
+        book: input,
+        // `isbnMatch === false` means the aggregator fell back to a title
+        // search: plausible, but not confirmed to be the barcode in hand.
+        unverified: !result.isbnMatch,
+      });
+    } catch {
+      dispatchScanQueue({ type: "failed", isbn13 });
+    }
+  };
+
+  /**
+   * Commit answered + resolved entries. This is the ONLY place a scanned book
+   * reaches the library, which is why it re-checks for duplicates first: the
+   * library may have changed between resolution and the user's answer.
+   */
+  useEffect(() => {
+    // ONE per run, deliberately: committing two books in the same pass would
+    // run the second duplicate check against a stale library snapshot. The
+    // effect re-fires with fresh data as soon as this book lands.
+    const entry = entriesAwaitingCommit(scanQueue).find(
+      (candidate) => !committedScansRef.current.has(candidate.isbn13)
+    );
+    if (!entry?.book || !entry.choice) return;
+
+    const wantsOwned = entry.choice === "owned";
+    const input: NewBookInput = {
+      ...entry.book,
+      ownership: wantsOwned ? "owned" : "not-owned",
+      wishlist: !wantsOwned,
+      wantToBuy: false,
+    };
+
+    const dupe = findDuplicateRef.current(input);
+    if (dupe) {
+      dispatchScanQueue({ type: "duplicate", isbn13: entry.isbn13, existingTitle: dupe.title });
+      return;
+    }
+
+    committedScansRef.current.add(entry.isbn13);
+    const book = addBook(input);
+    // addBook always lands on "want-to-read"; wishlist is its own status and
+    // updateBookStatus owns the (status + flag + ownership) triple.
+    if (!wantsOwned) updateBookStatus(book.id, "wishlist");
+    hapticSuccess();
+    dispatchScanQueue({ type: "added", isbn13: entry.isbn13, bookId: book.id });
+  }, [scanQueue, addBook, updateBookStatus]);
+
+  const chooseScanShelf = (entry: ScanQueueEntry, choice: ScanShelfChoice) => {
+    hapticLight();
+    dispatchScanQueue({ type: "choose", isbn13: entry.isbn13, choice });
+  };
+
+  const undoScanEntry = (entry: ScanQueueEntry) => {
+    if (entry.bookId) deleteBook(entry.bookId);
+    committedScansRef.current.delete(entry.isbn13);
+    dispatchScanQueue({ type: "undone", isbn13: entry.isbn13 });
+  };
+
+  const dismissScanEntry = (entry: ScanQueueEntry) => {
+    committedScansRef.current.delete(entry.isbn13);
+    dispatchScanQueue({ type: "dismiss", isbn13: entry.isbn13 });
+  };
+
+  const retryScanEntry = (entry: ScanQueueEntry) => {
+    dispatchScanQueue({ type: "retry", isbn13: entry.isbn13 });
+    void resolveScannedIsbn(entry.isbn13);
+  };
+
+  /** Leave the scanner for another mode, dropping the on-screen queue. */
+  const leaveScanner = (next: IntakeMode) => {
+    dispatchScanQueue({ type: "clear" });
+    committedScansRef.current.clear();
+    setScanFeedback(null);
+    setScanned(false);
+    setMode(next);
+  };
+
+  /** Failed lookup → the existing manual path, prefilled with the ISBN. */
+  const editScanManually = (entry: ScanQueueEntry) => {
+    setManual({
+      title: "",
+      authorName: "",
+      isbn: entry.isbn13,
+      pages: "",
+      genre: "",
+      publisher: "",
+    });
+    leaveScanner("manual");
+  };
+
   /**
    * ISBN barcode handler — debounced (2 s), validates before lookup.
+   * The camera is never stopped: a valid ISBN joins the queue and resolves in
+   * the background while the user keeps scanning.
    */
   const handleBarcode = ({ data }: BarcodeScanningResult) => {
     const now = Date.now();
@@ -517,20 +697,22 @@ export function BookIntakeScreen() {
       // Not a book ISBN (QR, retail UPC…): say so briefly and keep the camera
       // live instead of locking the scanner forever.
       lastScanRef.current = now;
-      setScanFeedback(t("scan.notIsbn"));
-      if (notIsbnTimerRef.current) clearTimeout(notIsbnTimerRef.current);
-      notIsbnTimerRef.current = setTimeout(() => {
-        notIsbnTimerRef.current = null;
-        setScanFeedback((current) => (current === t("scan.notIsbn") ? null : current));
-      }, 1500);
+      flashScanFeedback(t("scan.notIsbn"));
       return;
     }
 
     lastScanRef.current = now;
-    setScanned(true); // lock only once we have a real ISBN — prevents re-fire while lookup runs
+
+    // Same barcode twice in a row → one entry only (the reducer enforces it
+    // too; this branch exists to explain the no-op to the user).
+    if (scanQueueRef.current.some((entry) => entry.isbn13 === parsed.isbn13)) {
+      flashScanFeedback(t("scanQueue.alreadyScanned"));
+      return;
+    }
+
     hapticLight(); // barcode caught
-    setScanFeedback(t("scan.searching"));
-    void lookupAndShowMatches(parsed.isbn13, "isbn", "isbn");
+    dispatchScanQueue({ type: "scanned", isbn13: parsed.isbn13, isbn10: parsed.isbn10, at: now });
+    void resolveScannedIsbn(parsed.isbn13);
   };
 
   const saveManual = () => {
@@ -1306,7 +1488,7 @@ export function BookIntakeScreen() {
         {/* Back button overlay */}
         <Pressable accessibilityRole="button"
           style={styles.scannerBackBtn}
-          onPress={() => { setScanned(false); setMode("menu"); }}
+          onPress={() => leaveScanner("menu")}
         >
           <Ionicons name="chevron-back" size={22} color="#fff" />
           <Text style={styles.scannerBackText}>Back</Text>
@@ -1356,17 +1538,49 @@ export function BookIntakeScreen() {
           </View>
         )}
 
-        {/* Feedback label */}
+        {/* Feedback label — moves above the queue once scans are stacked up */}
         {scanFeedback ? (
-          <View style={styles.scanFeedbackBadge}>
-            <ActivityIndicator size="small" color={c.teal} />
+          <View style={scanQueue.length ? styles.scanFeedbackBadgeTop : styles.scanFeedbackBadge}>
             <Text style={styles.scanFeedbackText}>{scanFeedback}</Text>
           </View>
-        ) : (
+        ) : scanQueue.length === 0 ? (
           <View style={styles.scanHintBadge}>
             <Text style={styles.scanHintText}>Point at the barcode on the back cover</Text>
           </View>
-        )}
+        ) : null}
+
+        {/* ── Scanned queue — one question per book, camera stays live ─────── */}
+        {scanQueue.length ? (
+          <View style={styles.scanQueueWrap}>
+            <View style={styles.scanQueueHeader}>
+              <Text style={styles.scanQueueHeaderCount}>
+                {scanQueue.length === 1
+                  ? t("scanQueue.countOne")
+                  : t("scanQueue.count", { count: scanQueue.length })}
+              </Text>
+              <Text style={styles.scanQueueHeaderHint} numberOfLines={1}>
+                {t("scanQueue.hint")}
+              </Text>
+            </View>
+            <ScrollView
+              contentContainerStyle={styles.scanQueueListContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {scanQueue.map((entry) => (
+                <ScanQueueCard
+                  key={entry.id}
+                  entry={entry}
+                  onChoose={(choice) => chooseScanShelf(entry, choice)}
+                  onUndo={() => undoScanEntry(entry)}
+                  onDismiss={() => dismissScanEntry(entry)}
+                  onRetry={() => retryScanEntry(entry)}
+                  onEditManually={() => editScanManually(entry)}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
 
         {/* Controls: torch + zoom + manual */}
         {permission?.granted && (
