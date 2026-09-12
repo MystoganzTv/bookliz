@@ -271,7 +271,8 @@ Eliminado junto con sus cuatro `books.filter`.
 | P0-3 | Elegir fuente única de versión. Sugerencia: `expo-application` → `nativeApplicationVersion` en runtime, para que `WhatsNewModal` no pueda desincronizarse del binario | **Tú** |
 | P2-2 | Unificar los dos `recommendationEngine.ts` | Siguiente sesión |
 | P2-4 | Sacar `mockData.ts` del bundle de producción | Siguiente sesión |
-| P2-5 | Restringir la GB API key por bundle ID y ponerle tope de cuota en Google Cloud | **Tú** |
+| P2-5 *(rev. 2026-09-12)* | **La premisa ya no vale.** Restringir por bundle ID rompería la clave: desde que existe el proxy, quien llama a Google no es la app sino dos Edge Functions, que no son una app iOS ni tienen IP fija que fijar. Comprobado en la consola: la clave ya está restringida a **Books API + Cloud Vision API**, que es la restricción que sí aplica aquí, y la app no la lleva dentro. Queda el tope de cuota por API | **Tú** |
+| P2-11 *(2026-09-12)* | **Vision devuelve 403 en producción**: `This API method requires billing to be enabled` en el proyecto `booklio-497503`. El OCR de portadas no identifica nada, aunque la función esté desplegada y la app la llame. Books sí responde (probado, 200) porque no exige facturación. Hasta que el billing esté activo, *Hacer foto* solo guarda la imagen como portada | **Tú** — activar billing |
 | P2-7 | Tests de componente/pantalla — sigue habiendo cero | Continuo |
 | P2-8 | Handle abierto en la suite (aviso de Jest) | Bajo |
 | P2-10 | Renombrar `ios/Booklio/` y el prefijo `booklio_` de Supabase | Requiere migración |
