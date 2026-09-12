@@ -1006,6 +1006,7 @@ type AuthorRow = {
 
 type BookRow = {
   id: string;
+  duration_minutes?: number | null;
   title: string;
   author_id: string;
   series_id?: string | null;
@@ -1120,6 +1121,7 @@ function mapBookToRow(userId: string, book: Book) {
     synopsis: book.synopsis,
     genre: book.genre,
     pages: book.pages,
+    duration_minutes: book.durationMinutes ?? null,
     published_date: book.publishedDate,
     publisher: book.publisher,
     language: book.language,
@@ -1153,6 +1155,7 @@ function mapBookRowToBook(row: BookRow): Book {
     synopsis: row.synopsis,
     genre: row.genre ?? [],
     pages: row.pages,
+    durationMinutes: row.duration_minutes ?? undefined,
     publishedDate: row.published_date,
     publisher: row.publisher,
     language: row.language,

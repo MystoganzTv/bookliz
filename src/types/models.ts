@@ -74,6 +74,17 @@ export interface Book {
   releaseOrder?: number;
   synopsis: string;
   genre: string[];
+  /**
+   * Total listening time in minutes, for audiobooks.
+   *
+   * An audiobook has no pages. Until now its progress was a percentage over a
+   * page count that was either borrowed from the print edition or made up
+   * (100), so "42%" meant nothing you could check against the app in your
+   * ears. With a duration the reader can say "I'm at 3h 20m" and have it mean
+   * that. Absent for every other format, and absent for audiobooks whose
+   * length nobody has entered — in which case the percentage stays.
+   */
+  durationMinutes?: number;
   pages: number;
   publishedDate: string;
   publisher: string;
@@ -204,6 +215,7 @@ export interface UpdateBookInput {
   editionKey?: string;
   synopsis: string;
   genre: string[];
+  durationMinutes?: number;
   pages: number;
   publishedDate: string;
   publisher: string;

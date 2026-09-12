@@ -1654,6 +1654,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
             // "keep the previous edition's value" (that re-leaked old metadata
             // right after an edition switch cleared these fields).
             pages: input.pages > 0 ? input.pages : 0,
+            durationMinutes: input.durationMinutes && input.durationMinutes > 0 ? input.durationMinutes : undefined,
             publishedDate: input.publishedDate.trim(),
             publisher: input.publisher.trim(), // "" = unknown
             language,

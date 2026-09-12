@@ -107,6 +107,14 @@ export function EditBookScreen() {
   const [genres,          setGenres]          = useState<string[]>(book?.genre ?? []);
   // Unknown page count (0 / negative) shows as an empty field — never a literal "0".
   const [pages,           setPages]           = useState(book && book.pages > 0 ? String(book.pages) : "");
+  // Audiobook length, asked as hours + minutes because that is how a listener
+  // knows it. Stored as one number of minutes.
+  const [durationHours,   setDurationHours]   = useState(
+    book?.durationMinutes ? String(Math.floor(book.durationMinutes / 60)) : ""
+  );
+  const [durationMins,    setDurationMins]    = useState(
+    book?.durationMinutes ? String(book.durationMinutes % 60) : ""
+  );
   const [publishedDate,   setPublishedDate]   = useState(book?.publishedDate ?? "");
   const [publisher,       setPublisher]       = useState(book?.publisher ?? "");
   // "" = unknown, exactly like synopsis/publisher/pages. Pre-selecting English
@@ -352,6 +360,7 @@ export function EditBookScreen() {
       // Empty form field = unknown (0). Falling back to book.pages here would
       // re-inherit the previous edition's page count after an edition switch.
       pages: parseNum(pages) ?? 0,
+      durationMinutes: ((parseNum(durationHours) ?? 0) * 60 + (parseNum(durationMins) ?? 0)) || undefined,
       publishedDate, publisher, language, isbn, format, coverImageUri,
       editionKey,
       seriesName, seriesNumber: parseNum(seriesNumber),
@@ -522,8 +531,38 @@ export function EditBookScreen() {
 
       {/* ══ DETAILS ══════════════════════════════════════════════════════════ */}
       <FieldCard icon="document-text-outline" label={t("editBook.labelPages")} c={c} styles={styles}>
-        <PlainInput value={pages} onChangeText={setPages} placeholder="Number of pages" keyboardType="number-pad" styles={styles} c={c} />
+        <PlainInput value={pages} onChangeText={setPages} placeholder={t("editBook.pagesPlaceholder")} keyboardType="number-pad" styles={styles} c={c} />
       </FieldCard>
+
+      {/* Only for audiobooks — a printed book has no running time, and asking
+          for one would invite a number that means nothing. */}
+      {format === "audiobook" ? (
+        <FieldCard icon="headset-outline" label={t("editBook.labelDuration")} c={c} styles={styles}>
+          <View style={styles.isbnRow}>
+            <View style={{ flex: 1 }}>
+              <PlainInput
+                value={durationHours}
+                onChangeText={setDurationHours}
+                placeholder={t("editBook.durationHours")}
+                keyboardType="number-pad"
+                styles={styles}
+                c={c}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <PlainInput
+                value={durationMins}
+                onChangeText={setDurationMins}
+                placeholder={t("editBook.durationMinutes")}
+                keyboardType="number-pad"
+                styles={styles}
+                c={c}
+              />
+            </View>
+          </View>
+          <Text style={styles.langHint}>{t("editBook.durationHint")}</Text>
+        </FieldCard>
+      ) : null}
 
       <FieldCard icon="barcode-outline" label={t("editBook.labelIsbn")} c={c} styles={styles}>
         <View style={styles.isbnRow}>

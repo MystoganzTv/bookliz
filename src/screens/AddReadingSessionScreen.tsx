@@ -15,6 +15,7 @@ import { NewReadingSessionInput, ReadingFormat } from "../types/models";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { localDateKey, parseDateKey } from "../utils/dateUtils";
 import { ValueSlider } from "../components/ValueSlider";
+import { formatMinutes } from "../utils/duration";
 
 const QUICK_MINUTES = [15, 30, 45, 60, 90, 120];
 const LOCATION_PRESETS = ["Home", "Cafe", "Library"];
@@ -95,6 +96,15 @@ export function AddReadingSessionScreen() {
   const lastPct = editingSession && selectedBook
     ? Math.round((Math.max(0, editingSession.startPage - 1) / audioBase) * 100)
     : selectedBook?.userStatus.progressPercent ?? 0;
+  /**
+   * An audiobook with a known length is measured in time, not in a percentage
+   * of a page count it does not have. The percentage is still what gets
+   * stored — it is what every other screen and the sync already understand —
+   * but nothing asks the listener to think in it.
+   */
+  const durationMinutes = selectedBook?.durationMinutes ?? 0;
+  const hasDuration = durationMinutes > 0;
+
   const [currentPct, setCurrentPct] = useState(
     editingSession && selectedBook
       ? Math.min(100, Math.round((editingSession.endPage / audioBase) * 100))
@@ -102,8 +112,17 @@ export function AddReadingSessionScreen() {
   );
   const gainedPct = Math.max(0, currentPct - lastPct);
 
+  /** Where the listener is now, in minutes, when the length is known. */
+  const listenedMinutes = Math.round((currentPct / 100) * durationMinutes);
+  const pctFromMinutes = (mins: number) =>
+    Math.min(100, Math.max(lastPct, Math.round((Math.max(0, mins) / Math.max(1, durationMinutes)) * 100)));
+
   const nudgePct = (delta: number) => {
     setCurrentPct((p) => Math.min(100, Math.max(lastPct, p + delta)));
+  };
+  /** Steps in time rather than in percent, so "+5" moves five minutes. */
+  const nudgeListened = (deltaMinutes: number) => {
+    setCurrentPct(pctFromMinutes(listenedMinutes + deltaMinutes));
   };
   const [pctInputOpen, setPctInputOpen] = useState(false);
   const [pctInputText, setPctInputText] = useState(String(
@@ -362,18 +381,35 @@ export function AddReadingSessionScreen() {
         <View style={styles.stepperCard}>
           <Text style={styles.stepperLabel}>{t("logSession.listenedTo")}</Text>
           <View style={styles.stepper}>
-            <Pressable accessibilityRole="button" style={styles.stepBtn} onPress={() => { nudgePct(-5); setPctInputText(String(Math.max(lastPct, currentPct - 5))); }}>
-              <Text style={[styles.stepBtnText, { color: c.ink }]}>−5%</Text>
+            <Pressable
+              accessibilityRole="button"
+              style={styles.stepBtn}
+              onPress={() => {
+                if (hasDuration) { nudgeListened(-15); setPctInputText(String(Math.max(0, listenedMinutes - 15))); }
+                else { nudgePct(-5); setPctInputText(String(Math.max(lastPct, currentPct - 5))); }
+              }}
+            >
+              <Text style={[styles.stepBtnText, { color: c.ink }]}>{hasDuration ? "−15m" : "−5%"}</Text>
             </Pressable>
             <Pressable
               style={styles.stepBtnSm}
-              onPress={() => { nudgePct(-1); setPctInputText(String(Math.max(lastPct, currentPct - 1))); }}
+              onPress={() => {
+                if (hasDuration) { nudgeListened(-5); setPctInputText(String(Math.max(0, listenedMinutes - 5))); }
+                else { nudgePct(-1); setPctInputText(String(Math.max(lastPct, currentPct - 1))); }
+              }}
               accessibilityRole="button"
               accessibilityLabel={t("a11y.decreasePercent")}
             >
               <Ionicons name="remove" size={18} color={c.ink} />
             </Pressable>
-            <Pressable accessibilityRole="button" style={styles.pageDisplay} onPress={() => setPctInputOpen(true)}>
+            <Pressable
+              accessibilityRole="button"
+              style={styles.pageDisplay}
+              onPress={() => {
+                setPctInputText(String(hasDuration ? listenedMinutes : currentPct));
+                setPctInputOpen(true);
+              }}
+            >
               {pctInputOpen ? (
                 <TextInput
                   autoFocus
@@ -382,34 +418,58 @@ export function AddReadingSessionScreen() {
                   value={pctInputText}
                   onChangeText={setPctInputText}
                   onBlur={() => {
-                    const v = Math.min(100, Math.max(lastPct, parseInt(pctInputText, 10) || lastPct));
+                    const typed = parseInt(pctInputText, 10);
+                    const v = hasDuration
+                      ? pctFromMinutes(Number.isFinite(typed) ? typed : listenedMinutes)
+                      : Math.min(100, Math.max(lastPct, typed || lastPct));
                     setCurrentPct(v);
-                    setPctInputText(String(v));
+                    setPctInputText(String(hasDuration ? Math.round((v / 100) * durationMinutes) : v));
                     setPctInputOpen(false);
                   }}
                   onSubmitEditing={() => {
-                    const v = Math.min(100, Math.max(lastPct, parseInt(pctInputText, 10) || lastPct));
+                    const typed = parseInt(pctInputText, 10);
+                    const v = hasDuration
+                      ? pctFromMinutes(Number.isFinite(typed) ? typed : listenedMinutes)
+                      : Math.min(100, Math.max(lastPct, typed || lastPct));
                     setCurrentPct(v);
-                    setPctInputText(String(v));
+                    setPctInputText(String(hasDuration ? Math.round((v / 100) * durationMinutes) : v));
                     setPctInputOpen(false);
                   }}
                   selectTextOnFocus
                 />
               ) : (
-                <Text style={[styles.pageNumber, { color: c.ink }]}>{currentPct}%</Text>
+                <Text style={[styles.pageNumber, { color: c.ink }]}>
+                  {hasDuration ? formatMinutes(listenedMinutes) : `${currentPct}%`}
+                </Text>
               )}
-              <Text style={[styles.pageOf, { color: c.muted }]}>{pctInputOpen ? t("logSession.tapToConfirm") : `${t("logSession.ofBook")} · ${t("logSession.tapToEdit")}`}</Text>
+              <Text style={[styles.pageOf, { color: c.muted }]}>
+                {pctInputOpen
+                  ? t("logSession.tapToConfirm")
+                  : hasDuration
+                    ? `${t("logSession.ofDuration", { total: formatMinutes(durationMinutes) })} · ${t("logSession.tapToEdit")}`
+                    : `${t("logSession.ofBook")} · ${t("logSession.tapToEdit")}`}
+              </Text>
             </Pressable>
             <Pressable
               style={styles.stepBtnSm}
-              onPress={() => { nudgePct(1); setPctInputText(String(Math.min(100, currentPct + 1))); }}
+              onPress={() => {
+                if (hasDuration) { nudgeListened(5); setPctInputText(String(listenedMinutes + 5)); }
+                else { nudgePct(1); setPctInputText(String(Math.min(100, currentPct + 1))); }
+              }}
               accessibilityRole="button"
               accessibilityLabel={t("a11y.increasePercent")}
             >
               <Ionicons name="add" size={18} color={c.ink} />
             </Pressable>
-            <Pressable accessibilityRole="button" style={styles.stepBtn} onPress={() => { nudgePct(5); setPctInputText(String(Math.min(100, currentPct + 5))); }}>
-              <Text style={[styles.stepBtnText, { color: c.ink }]}>+5%</Text>
+            <Pressable
+              accessibilityRole="button"
+              style={styles.stepBtn}
+              onPress={() => {
+                if (hasDuration) { nudgeListened(15); setPctInputText(String(listenedMinutes + 15)); }
+                else { nudgePct(5); setPctInputText(String(Math.min(100, currentPct + 5))); }
+              }}
+            >
+              <Text style={[styles.stepBtnText, { color: c.ink }]}>{hasDuration ? "+15m" : "+5%"}</Text>
             </Pressable>
           </View>
           <ValueSlider
@@ -419,7 +479,7 @@ export function AddReadingSessionScreen() {
             accessibilityLabel={t("logSession.listenedTo")}
             onChange={(next) => { setCurrentPct(next); setPctInputText(String(next)); }}
           />
-          <Text style={styles.fieldHint}>{t("logSession.hintPercent")}</Text>
+          <Text style={styles.fieldHint}>{t(hasDuration ? "logSession.hintListened" : "logSession.hintPercent")}</Text>
           {gainedPct > 0 && (
             <Text style={styles.pagesReadPill}>+{gainedPct}{t("logSession.pctFrom")}</Text>
           )}
