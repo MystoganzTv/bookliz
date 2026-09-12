@@ -109,9 +109,130 @@ Resultado esperado: **4+**.
 
 ---
 
-## 5. Lo que sigue pendiente y no es de la ficha
+## 5. Textos de la ficha
 
-- Capturas de pantalla para la ficha (no hay ninguna subida).
-- Texto promocional, descripción y keywords.
-- La política está solo en inglés; la app es bilingüe y la ficha, si se
-  publica en español, debería apuntar a una versión traducida.
+Escritos contra lo que la app hace hoy. **Nada de esto menciona el OCR de
+portadas ni el proxy**: las funciones están desplegadas pero ninguna build
+publicada las usa todavía. Cuando salga una que sí, hay una frase que añadir.
+
+### Name (30) · Subtitle (30)
+
+| | EN | ES |
+|---|---|---|
+| Name | `Bookliz` | `Bookliz` |
+| Subtitle | `Your reading life, tracked` | `Tu vida lectora, ordenada` |
+
+### Promotional text (170)
+
+**EN** — `Scan a barcode and the book is on your shelf. Log sessions, follow your sagas, keep your quotes. No ads, no tracking, and it works offline.`
+
+**ES** — `Escanea un código y el libro ya está en tu estantería. Registra sesiones, sigue tus sagas, guarda tus citas. Sin anuncios, sin rastreo y funciona sin conexión.`
+
+### Keywords (100, separadas por comas, sin espacios)
+
+**EN** — `reading,tracker,library,isbn,scanner,bookshelf,tbr,reading log,series,saga,book journal,quotes`
+
+**ES** — `lectura,biblioteca,isbn,escanear,estanteria,leer,diario,saga,citas,reseñas,lecturas,pendientes`
+
+> No repitas el nombre de la app ni la categoría: Apple ya indexa "Bookliz" y
+> "Books" por su cuenta, y gastar caracteres ahí es tirarlos.
+
+### Description
+
+**EN**
+
+```
+Bookliz is a reading tracker for people who actually keep their books.
+
+Scan the barcode on the back cover and the book lands on your shelf with its
+cover, page count and synopsis already filled in. No barcode? Search by title
+or author, or type the details yourself.
+
+YOUR SHELVES, HONESTLY
+Owned, wishlist, want to buy, reading, finished, abandoned. Ownership is its
+own question, so a book you already have never asks to be bought again.
+
+READING SESSIONS WITH MEMORY
+Log pages, minutes, where you were and how it felt. Your reading diary builds
+itself as you go.
+
+SAGAS YOU CAN FOLLOW
+Bookliz notices when a book belongs to a series and tracks how far along you
+are, so you know what to read next without looking it up.
+
+WHAT YOU THOUGHT
+Reviews, ratings and the lines worth keeping — quotes live with the book they
+came from.
+
+STATS THAT MEAN SOMETHING
+Streaks, a yearly goal, achievements, and a picture of what kind of reader you
+are, calculated on your device.
+
+IN YOUR LANGUAGE
+Fully bilingual in English and Spanish, and a book in Spanish stays in Spanish
+— Bookliz never swaps in an English cover or synopsis behind your back.
+
+NO ADS. NO TRACKING.
+No advertising, no analytics, no crash reporting, no third-party SDK reading
+over your shoulder. Your library is yours. Works offline; sign in only if you
+want it on more than one device.
+```
+
+**ES**
+
+```
+Bookliz es una app de seguimiento de lectura para quien de verdad guarda sus
+libros.
+
+Escanea el código de barras de la contraportada y el libro aparece en tu
+estantería con portada, número de páginas y sinopsis ya rellenos. ¿Sin código?
+Búscalo por título o autor, o escribe los datos tú.
+
+TUS ESTANTES, SIN MENTIRAS
+Lo tengo, lista de deseos, quiero comprarlo, leyendo, terminado, abandonado.
+La propiedad es una pregunta aparte, así que un libro que ya tienes no vuelve
+a pedirte que lo compres.
+
+SESIONES DE LECTURA CON MEMORIA
+Anota páginas, minutos, dónde estabas y cómo te sentías. Tu diario de lectura
+se construye solo.
+
+SAGAS QUE PUEDES SEGUIR
+Bookliz detecta cuándo un libro pertenece a una saga y lleva la cuenta de por
+dónde vas, para que sepas qué toca sin tener que buscarlo.
+
+LO QUE PENSASTE
+Reseñas, valoraciones y las frases que merecen quedarse: las citas viven junto
+al libro del que salieron.
+
+ESTADÍSTICAS QUE DICEN ALGO
+Rachas, un objetivo anual, logros y un retrato de qué clase de lector eres,
+calculado en tu dispositivo.
+
+EN TU IDIOMA
+Bilingüe de verdad, en español e inglés. Y un libro en español se queda en
+español: Bookliz nunca te cuela una portada o una sinopsis en inglés.
+
+SIN ANUNCIOS. SIN RASTREO.
+Sin publicidad, sin analítica, sin crash reporting, sin ningún SDK de terceros
+mirando por encima de tu hombro. Tu biblioteca es tuya. Funciona sin conexión;
+inicia sesión solo si la quieres en más de un dispositivo.
+```
+
+### Nota sobre el enlace de afiliado
+
+La ficha **no** menciona Amazon, y está bien así: la relación de afiliado se
+declara donde toca, en la política de privacidad. Pero si algún día el texto
+promocional empieza a empujar la compra, entonces sí hay que decirlo también
+ahí — la guideline 3.2.2 y la FTC miran el sitio donde se hace la invitación.
+
+---
+
+## 6. Lo que sigue pendiente y no es de la ficha
+
+- **Capturas de pantalla: no hay ninguna subida.** Hacen falta al menos para
+  6,7" (iPhone 15/16 Pro) y, si se soporta iPad, para 13". Las buenas son las
+  que enseñan una biblioteca con libros de verdad, no vacía.
+- La política de privacidad está solo en inglés; la app es bilingüe y la ficha
+  en español debería apuntar a una versión traducida.
+- Ninguna build publicada usa todavía el proxy de Books ni el OCR de portadas.
