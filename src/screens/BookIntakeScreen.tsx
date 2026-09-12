@@ -16,6 +16,7 @@ import { AppColors, colors, fonts, radii, shadows, spacing } from "../theme/them
 import { useColors, useTheme } from "../theme/ThemeContext";
 import { NewBookInput, ReadingFormat } from "../types/models";
 import { analyzeBookPhoto, getBookPhotoSupportSummary } from "../utils/bookPhotoIntake";
+import { isSameLanguage, languageDisplayName, PRIORITY_LANGUAGE_CODES } from "../utils/languageUtils";
 import {
   applyEditionOptionToBookInput,
   BookEditionOption,
@@ -184,7 +185,13 @@ export function BookIntakeScreen() {
   // Sort order for search results
   const [sortOrder, setSortOrder] = useState<MatchSortOrder>("popular");
   const [searchScope, setSearchScope] = useState<SearchScope>("title");
+  /**
+   * ISO 639-1 code, or undefined for "any language". Steers the query and the
+   * choice of edition; never decides what language a result is said to be.
+   */
+  const [languageFilter, setLanguageFilter] = useState<string | undefined>(undefined);
   const [showSortSheet, setShowSortSheet] = useState(false);
+  const [showLanguageSheet, setShowLanguageSheet] = useState(false);
   // Grid / list toggle for results
   const [matchViewMode, setMatchViewMode] = useState<"list" | "grid">("list");
   const isAuthorQuery = useMemo(
@@ -369,8 +376,11 @@ export function BookIntakeScreen() {
     type: "isbn" | "query" = "query",
     forcedIntent: DiscoverSearchIntent = "auto",
     /** Live (as-you-type) searches fail quietly — no modal dialogs mid-typing. */
-    silent = false
+    silent = false,
+    /** Explicit language for this run; falls back to whatever the chip holds. */
+    languageOverride?: string | null
   ) => {
+    const language = languageOverride === null ? undefined : languageOverride ?? languageFilter;
     if (liveSearchTimerRef.current) clearTimeout(liveSearchTimerRef.current);
     const seq = ++searchSeqRef.current;
     const isAuthorSearch =
@@ -415,7 +425,8 @@ export function BookIntakeScreen() {
               queryAuthor,
               queryAuthor ? "title" :
               forcedIntent === "author" ? "author" :
-              forcedIntent === "series" || forcedIntent === "title" ? "title" : "auto"
+              forcedIntent === "series" || forcedIntent === "title" ? "title" : "auto",
+              { language }
             )
       );
       if (seq !== searchSeqRef.current) return; // a newer search superseded this one
@@ -428,7 +439,16 @@ export function BookIntakeScreen() {
       const sliced = works; // no cap — show all results
       const legacyMatches: BookMatch[] = sliced
         .map((work) => {
-          const best = work.bestEdition ?? work.editions[0];
+          // With a language filter on, the row must be the edition IN that
+          // language — not the work's default edition with a language chip
+          // bolted on. A work with no edition that says so is dropped rather
+          // than shown unlabelled, because an unlabelled row inside a filtered
+          // list reads as "we checked", and we did not.
+          const inLanguage = language
+            ? work.editions.find((edition) => isSameLanguage(edition.language, language))
+            : undefined;
+          const best = language ? inLanguage : (work.bestEdition ?? work.editions[0]);
+          if (language && !best) return null;
           const match: BookMatch = {
             id: work.workKey ?? best?.id ?? work.title,
             title: work.title,
@@ -447,6 +467,7 @@ export function BookIntakeScreen() {
             publishedYear: best?.publishedYear,
             editionCount: work.editionCount,
             language: best?.language,
+            format: best?.format,
             source: best?.source ?? "google-books",
             sourceId: best?.editionKey ?? best?.googleBooksId,
             workKey: work.workKey,
@@ -464,7 +485,8 @@ export function BookIntakeScreen() {
           }
 
           return match;
-        });
+        })
+        .filter((match): match is BookMatch => match !== null);
 
       // For author queries, sort by publication year descending (most recent first).
       // The aggregator's relevance ranking already surfaced the right books;
@@ -1239,7 +1261,9 @@ export function BookIntakeScreen() {
             )}
           </View>
 
-          {/* Title | Author — the guess made visible, and correctable */}
+          {/* Title | Author — the guess made visible, and correctable — plus
+              the language the results should be in */}
+          <View style={styles.scopeRow}>
           <View style={styles.scopeToggle}>
             {(["title", "author"] as const).map((scope) => {
               const active = searchScope === scope;
@@ -1262,6 +1286,22 @@ export function BookIntakeScreen() {
                 </Pressable>
               );
             })}
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            style={[styles.filterLanguageChip, languageFilter && styles.filterLanguageChipActive]}
+            onPress={() => setShowLanguageSheet(true)}
+          >
+            <Ionicons
+              name="language-outline"
+              size={13}
+              color={languageFilter ? "#fff" : c.tealDark}
+            />
+            <Text style={[styles.filterLanguageChipText, languageFilter && styles.filterLanguageChipTextActive]}>
+              {languageFilter ? languageDisplayName(languageFilter) : t("search.anyLanguage")}
+            </Text>
+          </Pressable>
           </View>
         </View>
 
@@ -1448,6 +1488,46 @@ export function BookIntakeScreen() {
                   ) : null}
                 </Pressable>
               ))}
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* Language bottom sheet */}
+        <Modal
+          visible={showLanguageSheet}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowLanguageSheet(false)}
+        >
+          <Pressable accessibilityRole="button" style={styles.sortSheetOverlay} onPress={() => setShowLanguageSheet(false)}>
+            <Pressable accessibilityRole="button" style={styles.sortSheet} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.sortSheetHandle} />
+              <Text style={styles.sortSheetTitle}>{t("search.languageSheetTitle")}</Text>
+              <Text style={styles.sortSheetNote}>{t("search.languageSheetNote")}</Text>
+              {[undefined, ...PRIORITY_LANGUAGE_CODES].map((code) => {
+                const active = languageFilter === code;
+                return (
+                  <Pressable
+                    accessibilityRole="button"
+                    key={code ?? "any"}
+                    style={[styles.sortOption, active && styles.sortOptionActive]}
+                    onPress={() => {
+                      setShowLanguageSheet(false);
+                      if (active) return;
+                      setLanguageFilter(code);
+                      const query = matchLookupLabel.trim();
+                      if (query) {
+                        void lookupAndShowMatches(query, matchReturnMode, "query", searchScope, false, code ?? null);
+                      }
+                    }}
+                  >
+                    <Text style={[styles.sortOptionText, active && styles.sortOptionTextActive]}>
+                      {code ? languageDisplayName(code) : t("search.anyLanguage")}
+                    </Text>
+                    {active ? <Ionicons name="checkmark" size={16} color={c.tealDark} /> : null}
+                  </Pressable>
+                );
+              })}
             </Pressable>
           </Pressable>
         </Modal>

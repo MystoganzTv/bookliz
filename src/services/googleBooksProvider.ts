@@ -430,7 +430,13 @@ export async function fetchWorksByQuery(
   title: string,
   author?: string,
   query?: ScoringQuery,
-  mode: "title" | "author" | "general" = "general"
+  mode: "title" | "author" | "general" = "general",
+  /**
+   * ISO 639-1 code passed to Google as `langRestrict`. Google treats it as a
+   * strong preference, not a guarantee — results still have to be checked
+   * against what each edition actually claims. See languageEvidence.
+   */
+  langRestrict?: string
 ): Promise<Array<{
   work: Omit<BookWork, "score" | "confidence" | "bestEdition" | "editions">;
   edition: BookEdition;
@@ -467,7 +473,8 @@ export async function fetchWorksByQuery(
 
     // Author queries fetch more results so users get the full catalog.
     const maxResults = mode === "author" ? 40 : MAX_RESULTS_QUERY;
-    const url = `${GB_BASE}?q=${queryStr}&maxResults=${maxResults}${apiKey()}`;
+    const langParam = langRestrict ? `&langRestrict=${encodeURIComponent(langRestrict)}` : "";
+    const url = `${GB_BASE}?q=${queryStr}&maxResults=${maxResults}${langParam}${apiKey()}`;
 
     // ── DEBUG: log the exact URL and raw results ──────────────────────────────
     if (__DEV__) console.log(`[GB] mode=${mode} url=${redactGoogleBooksUrl(url)}`);

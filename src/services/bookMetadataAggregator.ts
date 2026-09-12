@@ -847,7 +847,17 @@ function findMergeableIdx(
 export async function lookupByQuery(
   title: string,
   author?: string,
-  mode: "title" | "author" | "general" | "auto" = "auto"
+  mode: "title" | "author" | "general" | "auto" = "auto",
+  options: {
+    /**
+     * ISO 639-1 code the user picked in the results filter. It steers the
+     * query (`langRestrict`) and the choice of preferred edition — it never
+     * decides what language a result IS. Google honours the parameter only
+     * loosely, so the caller still has to check each edition's own label
+     * before showing one.
+     */
+    language?: string;
+  } = {}
 ): Promise<WorkLookupResult> {
 
   // ── 1. Query classification ───────────────────────────────────────────────
@@ -862,9 +872,10 @@ export async function lookupByQuery(
   // Used to select the preferred edition language for bestEdition display.
   // Simple heuristic: Spanish diacritics or common Spanish stopwords → "es".
   const queryLang: string | undefined =
-    /[áéíóúñü]|(\b(de|el|la|los|las|del|al|un|una|con|por|para)\b)/i.test(title)
+    options.language ??
+    (/[áéíóúñü]|(\b(de|el|la|los|las|del|al|un|una|con|por|para)\b)/i.test(title)
       ? "es"
-      : undefined;
+      : undefined);
 
   // ── 3. Translation expansion ──────────────────────────────────────────────
   // For known translated titles, also search the canonical English title in
@@ -886,7 +897,7 @@ export async function lookupByQuery(
   const olMode = resolvedMode === "author" ? "author" : "general";
 
   const tasks: Promise<unknown>[] = [
-    gbFetchByQuery(title, author, scoringQuery, gbMode),           // [0] GB primary
+    gbFetchByQuery(title, author, scoringQuery, gbMode, options.language),           // [0] GB primary
     olFetchByQuery(title, author, scoringQuery, olMode),           // [1] OL primary
   ];
   let extraIdx = -1;
@@ -894,7 +905,7 @@ export async function lookupByQuery(
     const extraQuery: ScoringQuery = { title: extraTitle, author };
     extraIdx = tasks.length;
     tasks.push(
-      gbFetchByQuery(extraTitle, author, extraQuery, gbMode),      // GB translation
+      gbFetchByQuery(extraTitle, author, extraQuery, gbMode, options.language),      // GB translation
       olFetchByQuery(extraTitle, author, extraQuery, olMode),      // OL translation
     );
   }
@@ -909,7 +920,7 @@ export async function lookupByQuery(
     const freeTextQuery: ScoringQuery = { title };
     hedgeIdx = tasks.length;
     tasks.push(
-      gbFetchByQuery(title, undefined, freeTextQuery, "general"),  // GB hedge
+      gbFetchByQuery(title, undefined, freeTextQuery, "general", options.language),  // GB hedge
       olFetchByQuery(title, undefined, freeTextQuery, "general"),  // OL hedge
     );
   }
