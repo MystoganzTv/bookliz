@@ -259,7 +259,6 @@ export function BookIntakeScreen() {
       wishlist: false,
       wantToBuy: false,
       format: "physical",
-      language: "English",
       ...input,
       synopsis: sanitizeSynopsis(input.synopsis),
     };
@@ -900,11 +899,10 @@ export function BookIntakeScreen() {
         title: "",
         authorName: "",
         genre: ["Uncategorized"],
-        language: "English",
         coverImageUri: uri,
         source: "photo",
         ownership: "owned"
-      }, "Photo saved as cover art. Type the title (and ISBN if you have it) then tap “Refresh metadata” to fill in the rest automatically.");
+      }, t("addBook.photoSavedInsight"));
       return;
     }
 
@@ -918,16 +916,16 @@ export function BookIntakeScreen() {
       });
       await stageBook(result.draft, result.notes.join(" "));
     } catch {
+      // Unknown stays unknown: no invented title, author or synopsis. The
+      // photo is attached and the insight below says what to do next.
       await stageBook({
-        title: "Book from photo",
-        authorName: "Needs identification",
+        title: "",
+        authorName: "",
         genre: ["Uncategorized"],
-        language: "English",
-        synopsis: "Bookliz saved your photo, but detection failed this time. Review the draft and refresh metadata once you add a title or ISBN.",
         coverImageUri: uri,
         source: "photo",
         ownership: "owned"
-      }, "Bookliz could not inspect that image right now, but your photo is attached and ready for review.");
+      }, t("addBook.photoFailedInsight"));
     } finally {
       setIsAnalyzingPhoto(false);
     }
@@ -1724,7 +1722,9 @@ export function BookIntakeScreen() {
           accent={c.teal}
           icon="camera"
           title={t("addBook.takePhoto")}
-          description={t("addBook.takePhotoBody")}
+          description={photoSupport.imageBarcodeIsbnSupported || photoSupport.visionProviderConfigured
+            ? t("addBook.takePhotoBody")
+            : t("addBook.takePhotoBodyCoverOnly")}
           onPress={takeCoverPhoto}
         />
         <IntakePath
@@ -1745,7 +1745,9 @@ export function BookIntakeScreen() {
           accent={isDark ? c.surface : c.navy}
           icon="image"
           title={t("addBook.importPhoto")}
-          description={t("addBook.importPhotoBody")}
+          description={photoSupport.imageBarcodeIsbnSupported || photoSupport.visionProviderConfigured
+            ? t("addBook.importPhotoBody")
+            : t("addBook.importPhotoBodyCoverOnly")}
           onPress={pickCoverPhoto}
         />
         <IntakePath
@@ -1772,11 +1774,6 @@ export function BookIntakeScreen() {
               ? t("addBook.photoTipsGeneral")
               : t("addBook.photoTipsIos")}
           </Text>
-          {!photoSupport.visionProviderConfigured ? (
-            <Text style={styles.photoHintCopy}>
-              {t("addBook.coverOcrHint")}
-            </Text>
-          ) : null}
         </View>
       ) : null}
 

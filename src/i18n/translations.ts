@@ -298,6 +298,10 @@ export const translations: Record<AppLocale, TranslationTree> = {
       },
     },
     addBook: {
+      photoSavedInsight: "Photo saved as the cover. Type the title — and the ISBN if you have it — then tap Refresh metadata to fill in the rest.",
+      photoFailedInsight: "Bookliz could not read that image, but your photo is attached. Add a title or ISBN and refresh metadata.",
+      takePhotoBodyCoverOnly: "Saves the cover as the book's photo. On iPhone it cannot read the ISBN from a still image — use Scan ISBN for that.",
+      importPhotoBodyCoverOnly: "Uses a saved picture as the cover. On iPhone it cannot read the ISBN from a still image — use Scan ISBN for that.",
       fieldTitle: "Title",
       fieldAuthor: "Author",
       fieldGenres: "Genres",
@@ -323,7 +327,6 @@ export const translations: Record<AppLocale, TranslationTree> = {
       photoTips: "Photo intake tips",
       photoTipsIos: "On iPhone, static photo ISBN detection is limited. For the strongest match, use Scan ISBN or add a title after taking the photo.",
       photoTipsGeneral: "Best results come from the back cover, barcode area, or copyright page.",
-      coverOcrHint: "Cover OCR can also be connected later through `EXPO_PUBLIC_BOOKLIZ_VISION_ENDPOINT` without redesigning this flow.",
     },
     search: {
       searchPlaceholder: "Title, author, or ISBN…",
@@ -1232,6 +1235,10 @@ export const translations: Record<AppLocale, TranslationTree> = {
       },
     },
     addBook: {
+      photoSavedInsight: "Foto guardada como portada. Escribe el título — y el ISBN si lo tienes — y pulsa Actualizar metadata para rellenar el resto.",
+      photoFailedInsight: "Bookliz no pudo leer esa imagen, pero tu foto quedó adjunta. Añade un título o un ISBN y actualiza la metadata.",
+      takePhotoBodyCoverOnly: "Guarda la portada como foto del libro. En iPhone no puede leer el ISBN de una imagen fija — para eso usa Escanear ISBN.",
+      importPhotoBodyCoverOnly: "Usa una foto guardada como portada. En iPhone no puede leer el ISBN de una imagen fija — para eso usa Escanear ISBN.",
       fieldTitle: "Título",
       fieldAuthor: "Autor",
       fieldGenres: "Géneros",
@@ -1257,7 +1264,6 @@ export const translations: Record<AppLocale, TranslationTree> = {
       photoTips: "Consejos para fotos",
       photoTipsIos: "En iPhone, la detección de ISBN desde fotos estáticas es limitada. Para mejores resultados, usa Escanear ISBN o añade un título después de tomar la foto.",
       photoTipsGeneral: "Los mejores resultados vienen de la contraportada, el área del código de barras o la página de créditos.",
-      coverOcrHint: "Más adelante también se puede conectar OCR de portada mediante `EXPO_PUBLIC_BOOKLIZ_VISION_ENDPOINT` sin rediseñar este flujo.",
     },
     search: {
       searchPlaceholder: "Título, autor o ISBN…",

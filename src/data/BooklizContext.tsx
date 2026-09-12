@@ -1490,7 +1490,11 @@ export function BooklizProvider({ children }: PropsWithChildren) {
         pages: input.pages ?? 0,
         publishedDate: input.publishedDate ?? "",
         publisher: input.publisher ?? "",
-        language: input.language ?? "English",
+        // "" = unknown, exactly like synopsis and publisher. Defaulting to
+        // English stamped every book whose language nobody detected -- most
+        // of the photo flow -- as English, and the language lock then pulled
+        // English metadata for Spanish books on the next refresh.
+        language: input.language ?? "",
         isbn: input.isbn ?? "",
         format: input.format ?? "physical",
         coverGradient: [colorsFromSource(input.source).start, colorsFromSource(input.source).end],
@@ -1498,7 +1502,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
         isBestseller: input.isBestseller,
         workKey: input.workKey,
         editionKey: input.editionKey,
-        languageCode: input.languageCode ?? languageCode(input.language ?? "English"),
+        languageCode: input.languageCode ?? (input.language ? languageCode(input.language) : undefined),
         tags: input.tags ?? [],
           userStatus: {
             status: "want-to-read",
@@ -1614,7 +1618,9 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       setBooks((current) =>
         current.map((book) => {
           if (book.id !== bookId) return book;
-          const language = input.language.trim() || "English";
+          // Same rule the synopsis two lines down already follows: the edit
+          // form is the source of truth and empty means UNKNOWN.
+          const language = input.language.trim();
           return normalizeReadState({
             ...book,
             title: input.title.trim() || book.title,
