@@ -57,16 +57,24 @@ export type ScanQueueEntry = {
   unverified?: boolean;
   /** Epoch ms — entries are kept newest-first. */
   scannedAt: number;
+  /**
+   * Epoch ms when the entry reached a state that asks nothing more of the
+   * reader ("added", "duplicate"). Those cards are confirmations, and a
+   * confirmation that never leaves is just something covering the camera —
+   * which is exactly what a stack of them was doing. Undefined means the entry
+   * is still a question, and questions do not expire on their own.
+   */
+  settledAt?: number;
 };
 
 export type ScanQueueAction =
   | { type: "scanned"; isbn13: string; isbn10?: string; at: number }
   | { type: "resolved"; isbn13: string; book: NewBookInput; unverified?: boolean }
-  | { type: "duplicate"; isbn13: string; existingTitle: string }
+  | { type: "duplicate"; isbn13: string; existingTitle: string; at?: number }
   | { type: "failed"; isbn13: string }
   | { type: "retry"; isbn13: string }
   | { type: "choose"; isbn13: string; choice: ScanShelfChoice }
-  | { type: "added"; isbn13: string; bookId: string }
+  | { type: "added"; isbn13: string; bookId: string; at?: number }
   | { type: "undone"; isbn13: string }
   | { type: "dismiss"; isbn13: string }
   | { type: "clear" };
@@ -139,6 +147,7 @@ export function scanQueueReducer(
               status: "duplicate",
               duplicateTitle: action.existingTitle,
               bookId: undefined,
+              settledAt: action.at,
             }
           : entry
       );
@@ -165,7 +174,7 @@ export function scanQueueReducer(
     case "added":
       return mapEntry(state, action.isbn13, (entry) =>
         entry.status === "adding"
-          ? { ...entry, status: "added", bookId: action.bookId }
+          ? { ...entry, status: "added", bookId: action.bookId, settledAt: action.at }
           : entry
       );
 
@@ -173,7 +182,7 @@ export function scanQueueReducer(
       // Back to the question, so the user can answer differently.
       return mapEntry(state, action.isbn13, (entry) =>
         entry.status === "added"
-          ? { ...entry, status: "ready", choice: undefined, bookId: undefined }
+          ? { ...entry, status: "ready", choice: undefined, bookId: undefined, settledAt: undefined }
           : entry
       );
 
@@ -195,3 +204,31 @@ export const entriesAwaitingCommit = (state: ScanQueueEntry[]): ScanQueueEntry[]
 /** True while at least one scan is still resolving. */
 export const hasResolvingEntry = (state: ScanQueueEntry[]): boolean =>
   state.some((entry) => entry.status === "resolving");
+
+/** How long a confirmation stays on the camera before it clears itself. */
+export const AUTO_DISMISS_MS = 4000;
+
+/**
+ * Confirmations old enough to clear themselves.
+ *
+ * An entry with no `settledAt` never expires: that covers every entry still
+ * asking a question, and every entry written by a caller that did not pass a
+ * timestamp — in both cases leaving the card alone is the safe answer.
+ */
+export function expiredEntries(
+  state: ScanQueueEntry[],
+  now: number,
+  ttlMs: number = AUTO_DISMISS_MS
+): ScanQueueEntry[] {
+  return state.filter((entry) => entry.settledAt !== undefined && now - entry.settledAt >= ttlMs);
+}
+
+/**
+ * Scans the reader has not answered yet — the ones worth asking about again
+ * when they leave the scanner, instead of throwing the scan away.
+ */
+export function unansweredEntries(state: ScanQueueEntry[]): ScanQueueEntry[] {
+  return state.filter(
+    (entry) => (entry.status === "ready" || entry.status === "resolving") && !entry.choice
+  );
+}

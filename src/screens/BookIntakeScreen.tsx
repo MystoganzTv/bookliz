@@ -67,7 +67,9 @@ import {
   ScanQueueEntry,
   ScanShelfChoice,
   entriesAwaitingCommit,
+  expiredEntries,
   scanQueueReducer,
+  unansweredEntries,
 } from "./bookIntake/scanQueue";
 import { createStyles } from "./bookIntake/styles";
 import { findEditionsInLanguage } from "../utils/metadataResolver";
@@ -193,6 +195,8 @@ export function BookIntakeScreen() {
   const [languageFilter, setLanguageFilter] = useState<string | undefined>(undefined);
   const [showSortSheet, setShowSortSheet] = useState(false);
   const [showLanguageSheet, setShowLanguageSheet] = useState(false);
+  /** Where the reader wanted to go, held while unanswered scans are settled. */
+  const [pendingExit, setPendingExit] = useState<IntakeMode | null>(null);
   /** The book that just landed, while the rating prompt is up. */
   const [justAdded, setJustAdded] = useState<{ id: string; title: string; status: CoreTrackingStatus } | null>(null);
   // Grid / list toggle for results
@@ -595,6 +599,30 @@ export function BookIntakeScreen() {
 
   // Keep the refs the async scan pipeline reads in step with each render.
   useEffect(() => { scanQueueRef.current = scanQueue; }, [scanQueue]);
+
+  /**
+   * Clear confirmations off the camera once they have been read.
+   *
+   * "Added to your books" is a receipt, and a stack of receipts is what was
+   * covering the barcode frame — three scans in and there was nowhere left to
+   * point the phone. Questions are untouched: they wait for an answer for as
+   * long as it takes.
+   */
+  useEffect(() => {
+    if (mode !== "isbn") return;
+    if (!scanQueue.some((entry) => entry.settledAt !== undefined)) return;
+    const timer = setInterval(() => {
+      for (const entry of expiredEntries(scanQueueRef.current, Date.now())) {
+        dispatchScanQueue({ type: "dismiss", isbn13: entry.isbn13 });
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [mode, scanQueue]);
+
+  // Every scan answered while the exit sheet was up → the reader is done.
+  useEffect(() => {
+    if (pendingExit && unansweredEntries(scanQueue).length === 0) closeScanner(pendingExit);
+  }, [pendingExit, scanQueue]);
   useEffect(() => { findDuplicateRef.current = findDuplicateBook; }, [findDuplicateBook]);
 
   /** Transient badge over the camera (not-an-ISBN, already-scanned…). */
@@ -639,7 +667,7 @@ export function BookIntakeScreen() {
 
       const dupe = findDuplicateRef.current(input);
       if (dupe) {
-        dispatchScanQueue({ type: "duplicate", isbn13, existingTitle: dupe.title });
+        dispatchScanQueue({ type: "duplicate", isbn13, existingTitle: dupe.title, at: Date.now() });
         return;
       }
 
@@ -680,7 +708,7 @@ export function BookIntakeScreen() {
 
     const dupe = findDuplicateRef.current(input);
     if (dupe) {
-      dispatchScanQueue({ type: "duplicate", isbn13: entry.isbn13, existingTitle: dupe.title });
+      dispatchScanQueue({ type: "duplicate", isbn13: entry.isbn13, existingTitle: dupe.title, at: Date.now() });
       return;
     }
 
@@ -690,7 +718,7 @@ export function BookIntakeScreen() {
     // updateBookStatus owns the (status + flag + ownership) triple.
     if (!wantsOwned) updateBookStatus(book.id, "wishlist");
     hapticSuccess();
-    dispatchScanQueue({ type: "added", isbn13: entry.isbn13, bookId: book.id });
+    dispatchScanQueue({ type: "added", isbn13: entry.isbn13, bookId: book.id, at: Date.now() });
   }, [scanQueue, addBook, updateBookStatus]);
 
   const chooseScanShelf = (entry: ScanQueueEntry, choice: ScanShelfChoice) => {
@@ -715,12 +743,27 @@ export function BookIntakeScreen() {
   };
 
   /** Leave the scanner for another mode, dropping the on-screen queue. */
-  const leaveScanner = (next: IntakeMode) => {
+  const closeScanner = (next: IntakeMode) => {
     dispatchScanQueue({ type: "clear" });
     committedScansRef.current.clear();
     setScanFeedback(null);
     setScanned(false);
+    setPendingExit(null);
     setMode(next);
+  };
+
+  /**
+   * Leaving with scans still unanswered used to throw them away silently: the
+   * barcode was read, the metadata fetched, and then discarded because the
+   * reader walked out of the camera without saying whether they owned it.
+   * Now the question follows them out.
+   */
+  const leaveScanner = (next: IntakeMode) => {
+    if (unansweredEntries(scanQueue).length) {
+      setPendingExit(next);
+      return;
+    }
+    closeScanner(next);
   };
 
   /** Failed lookup → the existing manual path, prefilled with the ISBN. */
@@ -1659,6 +1702,53 @@ export function BookIntakeScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: "#000" }}>
         {dialogNode}
+
+        {/* Unanswered scans, asked once more on the way out */}
+        <Modal
+          visible={Boolean(pendingExit)}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setPendingExit(null)}
+        >
+          <View style={styles.sortSheetOverlay}>
+            <View style={styles.sortSheet}>
+              <View style={styles.sortSheetHandle} />
+              <Text style={styles.sortSheetTitle}>{t("scanQueue.exitTitle")}</Text>
+              <Text style={styles.sortSheetNote}>{t("scanQueue.exitNote")}</Text>
+              <ScrollView style={styles.scanExitList} showsVerticalScrollIndicator={false}>
+                {unansweredEntries(scanQueue).map((entry) => (
+                  <ScanQueueCard
+                    key={entry.id}
+                    entry={entry}
+                    onChoose={(choice) => chooseScanShelf(entry, choice)}
+                    onUndo={() => undoScanEntry(entry)}
+                    onDismiss={() => dismissScanEntry(entry)}
+                    onRetry={() => retryScanEntry(entry)}
+                    onEditManually={() => editScanManually(entry)}
+                  />
+                ))}
+              </ScrollView>
+              <View style={styles.scanExitActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  style={styles.sortOption}
+                  onPress={() => setPendingExit(null)}
+                >
+                  <Text style={styles.sortOptionText}>{t("scanQueue.exitKeepScanning")}</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  style={styles.sortOption}
+                  onPress={() => pendingExit && closeScanner(pendingExit)}
+                >
+                  <Text style={[styles.sortOptionText, { color: c.coral }]}>
+                    {t("scanQueue.exitDiscard")}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {/* Back button overlay */}
         <Pressable accessibilityRole="button"

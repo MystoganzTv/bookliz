@@ -970,6 +970,10 @@ export const translations: Record<AppLocale, TranslationTree> = {
       searching: "Barcode found — searching…",
     },
     scanQueue: {
+      exitTitle: "Still to answer",
+      exitNote: "These were scanned but never placed on a shelf. Say where they go, or discard them — leaving would have thrown them away without asking.",
+      exitKeepScanning: "Keep scanning",
+      exitDiscard: "Discard these scans",
       question: "Do you own it?",
       owned: "I own it",
       wishlist: "Wishlist",
@@ -1976,6 +1980,10 @@ export const translations: Record<AppLocale, TranslationTree> = {
       searching: "Código detectado — buscando…",
     },
     scanQueue: {
+      exitTitle: "Falta contestar",
+      exitNote: "Estos se escanearon pero no llegaron a ninguna estantería. Di dónde van, o descártalos — salir los habría tirado sin preguntar.",
+      exitKeepScanning: "Seguir escaneando",
+      exitDiscard: "Descartar estos escaneos",
       question: "¿Lo tienes?",
       owned: "Lo tengo",
       wishlist: "Deseados",

@@ -1283,6 +1283,12 @@ export function createStyles(c: AppColors, isDark: boolean) {
     marginTop: 2,
     opacity: 0.7,
   },
+  scanExitList: {
+    maxHeight: 320,
+  },
+  scanExitActions: {
+    marginTop: spacing.sm,
+  },
   ratePromptOverlay: {
     alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.55)",

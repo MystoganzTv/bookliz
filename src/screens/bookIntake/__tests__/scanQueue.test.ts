@@ -9,11 +9,14 @@
  *  5. Undo returns the entry to the question instead of dropping it.
  */
 import {
+  AUTO_DISMISS_MS,
   MAX_QUEUE_ENTRIES,
   ScanQueueEntry,
   entriesAwaitingCommit,
+  expiredEntries,
   hasResolvingEntry,
   scanQueueReducer,
+  unansweredEntries,
 } from "../scanQueue";
 import { NewBookInput } from "../../../types/models";
 
@@ -177,5 +180,73 @@ describe("scanQueueReducer", () => {
     expect(scanQueueReducer(state, { type: "added", isbn13: ISBN, bookId: "b-1" })).toBe(state);
     expect(scanQueueReducer(state, { type: "clear" })).not.toBe(state);
     expect(scanQueueReducer([], { type: "clear" })).toEqual([]);
+  });
+});
+
+describe("cards that clear themselves", () => {
+  const scanned = (isbn: string) =>
+    scanQueueReducer([], { type: "scanned", isbn13: isbn, at: 0 });
+
+  it("does not expire an entry that is still asking a question", () => {
+    // The stack on the camera was confirmations, not questions. A question
+    // waits as long as it needs to.
+    const state = scanned("111");
+    expect(expiredEntries(state, 10_000_000)).toEqual([]);
+  });
+
+  it("expires a confirmation once its time is up", () => {
+    let state = scanned("111");
+    state = scanQueueReducer(state, { type: "resolved", isbn13: "111", book: {} as never });
+    state = scanQueueReducer(state, { type: "choose", isbn13: "111", choice: "owned" });
+    state = scanQueueReducer(state, { type: "added", isbn13: "111", bookId: "b1", at: 1_000 });
+
+    expect(expiredEntries(state, 1_000 + AUTO_DISMISS_MS - 1)).toEqual([]);
+    expect(expiredEntries(state, 1_000 + AUTO_DISMISS_MS).map((e) => e.isbn13)).toEqual(["111"]);
+  });
+
+  it("expires a duplicate too — it also asks nothing", () => {
+    let state = scanned("222");
+    state = scanQueueReducer(state, { type: "duplicate", isbn13: "222", existingTitle: "Dune", at: 500 });
+    expect(expiredEntries(state, 500 + AUTO_DISMISS_MS).map((e) => e.isbn13)).toEqual(["222"]);
+  });
+
+  it("never expires an entry whose caller passed no timestamp", () => {
+    let state = scanned("333");
+    state = scanQueueReducer(state, { type: "resolved", isbn13: "333", book: {} as never });
+    state = scanQueueReducer(state, { type: "choose", isbn13: "333", choice: "owned" });
+    state = scanQueueReducer(state, { type: "added", isbn13: "333", bookId: "b3" });
+    expect(expiredEntries(state, Number.MAX_SAFE_INTEGER)).toEqual([]);
+  });
+
+  it("puts an undone entry back to being a question", () => {
+    let state = scanned("444");
+    state = scanQueueReducer(state, { type: "resolved", isbn13: "444", book: {} as never });
+    state = scanQueueReducer(state, { type: "choose", isbn13: "444", choice: "owned" });
+    state = scanQueueReducer(state, { type: "added", isbn13: "444", bookId: "b4", at: 1 });
+    state = scanQueueReducer(state, { type: "undone", isbn13: "444" });
+
+    expect(expiredEntries(state, Number.MAX_SAFE_INTEGER)).toEqual([]);
+    expect(unansweredEntries(state).map((e) => e.isbn13)).toEqual(["444"]);
+  });
+});
+
+describe("unansweredEntries", () => {
+  it("counts scans still resolving and scans waiting on an answer", () => {
+    let state = scanQueueReducer([], { type: "scanned", isbn13: "111", at: 0 });
+    state = scanQueueReducer(state, { type: "scanned", isbn13: "222", at: 1 });
+    state = scanQueueReducer(state, { type: "resolved", isbn13: "222", book: {} as never });
+    expect(unansweredEntries(state).map((e) => e.isbn13).sort()).toEqual(["111", "222"]);
+  });
+
+  it("drops one the moment it is answered, even before it commits", () => {
+    let state = scanQueueReducer([], { type: "scanned", isbn13: "111", at: 0 });
+    state = scanQueueReducer(state, { type: "choose", isbn13: "111", choice: "wishlist" });
+    expect(unansweredEntries(state)).toEqual([]);
+  });
+
+  it("ignores failures — those ask a different question", () => {
+    let state = scanQueueReducer([], { type: "scanned", isbn13: "111", at: 0 });
+    state = scanQueueReducer(state, { type: "failed", isbn13: "111" });
+    expect(unansweredEntries(state)).toEqual([]);
   });
 });
