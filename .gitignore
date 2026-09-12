@@ -13,3 +13,7 @@ yarn-error.log*
 _sync.tgz
 _audit*.tgz
 _audit*.tar.gz
+
+# Estado local del CLI de Supabase: ref del proyecto enlazado y versiones
+# cacheadas. Es por máquina, no del proyecto.
+supabase/.temp/
