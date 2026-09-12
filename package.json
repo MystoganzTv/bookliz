@@ -10,7 +10,12 @@
     "web": "expo start --web",
     "metadata-proxy": "node scripts/openlibrary-proxy.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "verify": "npm run typecheck && npm test",
+    "preflight": "node scripts/preflight-env.mjs production",
+    "build:ios": "eas build --platform ios --profile production",
+    "submit:ios": "eas submit --platform ios --latest",
+    "ship": "npm run verify && npm run preflight && npm run build:ios && npm run submit:ios"
   },
   "dependencies": {
     "@expo-google-fonts/lora": "^0.4.2",
