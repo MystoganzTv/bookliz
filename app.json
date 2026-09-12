@@ -18,7 +18,7 @@
     "ios": {
       "bundleIdentifier": "com.mystodev.booklio",
       "buildNumber": "1",
-      "deploymentTarget": "16.0",
+      "deploymentTarget": "15.1",
       "usesAppleSignIn": true,
       "supportsTablet": true,
       "infoPlist": {
