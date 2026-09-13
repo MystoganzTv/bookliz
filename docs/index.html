@@ -41,242 +41,253 @@
       background: var(--cream);
       color: var(--ink);
       font-family: var(--fb);
-      font-size: 17px;
-      line-height: 1.62;
+      font-size: 19px;
+      line-height: 1.65;
       -webkit-font-smoothing: antialiased;
     }
     a { color: inherit; text-decoration: none; }
     img { max-width: 100%; height: auto; display: block; }
 
-    .wrap { width: min(100%, 1160px); margin: 0 auto; padding: 0 40px; }
+    :root { --ease: cubic-bezier(.22, 1, .36, 1); }
+    .wrap { width: min(100% - 96px, 1360px); margin-inline: auto; }
+    a:focus-visible, button:focus-visible { outline: 3px solid var(--teal-d); outline-offset: 5px; }
+    section[id] { scroll-margin-top: 82px; }
+    [hidden] { display: none !important; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    .nav { position: sticky; top: 0; z-index: 50; background: rgba(251,247,240,.9); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+    .nav::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: var(--teal-d); transform: scaleX(var(--reading-progress, 0)); transform-origin: left; }
+    .nav-in { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 76px; }
+    .brand { display: inline-flex; align-items: center; gap: 8px; font: 700 26px var(--fd); letter-spacing: -.04em; }
+    .brand img { width: 42px; height: auto; }
+    .nav-right { display: flex; align-items: center; gap: 24px; }
+    .nav-link { position: relative; padding-block: 12px; font-size: 16px; font-weight: 800; }
+    .nav-link::after, .text-link::after { content: ''; position: absolute; bottom: 7px; left: 0; width: 100%; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform .3s var(--ease); }
+    .nav-link:hover::after, .text-link:hover::after { transform: scaleX(1); }
+    .lang { display: flex; align-items: center; gap: 2px; }
+    .lang button { min-width: 40px; min-height: 44px; border: 0; background: none; color: var(--ink2); font: 800 15px var(--fb); cursor: pointer; transition: color .2s; }
+    .lang button.active { color: var(--teal-d); text-decoration: underline; text-underline-offset: 6px; }
+    h1, h2, h3 { font-family: var(--fd); font-weight: 600; line-height: 1.08; letter-spacing: -.045em; }
+    .em { color: var(--teal-d); font-style: italic; font-weight: 400; }
+    .eyebrow { display: inline-block; font: 900 13px var(--fb); letter-spacing: .15em; text-transform: uppercase; color: var(--teal-d); }
 
-    /* ───────── Nav ───────── */
-    .nav {
-      position: sticky; top: 0; z-index: 50;
-      background: rgba(251,247,240,0.82);
-      backdrop-filter: saturate(180%) blur(14px);
-      -webkit-backdrop-filter: saturate(180%) blur(14px);
-      border-bottom: 1px solid var(--line2);
-    }
-    .nav-in {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 16px; height: 78px;
-    }
-    .brand img { height: 46px; width: auto; }
-    .nav-right { display: flex; align-items: center; gap: 6px; }
-    .nav-link {
-      color: var(--ink2); font-size: 14.5px; font-weight: 700;
-      padding: 8px 12px; border-radius: 999px; transition: background .18s, color .18s;
-    }
-    .nav-link:hover { background: var(--cream2); color: var(--ink); }
-
-    .lang {
-      display: inline-flex; margin-left: 6px;
-      border: 1px solid var(--line); border-radius: 999px;
-      overflow: hidden; background: var(--white);
-    }
-    .lang button {
-      padding: 6px 13px; cursor: pointer; background: transparent; border: 0;
-      font-family: var(--fb); font-size: 11.5px; font-weight: 900;
-      letter-spacing: .07em; color: var(--muted);
-      transition: background .18s, color .18s;
-    }
-    .lang button.active { background: var(--ink); color: var(--white); }
-
-    /* ───────── Shared type ───────── */
-    h1, h2, h3 { font-family: var(--fd); font-weight: 700; line-height: 1.14; letter-spacing: -0.015em; }
-    .em { font-style: italic; color: var(--teal-d); font-weight: 600; }
-    .eyebrow {
-      font-family: var(--fb); font-size: 12px; font-weight: 900;
-      letter-spacing: .14em; text-transform: uppercase; color: var(--teal-d);
-    }
-    .lede { color: var(--ink2); font-size: 18.5px; }
-
-    /* ───────── Hero ───────── */
-    .hero {
-      display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
-      gap: 56px; align-items: center; padding: 40px 0 48px;
-    }
-    .hero h1 { font-size: clamp(38px, 4.6vw, 58px); max-width: 14ch; margin: 18px 0 0; }
-    .hero .lede { max-width: 52ch; margin: 24px 0 0; font-size: 19.5px; }
-
-    .cta-row { display: flex; justify-content: flex-start; flex-wrap: wrap; gap: 12px; margin-top: 36px; }
-    .badge {
-      display: inline-flex; align-items: center; gap: 12px;
-      background: var(--ink); color: var(--white);
-      padding: 12px 22px 12px 20px; border-radius: 14px;
-      box-shadow: 0 8px 22px rgba(20,33,58,0.18);
-      transition: transform .18s, box-shadow .18s;
-    }
-    .badge:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(20,33,58,0.24); }
+    /* An open stage: the screenshots sit directly on the page. */
+    .hero-glow { position: relative; overflow: clip; }
+    .hero { position: relative; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 36px; align-items: center; padding-block: 38px 52px; }
+    .hero-copy { position: relative; z-index: 3; text-align: left; min-width: 0; }
+    .hero h1 { font-size: clamp(52px, 4.7vw, 76px); max-width: none; margin-top: 18px; }
+    .hero-line { display: block; }
+    .hero-phrase { display: inline-block; }
+    .hero .lede { margin-top: 24px; max-width: 54ch; color: var(--ink2); font-size: 22px; line-height: 1.65; }
+    .cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; margin-top: 28px; }
+    .badge { display: inline-flex; align-items: center; gap: 11px; padding: 12px 18px; border-radius: 10px; background: var(--ink); color: var(--white); }
+    .store-badges { display: flex; flex-wrap: wrap; gap: 12px; }
+    .close-box .store-badges { flex-direction: column; }
     .badge svg { flex-shrink: 0; }
-    .badge-txt { text-align: left; line-height: 1.15; }
-    .badge-txt small { display: block; font-size: 11px; font-weight: 700; opacity: .72; letter-spacing: .02em; }
-    .badge-txt strong { display: block; font-size: 19px; font-weight: 800; letter-spacing: -0.01em; }
+    .badge-txt { text-align: left; line-height: 1.2; }
+    .badge-txt small { display: block; font-size: 12px; font-weight: 700; opacity: .8; }
+    .badge-txt strong { display: block; font-size: 18px; font-weight: 800; }
+    .explore { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; font-size: 16px; font-weight: 800; }
+    .explore > :last-child { transition: transform .3s var(--ease); }
+    .explore:hover > :last-child { transform: translate(4px, -4px); }
+    .trust { margin-top: 16px; color: var(--ink2); font-size: 15px; }
+    .dot { margin-inline: 8px; opacity: .5; }
+    .hero-points { display: flex; flex-wrap: wrap; gap: 12px 20px; list-style: none; margin-top: 28px; }
+    .hero-points li { font-size: 15px; font-weight: 700; }
+    .hero-points li::before { content: '↗'; margin-right: 6px; color: var(--teal-d); }
+    .hero-shot { position: relative; height: 510px; margin-bottom: 72px; isolation: isolate; animation: stage-in 1s var(--ease) both; --pointer-x: 0px; --pointer-y: 0px; }
+    .hero-shot::before { content: ''; position: absolute; inset: 5% -15% -5% -20%; z-index: -1; background: radial-gradient(ellipse, rgba(20,184,166,.18), rgba(245,194,74,.1) 40%, transparent 68%); }
+    .phone { width: 248px; padding: 5px; border-radius: 35px; background: #15232B; box-shadow: 0 28px 38px -18px rgba(20,33,58,.3), 0 2px 5px rgba(20,33,58,.12); }
+    .phone img { width: 100%; border-radius: 30px; }
+    .hero-shot .phone { position: absolute; width: 228px; top: 8px; left: 12%; z-index: 2; transform: translate(var(--pointer-x), var(--pointer-y)) rotate(-7deg); transition: transform .7s var(--ease); animation: phone-float 7s ease-in-out infinite; animation-play-state: paused; }
+    .hero-shot .phone-back { width: 190px; top: 80px; left: 53%; z-index: 1; transform: translate(calc(var(--pointer-x) * -.6), calc(var(--pointer-y) * -.6)) rotate(10deg); animation-name: phone-float-back; animation-duration: 8.5s; animation-delay: -2s; }
+    .motion-running .hero-shot .phone { animation-play-state: running; }
+    @keyframes phone-float { 0%, 100% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 -12px; rotate: 1.5deg; } }
+    @keyframes phone-float-back { 0%, 100% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 10px; rotate: -2deg; } }
+    .shot-caption { position: absolute; top: 100%; left: -4%; right: -4%; padding-top: 16px; text-align: center; }
+    .caption-stack { display: grid; align-items: center; min-height: 2.8em; color: var(--teal-d); font: italic 23px/1.4 var(--fd); }
+    .caption-message { grid-area: 1 / 1; opacity: 0; visibility: hidden; transform: translateY(8px); transition: opacity .45s var(--ease), transform .45s var(--ease), visibility .45s; }
+    .caption-message.is-active { opacity: 1; visibility: visible; transform: none; }
 
-    .trust { margin-top: 18px; font-size: 14.5px; color: var(--muted); font-weight: 600; }
-    .trust b { color: var(--ink2); font-weight: 800; }
-    .dot { opacity: .45; margin: 0 8px; }
 
-    /* ───────── Phone frame ───────── */
-    .phone {
-      position: relative; flex: 0 0 auto; min-width: 0;
-      width: 100%; max-width: 288px; align-self: center;
-      border-radius: 44px; padding: 9px;
-      background: linear-gradient(160deg, #2A3550 0%, #14213A 46%, #0C1425 100%);
-      box-shadow: var(--phone-sh);
-    }
-    .phone img { border-radius: 36px; width: 100%; }
-    .phone.tilt-l { transform: rotate(-2deg); }
-    .phone.tilt-r { transform: rotate(2deg); }
 
-    .hero-shot { display: flex; justify-content: center; }
-    .hero-shot .phone { max-width: 312px; }
-    .hero-glow {
-      position: relative;
-      /* The decorative glow is wider than the page at mid widths; clip it so it
-         cannot create a horizontal scrollbar. `clip` where supported, because
-         `hidden` would also make this a scroll container. */
-      overflow: hidden;
-      overflow: clip;
-    }
-    .hero-glow::before {
-      content: ''; position: absolute; left: 62%; top: 8%; transform: translateX(-50%);
-      width: min(900px, 96vw); height: 620px; border-radius: 50%;
-      background: radial-gradient(ellipse at center, rgba(20,184,166,0.16) 0%, rgba(245,194,74,0.10) 42%, transparent 70%);
-      filter: blur(8px); pointer-events: none; z-index: -1;
-    }
 
-    /* ───────── Feature rows ───────── */
-    .rows { padding: 0; }
-    .row {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 72px; align-items: center;
-      padding: 80px 0;
-      border-top: 1px solid var(--line2);
-    }
-    .row:first-child { border-top: 0; }
-    .row .shot { display: flex; justify-content: center; }
-    .row.flip .txt { order: 2; }
-    .row.flip .shot { order: 1; }
-    .row h2 { font-size: clamp(27px, 3.4vw, 36px); margin: 14px 0 0; max-width: 17ch; }
-    .row p { margin-top: 18px; color: var(--ink2); font-size: 18px; max-width: 46ch; }
-    .row ul { margin-top: 22px; list-style: none; display: grid; gap: 10px; max-width: 46ch; }
-    .row li { display: flex; gap: 11px; align-items: flex-start; font-size: 16px; color: var(--ink2); }
-    .row li::before {
-      content: ''; flex-shrink: 0; width: 7px; height: 7px; margin-top: 11px;
-      border-radius: 50%; background: var(--teal);
-    }
 
-    /* ───────── Grid ───────── */
-    .grid-sec { padding: 88px 0; border-top: 1px solid var(--line2); }
-    .sec-head { text-align: center; max-width: 54ch; margin: 0 auto 48px; }
-    .sec-head h2 { font-size: clamp(28px, 3.8vw, 38px); margin-top: 14px; }
-    .sec-head p { margin: 16px auto 0; max-width: 46ch; color: var(--ink2); }
+    .hero-meta { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding-block: 16px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+    .hero-meta a { display: inline-flex; align-items: center; gap: 12px; min-height: 32px; }
+    .hero-meta a span:last-child { font-size: 18px; }
 
-    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
-    .card {
-      background: var(--white); border: 1px solid var(--line2);
-      border-radius: 22px; padding: 30px 28px; box-shadow: var(--card-sh);
-      transition: transform .2s, box-shadow .2s;
-    }
-    .card:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(20,33,58,.05), 0 16px 36px rgba(20,33,58,.09); }
-    .card .ico {
-      width: 46px; height: 46px; border-radius: 14px; background: var(--teal-t);
-      display: grid; place-items: center; font-size: 22px; margin-bottom: 18px;
-    }
-    .card h3 { font-size: 21px; }
-    .card p { margin-top: 9px; color: var(--ink2); font-size: 16px; line-height: 1.58; }
+    .hero-shot .phone { left: 27%; z-index: 3; }
+    .hero-shot .phone-back { left: 60%; z-index: 2; }
+    .hero-shot .phone-third { width: 178px; top: 95px; left: 0; z-index: 1; transform: translate(calc(var(--pointer-x) * .4), calc(var(--pointer-y) * .4)) rotate(-14deg); animation-name: phone-float-back; animation-duration: 9s; animation-delay: -4s; }
 
-    /* ───────── Closing CTA ───────── */
-    .close-sec { padding: 0 0 88px; }
-    .close-box {
-      background: linear-gradient(165deg, #16324A 0%, var(--ink) 52%, #0C1425 100%);
-      border-radius: 34px; padding: 76px 40px; text-align: center; color: var(--cream);
-      position: relative; overflow: hidden;
-    }
-    .close-box::after {
-      content: ''; position: absolute; inset: 0;
-      background:
-        radial-gradient(ellipse 44% 62% at 12% 4%, rgba(20,184,166,.30) 0%, transparent 62%),
-        radial-gradient(ellipse 38% 54% at 92% 96%, rgba(245,194,74,.20) 0%, transparent 60%);
-      pointer-events: none;
-    }
-    .close-box > * { position: relative; z-index: 1; }
-    .close-box h2 { font-size: clamp(29px, 4.2vw, 40px); max-width: 16ch; margin: 0 auto; }
+    /* Full-width product chapter, with a real screen switcher. */
+    .product { padding-block: 48px; background: #EDF2EA; }
+    .product-in { display: grid; grid-template-columns: 1.15fr 1fr; align-items: center; gap: 56px; }
+    .product-copy > h2 { font-size: clamp(32px, 3.5vw, 48px); max-width: 21ch; margin-top: 14px; }
+    .product-tabs { display: flex; flex-wrap: wrap; gap: 0 22px; margin-block: 24px; border-bottom: 1px solid var(--line); }
+    .product-tabs button { position: relative; padding: 12px 0; border: 0; background: none; font: 800 17px var(--fb); color: var(--ink2); cursor: pointer; }
+    .product-tabs button::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: var(--teal-d); transform: scaleX(0); transform-origin: left; transition: transform .35s var(--ease); }
+    .product-tabs button[aria-selected="true"] { color: var(--teal-d); }
+    .product-tabs button[aria-selected="true"]::after { transform: scaleX(1); }
+    .product-panels { display: grid; }
+    .product-panel { grid-area: 1 / 1; visibility: hidden; pointer-events: none; }
+    .product-panel[aria-hidden="false"] { visibility: visible; pointer-events: auto; }
+    .product-panel h3 { font-size: 25px; letter-spacing: -.03em; }
+    .product-panel p { margin-top: 14px; max-width: 51ch; font-size: 18px; color: var(--ink2); }
+    .product-panel ul { display: grid; gap: 8px; margin-top: 18px; list-style: none; }
+    .product-panel li { display: flex; gap: 9px; color: var(--ink2); font-size: 16px; }
+    .product-panel li::before { content: '↗'; color: var(--teal-d); }
+    .product-screens { position: relative; display: grid; place-items: center; isolation: isolate; min-height: 540px; }
+    .product-screens::before { content: ''; position: absolute; width: 340px; max-width: 100%; aspect-ratio: 1; border: 1px solid rgba(13,148,136,.15); border-radius: 50%; transform: scale(1.18); z-index: -1; }
+    .product-screens .phone { grid-area: 1 / 1; width: 224px; }
+    .tablet { grid-area: 1 / 1; width: min(100% - 32px, 390px); padding: 7px; border-radius: 26px; background: #15232B; box-shadow: 0 24px 38px -18px rgba(20,33,58,.3); }
+    .tablet img { display: block; width: 100%; border-radius: 19px; }
+    .product-screens [data-screen] { max-width: 100%; }
+
+    .screen-note { position: absolute; right: 0; bottom: 10%; writing-mode: vertical-rl; font-size: 12px; letter-spacing: .17em; text-transform: uppercase; color: var(--ink2); }
+    .product-panel[aria-hidden="false"] { animation: screen-in .5s var(--ease) both; }
+    .product-screens [data-screen]:not([hidden]) { animation: screen-in .6s var(--ease) both; }
+    @keyframes stage-in { from { opacity: 0; transform: translateY(18px) scale(.98); } to { opacity: 1; transform: none; } }
+    @keyframes screen-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Features use type, rules and whitespace, without enclosing cards. */
+    .grid-sec { padding-block: 44px 48px; }
+    .sec-head { display: grid; grid-template-columns: 1.25fr 1fr; align-items: end; gap: 12px 56px; margin-bottom: 28px; }
+    .sec-head .eyebrow { grid-column: 1 / -1; }
+    .sec-head h2 { font-size: clamp(32px, 3.2vw, 44px); max-width: 24ch; }
+    .sec-head p { color: var(--ink2); font-size: 18px; max-width: 40ch; justify-self: end; }
+    .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 36px; counter-reset: feature; }
+    .card { display: grid; grid-template-columns: 28px 1fr auto; align-content: start; align-items: center; gap: 12px; padding-block: 24px; border-top: 1px solid var(--line); counter-increment: feature; }
+    .card::after { content: '0' counter(feature); grid-column: 3; grid-row: 1; font-size: 12px; color: var(--ink2); }
+    .ico { width: 25px; height: 25px; color: var(--teal-d); transition: transform .35s var(--ease); }
+    .ico svg { display: block; width: 100%; height: 100%; }
+    .card h3 { font-size: 23px; letter-spacing: -.025em; }
+    .card p { grid-column: 1 / -1; font-size: 18px; line-height: 1.65; color: var(--ink2); }
+    @media (hover: hover) { .card:hover .ico { transform: translateY(-4px) rotate(-8deg); } }
+
+    /* The closing color extends to the edges of the viewport. */
+    .close-sec { padding-block: 42px; color: var(--cream); background: var(--ink); overflow: clip; }
+    .close-box { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 64px; }
+    .close-box h2 { font-size: clamp(36px, 4.5vw, 60px); }
     .close-box h2 .em { color: var(--gold); }
-    .close-box p { margin: 20px auto 0; max-width: 48ch; color: rgba(251,247,240,.80); font-size: 17.5px; }
-    .close-box .cta-row { justify-content: center; margin-top: 30px; }
+    .close-box p { grid-column: 1; margin-top: 16px; max-width: 62ch; color: rgba(251,247,240,.8); font-size: 18px; }
+    .close-box .cta-row { grid-column: 2; grid-row: 1 / 4; margin: 0; }
     .close-box .badge { background: var(--cream); color: var(--ink); }
-    .close-box .trust { color: rgba(251,247,240,.62); }
-    .close-box .trust b { color: rgba(251,247,240,.92); }
-
-    /* ───────── Footer ───────── */
-    footer { border-top: 1px solid var(--line); padding: 64px 0 44px; }
-    .foot-top { display: grid; grid-template-columns: 1fr auto auto; gap: 40px 64px; }
-    .foot-brand img { height: 54px; width: auto; }
-    .foot-brand p { margin-top: 14px; color: var(--muted); font-size: 15px; max-width: 34ch; }
-    .foot-col h4 {
-      font-family: var(--fb); font-size: 11.5px; font-weight: 900;
-      letter-spacing: .13em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
-    }
-    .foot-col a { display: block; padding: 5px 0; font-size: 15px; font-weight: 600; color: var(--ink2); }
+    .close-box .trust { font-size: 15px; }
+    footer { padding-block: 28px 20px; }
+    .foot-top { display: grid; grid-template-columns: 1fr auto auto; gap: 28px 56px; }
+    .foot-brand p { margin-top: 12px; max-width: 42ch; color: var(--ink2); font-size: 16px; }
+    .foot-col h4 { margin-bottom: 8px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink2); }
+    .foot-col a { display: block; padding-block: 6px; font-size: 16px; font-weight: 700; }
     .foot-col a:hover { color: var(--teal-d); }
-    .foot-bot {
-      margin-top: 40px; padding-top: 22px; border-top: 1px solid var(--line2);
-      font-size: 14px; color: var(--muted);
-      display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap;
-    }
+    .foot-bot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink2); }
 
-    /* ───────── Responsive ───────── */
-    @media (max-width: 940px) {
-      .cards { grid-template-columns: repeat(2, 1fr); }
+    /* Progressive enhancement: content stays visible without JavaScript. */
+    .reveal { transition: opacity .8s var(--ease), transform .8s var(--ease); transition-delay: var(--reveal-delay, 0ms); }
+    .reveal.is-pending { opacity: 0; transform: translateY(22px); }
+    @media (min-width: 1600px) { .wrap { width: min(100% - 128px, 1560px); } }
+    @media (max-width: 1100px) {
+      .wrap { width: calc(100% - 64px); }
+      .hero { gap: 20px; }
+      .hero h1 { font-size: clamp(44px, 4.65vw, 56px); }
+      .hero-shot { height: 480px; }
+      .hero-shot .phone { width: 205px; left: 24%; }
+      .hero-shot .phone-back { width: 172px; left: 58%; }
+      .hero-shot .phone-third { width: 154px; left: 0; }
+      .caption-stack { font-size: 21px; }
+      .product-in { gap: 32px; }
+      .cards { gap: 8px 24px; }
     }
-    @media (max-width: 900px) {
-      .hero { grid-template-columns: 1fr; gap: 48px; text-align: center; padding: 44px 0 64px; }
-      .hero h1 { max-width: 16ch; margin-left: auto; margin-right: auto; }
-      .hero .lede { max-width: 56ch; margin-left: auto; margin-right: auto; }
-      .cta-row { justify-content: center; }
-      .trust { text-align: center; }
-      .hero-glow::before { left: 50%; top: 14%; height: 460px; }
-    }
-    @media (max-width: 860px) {
-      .wrap { padding: 0 26px; }
-      .row { grid-template-columns: 1fr; gap: 40px; padding: 60px 0; }
-      .row.flip .txt, .row.flip .shot { order: initial; }
-      .row h2 { max-width: none; }
-      .phone.tilt-l, .phone.tilt-r { transform: none; }
-      .foot-top { grid-template-columns: 1fr 1fr; }
-      .foot-brand { grid-column: 1 / -1; }
+    @media (max-width: 800px) {
+
+
+      .hero { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); padding-top: 26px; }
+      .hero h1 { font-size: 44px; }
+      .hero .lede { font-size: 18px; }
+      .hero-shot { height: 430px; }
+      .hero-shot .phone { width: 166px; top: 10px; left: 23%; }
+      .hero-shot .phone-back { width: 138px; top: 80px; left: 57%; }
+      .hero-shot .phone-third { width: 126px; top: 90px; left: 5%; }
+      .hero-points { gap: 8px 14px; }
+      .product-in { grid-template-columns: 1.2fr 1fr; gap: 28px; }
+      .product-screens .phone { width: 190px; }
+      .product-screens::before { transform: none; }
+      .product-copy > h2 { font-size: 34px; }
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .sec-head { gap: 12px 28px; }
+      .close-box { gap: 0 24px; }
     }
     @media (max-width: 620px) {
-      body { font-size: 16.5px; }
-      .wrap { padding: 0 18px; }
-      .trust { font-size: 14px; }
-      /* En móvil la línea rompía dejando los separadores huérfanos al final
-         de la línea; cada punto pasa a ser un salto limpio. */
-      .trust .dot { display: block; margin: 0; font-size: 0; line-height: 7px; }
-      .hero { padding: 36px 0 52px; gap: 40px; }
-      .nav-in { height: 72px; }
-      .nav-link { padding: 8px 9px; font-size: 14px; }
-      .brand img { height: 42px; }
-      .cards { grid-template-columns: 1fr; }
-      .close-box { padding: 56px 24px; border-radius: 26px; }
-      .grid-sec { padding: 64px 0; }
-      .badge { width: 100%; max-width: 300px; justify-content: center; }
-    }
-    @media (max-width: 430px) {
-      .nav-link { padding: 8px 6px; font-size: 13px; }
-      .brand img { height: 34px; }
-      .lang button { padding: 6px 10px; }
-    }
-    @media (max-width: 340px) {
-      .nav-link { display: none; }
-    }
+      .wrap { width: calc(100% - 40px); }
+      .nav-in { min-height: 64px; }
+      .brand { font-size: 23px; gap: 5px; }
+      .brand img { width: 34px; }
+      .nav-right { gap: 10px; }
+      .nav-link { font-size: 14px; }
+      .nav-contact { display: none; }
+      .lang { gap: 0; }
+      .lang button { min-width: 34px; }
+      .hero { grid-template-columns: 1fr; padding-block: 22px 20px; gap: 28px; }
+      .hero h1 { font-size: clamp(44px, 9.8vw, 62px); max-width: none; margin-top: 14px; }
+      .hero .lede { margin-top: 18px; max-width: 44ch; font-size: 18px; }
+      .cta-row { gap: 18px; margin-top: 22px; }
+      .hero-points { margin-top: 20px; }
+      .hero-shot { width: min(100%, 380px); height: 405px; margin-inline: auto; }
+      .hero-shot .phone { width: 166px; top: 0; left: 24%; }
+      .hero-shot .phone-back { width: 139px; top: 64px; left: 57%; }
+      .hero-shot .phone-third { width: 136px; top: 62px; left: 5%; }
+      .shot-caption { left: 0; right: 0; }
+      .caption-stack { font-size: 21px; }
 
+
+      .hero-meta { font-size: 12px; gap: 12px; letter-spacing: .02em; }
+      .product { padding-block: 32px; }
+      .product-in { grid-template-columns: 1fr; gap: 24px; }
+      .product-copy > h2 { font-size: 34px; max-width: 22ch; }
+      .product-tabs { margin-block: 18px; }
+      .product-panel h3 { font-size: 23px; }
+      .product-panel p { font-size: 18px; }
+      .product-panel li { font-size: 16px; }
+      .product-screens { padding-block: 6px; min-height: 446px; }
+      .tablet { width: min(100% - 28px, 314px); border-radius: 22px; padding: 6px; }
+      .tablet img { border-radius: 16px; }
+      .product-screens .phone { width: 188px; }
+      .phone { border-radius: 28px; padding: 4px; }
+      .phone img { border-radius: 24px; }
+      .screen-note { right: 6%; }
+      .sec-head { grid-template-columns: 1fr; gap: 12px; margin-bottom: 20px; }
+      .sec-head h2 { font-size: 33px; }
+      .sec-head p { justify-self: start; font-size: 18px; }
+      .grid-sec { padding-block: 32px; }
+      .cards { grid-template-columns: 1fr; gap: 0; }
+      .card { grid-template-columns: 24px 1fr; padding-block: 18px; gap: 12px 8px; }
+      .card::after { display: none; }
+      .card h3 { font-size: 22px; }
+      .card p { font-size: 17px; }
+      .close-sec { padding-block: 32px; }
+      .close-box { display: block; }
+      .close-box h2 { font-size: 40px; }
+      .close-box .cta-row { margin-top: 22px; }
+      .close-box .store-badges { flex-direction: row; }
+      .foot-top { grid-template-columns: 1fr 1fr; gap: 22px; }
+      .foot-brand { grid-column: 1 / -1; }
+    }
+    @media (max-width: 360px) {
+
+      .nav-link { display: none; }
+      .hero-shot .phone { left: 23%; width: 145px; }
+      .hero-shot .phone-back { left: 57%; width: 121px; }
+      .hero-shot .phone-third { left: 5%; width: 118px; }
+      .hero-shot { height: 375px; }
+      .hero h1 { font-size: 44px; }
+      .cards { grid-template-columns: 1fr; }
+      .card p { font-size: 17px; }
+    }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
-      * { transition: none !important; }
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .reveal.is-pending { opacity: 1; transform: none; }
+
     }
 
     /* ───────── i18n ───────── */
@@ -290,15 +301,12 @@
   <!-- ══ Nav ══ -->
   <div class="nav">
     <div class="wrap nav-in">
-      <a class="brand" href="./index.html"><img src="./bookliz-logo.png" alt="Bookliz" /></a>
+      <a class="brand" href="./index.html" aria-label="Bookliz"><img src="./bookliz-icon-only.png" alt="" /><span>bookliz</span></a>
       <div class="nav-right">
-        <a class="nav-link" href="./privacy-policy.html" data-href-en="./privacy-policy.html" data-href-es="./privacy-policy.es.html">
-          <span data-lang="en">Privacy</span><span data-lang="es">Privacidad</span>
+        <a class="nav-link" href="#features">
+          <span data-lang="en">Features</span><span data-lang="es">Funciones</span>
         </a>
-        <a class="nav-link" href="./terms.html">
-          <span data-lang="en">Terms</span><span data-lang="es">Términos</span>
-        </a>
-        <a class="nav-link" href="./contact.html">
+        <a class="nav-link nav-contact" href="./contact.html">
           <span data-lang="en">Contact</span><span data-lang="es">Contacto</span>
         </a>
         <div class="lang">
@@ -312,54 +320,96 @@
   <!-- ══ Hero ══ -->
   <header class="hero-glow">
     <div class="wrap hero">
-      <div class="hero-copy">
+      <div class="hero-copy reveal">
       <span class="eyebrow"><span data-lang="en">Reading tracker · iPhone</span><span data-lang="es">Diario de lectura · iPhone</span></span>
 
       <h1>
-        <span data-lang="en">Every book you read, <span class="em">beautifully</span> tracked.</span>
-        <span data-lang="es">Cada libro que lees, <span class="em">bien</span> registrado.</span>
+        <span data-lang="en"><span class="hero-line"><span class="hero-phrase">Your books.</span> <span class="hero-phrase">Your pace.</span></span><span class="em hero-line">Your story.</span></span>
+        <span data-lang="es"><span class="hero-line"><span class="hero-phrase">Tus libros.</span> <span class="hero-phrase">Tu ritmo.</span></span><span class="em hero-line">Tu historia.</span></span>
       </h1>
 
       <p class="lede">
-        <span data-lang="en">Scan your shelf, log every reading session, follow your series, and watch your stats grow. One app for the books on your nightstand and the ones still on the wish list.</span>
-        <span data-lang="es">Escanea tu estantería, registra cada sesión de lectura, sigue tus sagas y mira crecer tus estadísticas. Una sola app para los libros de la mesita y los que aún están en la lista de deseos.</span>
+        <span data-lang="en">Your shelf, your reading sessions, your next favorite. Scan books, follow your series, and see your reading life come together.</span>
+        <span data-lang="es">Tu biblioteca, tus sesiones, tu próxima lectura. Escanea libros, sigue tus sagas y reúne toda tu vida lectora en un solo lugar.</span>
       </p>
 
       <div class="cta-row">
-        <span class="badge">
+        <div class="store-badges">
+          <span class="badge">
           <svg width="26" height="30" viewBox="0 0 16 20" fill="currentColor" aria-hidden="true"><path d="M13.32 10.6c-.02-2.02 1.65-2.99 1.72-3.04-.94-1.37-2.4-1.56-2.92-1.58-1.24-.13-2.42.73-3.05.73-.63 0-1.6-.71-2.63-.69-1.35.02-2.6.79-3.29 2-1.4 2.44-.36 6.05 1.01 8.03.67.97 1.47 2.06 2.51 2.02 1.01-.04 1.39-.65 2.61-.65 1.22 0 1.56.65 2.63.63 1.09-.02 1.77-.99 2.43-1.96.77-1.12 1.08-2.21 1.1-2.27-.02-.01-2.11-.81-2.13-3.22zM11.3 4.67c.56-.68.94-1.62.83-2.56-.81.03-1.79.54-2.37 1.21-.52.6-.97 1.56-.85 2.48.9.07 1.82-.46 2.39-1.13z"/></svg>
           <span class="badge-txt">
-            <small><span data-lang="en">Coming soon to the</span><span data-lang="es">Próximamente en el</span></small>
+            <small><span data-lang="en">Coming soon</span><span data-lang="es">Próximamente</span></small>
             <strong>App Store</strong>
           </span>
         </span>
+          <span class="badge badge-google-play">
+            <svg width="26" height="30" viewBox="0 0 24 28" fill="none" aria-hidden="true"><path d="M2 2 15 14 2 26Z" fill="#4CB4F6"/><path d="m2 2 16 9-3 3Z" fill="#5BD18B"/><path d="m15 14 3 3L2 26Z" fill="#F76B77"/><path d="m18 11 5 3-5 3-3-3Z" fill="#FFD166"/></svg>
+            <span class="badge-txt">
+              <small><span data-lang="en">Coming soon</span><span data-lang="es">Próximamente</span></small>
+              <strong>Google Play</strong>
+            </span>
+          </span>
+        </div>
+        <a class="explore" href="#library"><span data-lang="en">Explore the app</span><span data-lang="es">Explora la app</span><span aria-hidden="true">↗</span></a>
       </div>
 
       <p class="trust">
-        <span data-lang="en"><b>No ads.</b> <span class="dot">·</span> English &amp; Spanish <span class="dot">·</span> Built solo by an independent developer.</span>
-        <span data-lang="es"><b>Sin anuncios.</b> <span class="dot">·</span> Español e inglés <span class="dot">·</span> Hecho por un desarrollador independiente.</span>
+        <span data-lang="en">English &amp; Spanish</span>
+        <span data-lang="es">Español e inglés</span>
       </p>
+      <ul class="hero-points">
+        <li><span data-lang="en">Scan &amp; save</span><span data-lang="es">Escanea y guarda</span></li>
+        <li><span data-lang="en">Track your progress</span><span data-lang="es">Sigue tu progreso</span></li>
+        <li><span data-lang="en">Keep your quotes</span><span data-lang="es">Guarda tus citas</span></li>
+      </ul>
       </div>
 
-      <div class="hero-shot">
+      <div class="hero-shot" aria-label="Bookliz app preview">
         <div class="phone">
-          <img src="./screens/home.webp" width="800" height="1730" alt="Bookliz home screen showing reading streak, annual goal and the book in progress" />
+          <img src="./screens/home.webp" fetchpriority="high" width="800" height="1730" alt="Bookliz home screen showing reading streak, annual goal and the book in progress" />
+        </div>
+        <div class="phone phone-back">
+          <img src="./screens/book.webp" width="800" height="1730" alt="Bookliz book details with reading progress and saved quotes" />
+        </div>
+        <div class="phone phone-third">
+          <img src="./screens/library.webp" width="800" height="1730" alt="Bookliz library showing book covers and reading progress" />
+        </div>
+        <div class="shot-caption">
+          <div class="caption-stack" aria-live="off">
+            <span class="caption-message is-active" aria-hidden="false"><span data-lang="en">A little more you, on every page.</span><span data-lang="es">Un poco más de ti, en cada página.</span></span>
+            <span class="caption-message" aria-hidden="true"><span data-lang="en">Your next chapter starts here.</span><span data-lang="es">Tu próximo capítulo empieza aquí.</span></span>
+            <span class="caption-message" aria-hidden="true"><span data-lang="en">Good books. Your own rhythm.</span><span data-lang="es">Buenos libros. Tu propio ritmo.</span></span>
+            <span class="caption-message" aria-hidden="true"><span data-lang="en">Keep the words that stay with you.</span><span data-lang="es">Guarda las palabras que se quedan contigo.</span></span>
+          </div>
+
         </div>
       </div>
     </div>
+    <div class="wrap hero-meta">
+      <span><span data-lang="en">For the love of reading</span><span data-lang="es">Por el gusto de leer</span></span>
+      <a href="#library"><span data-lang="en">Take a closer look</span><span data-lang="es">Conoce Bookliz</span><span aria-hidden="true">↓</span></a>
+    </div>
   </header>
 
-  <!-- ══ Feature rows ══ -->
   <main>
-  <section class="wrap rows">
-
-    <div class="row">
-      <div class="txt">
-        <span class="eyebrow"><span data-lang="en">Library</span><span data-lang="es">Biblioteca</span></span>
-        <h2>
+  <section class="product" id="library" aria-labelledby="product-title">
+    <div class="wrap product-in">
+      <div class="product-copy reveal">
+        <span class="eyebrow"><span data-lang="en">Your reading, all together</span><span data-lang="es">Toda tu lectura, en un lugar</span></span>
+        <h2 id="product-title"><span data-lang="en">Less keeping track.<br><span class="em">More getting lost.</span></span><span data-lang="es">Menos organizar.<br><span class="em">Más dejarte llevar.</span></span></h2>
+        <div class="product-tabs" role="tablist" aria-label="Explore Bookliz">
+          <button id="tab-library" role="tab" aria-selected="true" aria-controls="panel-library" tabindex="0" data-view="library"><span data-lang="en">Library</span><span data-lang="es">Biblioteca</span></button>
+          <button id="tab-book" role="tab" aria-selected="false" aria-controls="panel-book" tabindex="-1" data-view="book"><span data-lang="en">Each book</span><span data-lang="es">Cada libro</span></button>
+          <button id="tab-profile" role="tab" aria-selected="false" aria-controls="panel-profile" tabindex="-1" data-view="profile"><span data-lang="en">Profile · iPad</span><span data-lang="es">Perfil · iPad</span></button>
+          <button id="tab-shelf-ipad" role="tab" aria-selected="false" aria-controls="panel-shelf-ipad" tabindex="-1" data-view="shelf-ipad"><span data-lang="en">Shelf · iPad</span><span data-lang="es">Estante · iPad</span></button>
+          <button id="tab-book-ipad" role="tab" aria-selected="false" aria-controls="panel-book-ipad" tabindex="-1" data-view="book-ipad"><span data-lang="en">Book · iPad</span><span data-lang="es">Libro · iPad</span></button>
+        </div>
+        <div class="product-panels">
+          <div class="product-panel" id="panel-library" role="tabpanel" aria-labelledby="tab-library" aria-hidden="false" tabindex="0">
+        <h3>
           <span data-lang="en">A collection you can actually search.</span>
           <span data-lang="es">Una colección que sí puedes buscar.</span>
-        </h2>
+        </h3>
         <p>
           <span data-lang="en">Filter by in progress, finished or wish list. Search by title, author, genre, saga or list. Every row shows its progress, its series and whether the book is already yours.</span>
           <span data-lang="es">Filtra por en curso, terminados o lista de deseos. Busca por título, autor, género, saga o lista. Cada fila muestra su progreso, su serie y si el libro ya es tuyo.</span>
@@ -369,21 +419,12 @@
           <li><span data-lang="en">Custom lists and tags alongside the built-in states</span><span data-lang="es">Listas y etiquetas propias junto a los estados de siempre</span></li>
           <li><span data-lang="en">Light and dark mode, both hand-tuned</span><span data-lang="es">Modo claro y oscuro, los dos cuidados a mano</span></li>
         </ul>
-      </div>
-      <div class="shot">
-        <div class="phone tilt-r">
-          <img src="./screens/library.webp" width="800" height="1730" loading="lazy" alt="Library screen: search bar, status filters and book rows with progress bars" />
-        </div>
-      </div>
-    </div>
-
-    <div class="row flip">
-      <div class="txt">
-        <span class="eyebrow"><span data-lang="en">Each book</span><span data-lang="es">Cada libro</span></span>
-        <h2>
+          </div>
+          <div class="product-panel" id="panel-book" role="tabpanel" aria-labelledby="tab-book" aria-hidden="true" tabindex="-1" inert>
+        <h3>
           <span data-lang="en">Every book keeps its own history.</span>
           <span data-lang="es">Cada libro guarda su propia historia.</span>
-        </h2>
+        </h3>
         <p>
           <span data-lang="en">Sessions, pages logged, reading pace, quotes, rating, format and ownership. Start the timer from the book itself and Bookliz does the arithmetic for you.</span>
           <span data-lang="es">Sesiones, páginas registradas, ritmo de lectura, citas, valoración, formato y propiedad. Arranca el temporizador desde el libro y Bookliz hace las cuentas por ti.</span>
@@ -393,20 +434,52 @@
           <li><span data-lang="en">Save the quotes worth keeping</span><span data-lang="es">Guarda las citas que valen la pena</span></li>
           <li><span data-lang="en">Re-reads counted, not overwritten</span><span data-lang="es">Las relecturas se cuentan, no se sobrescriben</span></li>
         </ul>
-      </div>
-      <div class="shot">
-        <div class="phone tilt-l">
-          <img src="./screens/book.webp" width="800" height="1730" loading="lazy" alt="Book detail: cover, reading progress, session stats, quotes, format and page count" />
+          </div>
+          <div class="product-panel" id="panel-profile" role="tabpanel" aria-labelledby="tab-profile" aria-hidden="true" tabindex="-1" inert>
+            <h3><span data-lang="en">Your reading life, in a bigger picture.</span><span data-lang="es">Tu vida lectora, con más perspectiva.</span></h3>
+            <p><span data-lang="en">Follow your annual goal, explore your next achievements, and keep your favorite authors and genres together.</span><span data-lang="es">Sigue tu meta anual, descubre tus próximos logros y reúne tus autores y géneros favoritos.</span></p>
+            <ul>
+              <li><span data-lang="en">Your reader path and next milestones</span><span data-lang="es">Tu recorrido lector y próximos hitos</span></li>
+              <li><span data-lang="en">Goals and achievements in one view</span><span data-lang="es">Metas y logros en una misma vista</span></li>
+              <li><span data-lang="en">Favorite genres and authors</span><span data-lang="es">Tus géneros y autores favoritos</span></li>
+            </ul>
+          </div>
+          <div class="product-panel" id="panel-shelf-ipad" role="tabpanel" aria-labelledby="tab-shelf-ipad" aria-hidden="true" tabindex="-1" inert>
+            <h3><span data-lang="en">Room to see your whole shelf.</span><span data-lang="es">Más espacio para tu estantería.</span></h3>
+            <p><span data-lang="en">Browse your books by their covers on iPad. Search your collection and switch between reading, finished and wish list.</span><span data-lang="es">Recorre las portadas de tus libros en iPad. Busca en tu colección y alterna entre en curso, terminados y lista de deseos.</span></p>
+            <ul>
+              <li><span data-lang="en">A cover grid for your collection</span><span data-lang="es">Una cuadrícula de portadas para tu colección</span></li>
+              <li><span data-lang="en">Search and reading status filters</span><span data-lang="es">Búsqueda y filtros por estado de lectura</span></li>
+              <li><span data-lang="en">Series information beside your books</span><span data-lang="es">La información de tus sagas junto a tus libros</span></li>
+            </ul>
+          </div>
+          <div class="product-panel" id="panel-book-ipad" role="tabpanel" aria-labelledby="tab-book-ipad" aria-hidden="true" tabindex="-1" inert>
+            <h3><span data-lang="en">Get closer to your next chapter.</span><span data-lang="es">Acércate a tu próximo capítulo.</span></h3>
+            <p><span data-lang="en">See a book’s synopsis, series, rating and reading progress together, with more room to explore its details on iPad.</span><span data-lang="es">Consulta la sinopsis, la saga, la valoración y el progreso de un libro, con más espacio para explorar sus detalles en iPad.</span></p>
+            <ul>
+              <li><span data-lang="en">Synopsis, author and edition details</span><span data-lang="es">Sinopsis, autor y detalles de la edición</span></li>
+              <li><span data-lang="en">Reading progress and session shortcuts</span><span data-lang="es">Progreso y accesos a las sesiones de lectura</span></li>
+              <li><span data-lang="en">Your rating and review</span><span data-lang="es">Tu valoración y reseña</span></li>
+            </ul>
+          </div>
         </div>
       </div>
+      <div class="product-screens reveal">
+        <div class="phone" data-screen="library"><img src="./screens/library.webp" width="800" height="1730" loading="lazy" alt="Bookliz library with search, reading filters and book progress" /></div>
+        <div class="phone" data-screen="book" hidden><img src="./screens/book.webp" width="800" height="1730" loading="lazy" alt="Bookliz book detail with sessions, reading pace and saved quotes" /></div>
+        <div class="tablet" data-screen="profile" hidden><img src="./screens/profile-ipad.webp" width="1200" height="1600" loading="lazy" alt="Bookliz reader profile on iPad with annual goal, achievements and favorite authors" /></div>
+        <div class="tablet" data-screen="shelf-ipad" hidden><img src="./screens/library-ipad.webp" width="1200" height="1600" loading="lazy" alt="Bookliz iPad library in cover grid view with search and reading status filters" /></div>
+        <div class="tablet" data-screen="book-ipad" hidden><img src="./screens/book-ipad.webp" width="1200" height="1600" loading="lazy" alt="Bookliz Dune book details on iPad showing synopsis, author, rating and reading progress" /></div>
+        <span class="screen-note"><span data-lang="en">A closer look at Bookliz</span><span data-lang="es">Bookliz, de cerca</span></span>
+      </div>
     </div>
-
+    <noscript><style>.product-tabs { display: none; } .product-panels { margin-top: 24px; }</style></noscript>
   </section>
 
   <!-- ══ Feature grid ══ -->
-  <section class="grid-sec">
+  <section class="grid-sec" id="features">
     <div class="wrap">
-      <div class="sec-head">
+      <div class="sec-head reveal">
         <span class="eyebrow"><span data-lang="en">Features</span><span data-lang="es">Funciones</span></span>
         <h2>
           <span data-lang="en">Everything you need to track your reading.</span>
@@ -419,8 +492,8 @@
       </div>
 
       <div class="cards">
-        <div class="card">
-          <div class="ico">📷</div>
+        <div class="card reveal">
+          <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h-4L8 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-4z"/><circle cx="12" cy="13" r="4"/></svg></div>
           <h3><span data-lang="en">Scan the barcode</span><span data-lang="es">Escanea el código</span></h3>
           <p>
             <span data-lang="en">Point the camera at any ISBN and the cover, author, page count and metadata fill themselves in. Add a whole shelf in a sitting.</span>
@@ -428,8 +501,8 @@
           </p>
         </div>
 
-        <div class="card">
-          <div class="ico">📚</div>
+        <div class="card reveal">
+          <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h5v18H4zM9 3h5v18H9zM16 3l5 1-1 17-5-1zM4 7h10M4 17h10"/></svg></div>
           <h3><span data-lang="en">Series and sagas</span><span data-lang="es">Series y sagas</span></h3>
           <p>
             <span data-lang="en">Bookliz groups multi-volume stories, shows which one you're on and what's left, and celebrates the saga when you finish it.</span>
@@ -437,8 +510,8 @@
           </p>
         </div>
 
-        <div class="card">
-          <div class="ico">🔥</div>
+        <div class="card reveal">
+          <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s2 5-2 9c0-3-2-4-2-4s-5 5-5 8a9 9 0 0 0 18 0c0-5-5-9-5-9s1 6-2 7c2-5-2-11-2-11z"/></svg></div>
           <h3><span data-lang="en">Streaks and goals</span><span data-lang="es">Rachas y metas</span></h3>
           <p>
             <span data-lang="en">Set an annual reading goal, keep a daily streak alive, and see how close you are the moment you open the app.</span>
@@ -446,8 +519,8 @@
           </p>
         </div>
 
-        <div class="card">
-          <div class="ico">📊</div>
+        <div class="card reveal">
+          <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M7 16v-4M12 16V8M17 16V5"/></svg></div>
           <h3><span data-lang="en">Stats worth reading</span><span data-lang="es">Estadísticas que dicen algo</span></h3>
           <p>
             <span data-lang="en">Pages, hours, pace and achievements, all worked out from the sessions you actually logged — no guessing, no averages invented for you.</span>
@@ -455,17 +528,17 @@
           </p>
         </div>
 
-        <div class="card">
-          <div class="ico">☁️</div>
+        <div class="card reveal">
+          <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18H6a4 4 0 0 1-1-8 7 7 0 0 1 13-2 5 5 0 0 1 0 10h-1M9 17l3-3 3 3M12 14v8"/></svg></div>
           <h3><span data-lang="en">Syncs with your account</span><span data-lang="es">Sincroniza con tu cuenta</span></h3>
           <p>
-            <span data-lang="en">Sign in with Apple or Google and your library follows you to a new phone. No ads, and nothing sold to anyone.</span>
-            <span data-lang="es">Inicia sesión con Apple o Google y tu biblioteca te sigue a un teléfono nuevo. Sin anuncios y sin vender nada a nadie.</span>
+            <span data-lang="en">Sign in with Apple or Google and your library follows you to a new phone.</span>
+            <span data-lang="es">Inicia sesión con Apple o Google y tu biblioteca te sigue a un teléfono nuevo.</span>
           </p>
         </div>
 
-        <div class="card">
-          <div class="ico">🌎</div>
+        <div class="card reveal">
+          <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg></div>
           <h3><span data-lang="en">Fully bilingual</span><span data-lang="es">Totalmente bilingüe</span></h3>
           <p>
             <span data-lang="en">The whole app in English and Spanish — not just the menus. Switch language in Settings whenever you like.</span>
@@ -479,23 +552,32 @@
   <!-- ══ Closing CTA ══ -->
   <section class="close-sec">
     <div class="wrap">
-      <div class="close-box">
+      <div class="close-box reveal">
         <h2>
           <span data-lang="en">Bookliz is <span class="em">nearly</span> here.</span>
           <span data-lang="es">Bookliz ya <span class="em">casi</span> está.</span>
         </h2>
         <p>
-          <span data-lang="en">Last details before the App Store. No ads, no upsells, no feed — just your books and the time you spend with them.</span>
-          <span data-lang="es">Ultimando detalles antes del App Store. Sin anuncios, sin ventas cruzadas, sin feed: solo tus libros y el tiempo que pasas con ellos.</span>
+          <span data-lang="en">Last details before launch. A home for your books and the time you spend with them.</span>
+          <span data-lang="es">Ultimando detalles antes del lanzamiento. Un lugar para tus libros y el tiempo que pasas con ellos.</span>
         </p>
         <div class="cta-row">
+          <div class="store-badges">
           <span class="badge">
             <svg width="26" height="30" viewBox="0 0 16 20" fill="currentColor" aria-hidden="true"><path d="M13.32 10.6c-.02-2.02 1.65-2.99 1.72-3.04-.94-1.37-2.4-1.56-2.92-1.58-1.24-.13-2.42.73-3.05.73-.63 0-1.6-.71-2.63-.69-1.35.02-2.6.79-3.29 2-1.4 2.44-.36 6.05 1.01 8.03.67.97 1.47 2.06 2.51 2.02 1.01-.04 1.39-.65 2.61-.65 1.22 0 1.56.65 2.63.63 1.09-.02 1.77-.99 2.43-1.96.77-1.12 1.08-2.21 1.1-2.27-.02-.01-2.11-.81-2.13-3.22zM11.3 4.67c.56-.68.94-1.62.83-2.56-.81.03-1.79.54-2.37 1.21-.52.6-.97 1.56-.85 2.48.9.07 1.82-.46 2.39-1.13z"/></svg>
             <span class="badge-txt">
-              <small><span data-lang="en">Coming soon to the</span><span data-lang="es">Próximamente en el</span></small>
+              <small><span data-lang="en">Coming soon</span><span data-lang="es">Próximamente</span></small>
               <strong>App Store</strong>
             </span>
           </span>
+          <span class="badge badge-google-play">
+            <svg width="26" height="30" viewBox="0 0 24 28" fill="none" aria-hidden="true"><path d="M2 2 15 14 2 26Z" fill="#4CB4F6"/><path d="m2 2 16 9-3 3Z" fill="#5BD18B"/><path d="m15 14 3 3L2 26Z" fill="#F76B77"/><path d="m18 11 5 3-5 3-3-3Z" fill="#FFD166"/></svg>
+            <span class="badge-txt">
+              <small><span data-lang="en">Coming soon</span><span data-lang="es">Próximamente</span></small>
+              <strong>Google Play</strong>
+            </span>
+          </span>
+        </div>
         </div>
         <p class="trust">
           <span data-lang="en">Questions before launch? <a href="./contact.html" style="text-decoration:underline">Get in touch</a>.</span>
@@ -511,7 +593,7 @@
     <div class="wrap">
       <div class="foot-top">
         <div class="foot-brand">
-          <img src="./bookliz-logo.png" alt="Bookliz" />
+          <a class="brand" href="./index.html" aria-label="Bookliz"><img src="./bookliz-icon-only.png" alt="" /><span>bookliz</span></a>
           <p>
             <span data-lang="en">Your library, your reading life. A reading tracker for iPhone, in English and Spanish.</span>
             <span data-lang="es">Tu biblioteca, tu vida lectora. Un diario de lectura para iPhone, en español e inglés.</span>
@@ -541,10 +623,15 @@
 
   <script>
     function setLang(lang) {
+      lang = lang === 'es' ? 'es' : 'en';
       document.body.className = 'lang-' + lang;
       document.documentElement.lang = lang;
       document.getElementById('btn-en').classList.toggle('active', lang === 'en');
       document.getElementById('btn-es').classList.toggle('active', lang === 'es');
+      document.getElementById('btn-en').setAttribute('aria-pressed', String(lang === 'en'));
+      document.getElementById('btn-es').setAttribute('aria-pressed', String(lang === 'es'));
+      document.querySelector('.product-tabs').setAttribute('aria-label', lang === 'es' ? 'Explora Bookliz' : 'Explore Bookliz');
+      document.querySelector('.hero-shot').setAttribute('aria-label', lang === 'es' ? 'Vista previa de Bookliz' : 'Bookliz app preview');
       // Pages that have their own translated file (the privacy policy) point at
       // the version in the language being read. Everything else is one page with
       // both languages inside it, so only these need swapping.
@@ -559,6 +646,119 @@
       try { saved = localStorage.getItem('bookliz-lang'); } catch (e) {}
       var lang = saved || ((navigator.language || 'en').toLowerCase().indexOf('es') === 0 ? 'es' : 'en');
       setLang(lang);
+    })();
+
+    (function () {
+      var tabs = Array.from(document.querySelectorAll('[data-view]'));
+      function selectView(view, focus) {
+        tabs.forEach(function (tab) {
+          var selected = tab.dataset.view === view;
+          tab.setAttribute('aria-selected', String(selected));
+          tab.tabIndex = selected ? 0 : -1;
+          var panel = document.getElementById(tab.getAttribute('aria-controls'));
+          panel.setAttribute('aria-hidden', String(!selected));
+          panel.toggleAttribute('inert', !selected);
+          panel.tabIndex = selected ? 0 : -1;
+          if (selected && focus) tab.focus();
+        });
+        document.querySelectorAll('[data-screen]').forEach(function (screen) {
+          screen.hidden = screen.dataset.screen !== view;
+        });
+      }
+      tabs.forEach(function (tab, index) {
+        tab.addEventListener('click', function () { selectView(tab.dataset.view, false); });
+        tab.addEventListener('keydown', function (event) {
+          var next;
+          if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+          if (event.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
+          if (event.key === 'Home') next = 0;
+          if (event.key === 'End') next = tabs.length - 1;
+          if (next !== undefined) { event.preventDefault(); selectView(tabs[next].dataset.view, true); }
+        });
+      });
+
+      var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      if ('IntersectionObserver' in window && !reducedMotion.matches) {
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.remove('is-pending');
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.08 });
+        document.querySelectorAll('.reveal').forEach(function (element, index) {
+          element.style.setProperty('--reveal-delay', (index % 3) * 65 + 'ms');
+          element.classList.add('is-pending');
+          observer.observe(element);
+        });
+        reducedMotion.addEventListener('change', function (event) {
+          if (event.matches) {
+            observer.disconnect();
+            document.querySelectorAll('.is-pending').forEach(function (el) { el.classList.remove('is-pending'); });
+          }
+        });
+      }
+
+      var nav = document.querySelector('.nav');
+      var progressFrame = 0;
+      function updateProgress() {
+        var distance = document.documentElement.scrollHeight - window.innerHeight;
+        nav.style.setProperty('--reading-progress', distance > 0 ? Math.min(1, Math.max(0, window.scrollY / distance)) : 0);
+        progressFrame = 0;
+      }
+      function queueProgress() { if (!progressFrame) progressFrame = requestAnimationFrame(updateProgress); }
+      window.addEventListener('scroll', queueProgress, { passive: true });
+      window.addEventListener('resize', queueProgress, { passive: true });
+      window.addEventListener('load', queueProgress);
+      updateProgress();
+
+      var stage = document.querySelector('.hero-shot');
+      var finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
+      stage.addEventListener('pointermove', function (event) {
+        if (reducedMotion.matches || !finePointer.matches) return;
+        var bounds = stage.getBoundingClientRect();
+        stage.style.setProperty('--pointer-x', ((event.clientX - bounds.left) / bounds.width - .5) * 14 + 'px');
+        stage.style.setProperty('--pointer-y', ((event.clientY - bounds.top) / bounds.height - .5) * 10 + 'px');
+      });
+      function resetStage() {
+        stage.style.setProperty('--pointer-x', '0px');
+        stage.style.setProperty('--pointer-y', '0px');
+      }
+      stage.addEventListener('pointerleave', resetStage);
+      reducedMotion.addEventListener('change', resetStage);
+
+      var hero = document.querySelector('.hero-glow');
+      var captions = Array.from(document.querySelectorAll('.caption-message'));
+      var captionIndex = 0;
+      var captionTimer = null;
+      var heroInView = true;
+
+      function advanceCaption() {
+        captionIndex = (captionIndex + 1) % captions.length;
+        captions.forEach(function (caption, index) {
+          var active = index === captionIndex;
+          caption.classList.toggle('is-active', active);
+          caption.setAttribute('aria-hidden', String(!active));
+        });
+      }
+      function syncMotion() {
+        clearTimeout(captionTimer);
+        captionTimer = null;
+        var running = !reducedMotion.matches && !document.hidden && heroInView;
+        hero.classList.toggle('motion-running', running);
+        if (running) captionTimer = setTimeout(function () { advanceCaption(); syncMotion(); }, 6000);
+      }
+      document.addEventListener('visibilitychange', syncMotion);
+      reducedMotion.addEventListener('change', syncMotion);
+      if ('IntersectionObserver' in window) {
+        var motionObserver = new IntersectionObserver(function (entries) {
+          heroInView = entries[0].isIntersecting;
+          syncMotion();
+        }, { threshold: 0 });
+        motionObserver.observe(hero);
+      }
+      syncMotion();
     })();
   </script>
 </body>

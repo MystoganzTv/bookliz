@@ -118,6 +118,14 @@ export function createStyles(c: AppColors, isDark: boolean) {
   pathCardWide: {
     width: "31.5%"
   },
+  /**
+   * Phone only. Three ways in do not divide by two, so without this the last
+   * card sits alone at half width and reads as a layout bug. The primary path
+   * takes the whole row and the other two pair off underneath it.
+   */
+  pathCardFeatured: {
+    width: "100%"
+  },
   pathIcon: {
     alignItems: "center",
     borderRadius: 20,
@@ -519,51 +527,6 @@ export function createStyles(c: AppColors, isDark: boolean) {
     fontSize: 12,
     lineHeight: 18,
     marginTop: 5
-  },
-  preview: {
-    alignSelf: "center",
-    borderRadius: radii.lg,
-    height: 220,
-    marginTop: spacing.lg,
-    width: 160
-  },
-  photoBusyCard: {
-    alignItems: "center",
-    backgroundColor: c.surface,
-    borderColor: c.border,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginTop: spacing.md,
-    padding: spacing.md
-  },
-  photoBusyText: {
-    color: c.tealDark,
-    fontFamily: fonts.body,
-    fontSize: 13,
-    fontWeight: "900"
-  },
-  photoHintCard: {
-    backgroundColor: c.surfaceAlt,
-    borderColor: c.border,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    marginTop: spacing.md,
-    padding: spacing.md
-  },
-  photoHintTitle: {
-    color: c.ink,
-    fontFamily: fonts.display,
-    fontSize: 18,
-    fontWeight: "900"
-  },
-  photoHintCopy: {
-    color: c.muted,
-    fontFamily: fonts.bodyRegular,
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: 6
   },
   sessionCard: {
     backgroundColor: c.navy,

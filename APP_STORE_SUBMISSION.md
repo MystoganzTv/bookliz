@@ -10,10 +10,13 @@ versión **1.1.0** en *Prepare for Submission*. La build 1.0.0 (1) de mayo está
 > quedan aquí como el porqué de cada respuesta, no como tareas.
 >
 > Hecho también: el registro de versión pasó de 1.0 a **1.1.0** (que es lo que
-> dicen `app.json`, `Info.plist` y el proyecto de Xcode), la descripción EN/ES
-> se actualizó con la frase del OCR de portadas, y la app va **solo para
-> iPhone** (`TARGETED_DEVICE_FAMILY = 1`), así que no hacen falta capturas de
-> iPad.
+> dicen `app.json`, `Info.plist` y el proyecto de Xcode), y la app va **solo
+> para iPhone** (`TARGETED_DEVICE_FAMILY = 1`), así que no hacen falta capturas
+> de iPad.
+>
+> **Revertido el 2026-09-13:** se quitaron *Hacer foto* e *Importar foto* de la
+> app, así que la frase del OCR de portadas salió de la descripción EN/ES —
+> volver a subirla a App Store Connect. Ver la sección de *Photos or Videos*.
 >
 > **Lo único que falta es la sección 6: las capturas.** Guion en
 > `SCREENSHOTS.md`.
@@ -58,37 +61,23 @@ Advertising ni Developer's Marketing.
 - **Location, Health, Financial Info, Contacts, Browsing History, Purchases,
   Sensitive Info.** Nada de eso se toca.
 
-### Photos or Videos — CORREGIDO 2026-09-12: sí salen del dispositivo
+### Photos or Videos — NO marcar (2026-09-13)
 
-Esto estaba mal en la versión anterior de este documento, que decía que las
-fotos no salen del dispositivo. Sí salen:
+El 2026-09-12 esta sección decía que había que marcarlo, y era correcto
+entonces: *Hacer foto* e *Importar foto* mandaban la imagen a la Edge Function
+`book-vision` → **Google Cloud Vision**.
 
-`takeCoverPhoto` y `pickCoverPhoto` terminan los dos en `processPhotoAsset`
-→ `analyzeBookPhoto` → POST de la imagen en base64 a la Edge Function
-`book-vision` → **Google Cloud Vision**. Vale igual para *Hacer foto* que
-para *Importar foto*, y no hay ninguna ruta que ponga una portada sin ese
-viaje mientras `EXPO_PUBLIC_BOOKLIZ_VISION_ENDPOINT` esté puesta — y lo
-está en el `.env` con el que se compila.
+**Los dos caminos se quitaron de la app el 2026-09-13.** Ya no queda ninguna
+ruta que abra la cámara para una portada ni que toque la fototeca:
+`expo-image-picker` salió de `app.json`, `NSPhotoLibraryUsageDescription` y
+`READ_MEDIA_IMAGES` ya no se declaran, y `bookPhotoIntake` y la Edge Function
+quedaron aparcados. La cámara solo sirve ya para escanear el código de barras,
+que se descodifica en el dispositivo y no produce ninguna imagen.
 
-Lo que **no** ocurre: la imagen no se guarda, ni en la Edge Function ni en
-Supabase, ni se asocia a la cuenta. La portada que queda en la biblioteca
-es la ruta del archivo local, no una imagen subida.
-
-Con eso, la decisión de la etiqueta es un juicio, no un hecho:
-
-- **Marcar "Photos or Videos" → App Functionality, not linked to identity,
-  not used for tracking.** Es la opción conservadora y la recomendada. La
-  imagen se transmite fuera del dispositivo, y esa es la palabra que usa
-  Apple. Cuesta una fila más en la ficha y cierra el tema.
-- **No marcarla**, apoyándose en la excepción de Apple para datos que solo
-  se procesan en tiempo real, en un flujo opcional e infrecuente, iniciado
-  por el usuario, con aviso en el punto de uso, sin perfilado ni publicidad.
-  El flujo cumple esas condiciones — las tarjetas de *Añadir un libro* ahora
-  lo dicen — pero es una interpretación, y si Apple la lee al revés lo que
-  queda es una declaración de privacidad falsa, que es de las pocas cosas
-  que se castigan con retirada y no con un rechazo de revisión.
-
-Una declaración de más no cuesta nada; una de menos, sí.
+Con eso, *Photos or Videos* **no se marca**, y no es un juicio: no hay nada que
+declarar. Si el día de mañana vuelve el OCR de portadas, esta sección y la
+política de privacidad vuelven con él — las dos afirman hoy que la fototeca no
+se toca.
 
 ### El único juicio discutible: Search History
 
@@ -156,16 +145,11 @@ Resultado esperado: **4+**.
 
 ## 5. Textos de la ficha
 
-Escritos contra lo que la app hace hoy. La descripción **ya menciona el OCR de
-portadas** (2026-09-12) porque la próxima build sí lo usa: el flujo de foto
-manda la imagen fuera del dispositivo, y decirlo en la ficha es lo coherente
-con la etiqueta de *Photos or Videos* de la sección 1. El proxy de Google Books
-no se menciona y no hace falta: es un cambio de dónde vive una clave, invisible
-para el usuario.
-
-> Si alguna vez sale una build **sin** el endpoint de visión configurado, estas
-> dos frases pasan a describir una función que no existe. El `preflight` exige
-> `EXPO_PUBLIC_BOOKLIZ_VISION_ENDPOINT` justo por esto.
+Escritos contra lo que la app hace hoy. El OCR de portadas **ya no se menciona**
+(revertido el 2026-09-13 al quitar *Hacer foto* e *Importar foto*): describir una
+función que no existe es justo lo que hace que una ficha se rechace. El proxy de
+Google Books no se menciona y no hace falta: es un cambio de dónde vive una
+clave, invisible para el usuario.
 
 ### Name (30) · Subtitle (30)
 
@@ -197,9 +181,8 @@ para el usuario.
 Bookliz is a reading tracker for people who actually keep their books.
 
 Scan the barcode on the back cover and the book lands on your shelf with its
-cover, page count and synopsis already filled in. No barcode? Photograph the
-cover and Bookliz reads the title off it. Or search by title or author, or
-type the details in yourself.
+cover, page count and synopsis already filled in. No barcode? Search by title
+or author, or type the details in yourself.
 
 YOUR SHELVES, HONESTLY
 Owned, wishlist, want to buy, reading, finished, abandoned. Ownership is its
@@ -230,9 +213,8 @@ No advertising, no analytics, no crash reporting, no third-party SDK reading
 over your shoulder. Your library is yours. Works offline; sign in only if you
 want it on more than one device.
 
-The only things that ever leave your device are the ones you ask for: a search
-term, or a cover photo sent to be recognised. The photo is not stored, not
-attached to your account, and not used for anything else.
+The only thing that ever leaves your device is what you ask for: the title,
+author or ISBN you are looking up. Bookliz never asks for your photo library.
 ```
 
 **ES**
@@ -243,8 +225,7 @@ libros.
 
 Escanea el código de barras de la contraportada y el libro aparece en tu
 estantería con portada, número de páginas y sinopsis ya rellenos. ¿Sin código?
-Haz una foto de la portada y Bookliz lee el título. O búscalo por título o
-autor, o escribe los datos tú.
+Búscalo por título o autor, o escribe los datos tú.
 
 TUS ESTANTES, SIN MENTIRAS
 Lo tengo, lista de deseos, quiero comprarlo, leyendo, terminado, abandonado.
@@ -276,9 +257,8 @@ Sin publicidad, sin analítica, sin crash reporting, sin ningún SDK de terceros
 mirando por encima de tu hombro. Tu biblioteca es tuya. Funciona sin conexión;
 inicia sesión solo si la quieres en más de un dispositivo.
 
-Lo único que sale de tu dispositivo es lo que tú pides: un término de búsqueda,
-o la foto de una portada para reconocerla. Esa foto no se guarda, no se asocia
-a tu cuenta y no se usa para nada más.
+Lo único que sale de tu dispositivo es lo que tú pides: el título, el autor o el
+ISBN que estás buscando. Bookliz nunca te pide acceso a tu fototeca.
 ```
 
 ### Nota sobre el enlace de afiliado
@@ -297,4 +277,5 @@ ahí — la guideline 3.2.2 y la FTC miran el sitio donde se hace la invitación
   que enseñan una biblioteca con libros de verdad, no vacía.
 - La política de privacidad está solo en inglés; la app es bilingüe y la ficha
   en español debería apuntar a una versión traducida.
-- Ninguna build publicada usa todavía el proxy de Books ni el OCR de portadas.
+- Ninguna build publicada usa todavía el proxy de Books. El OCR de portadas ya
+  no existe (quitado el 2026-09-13).

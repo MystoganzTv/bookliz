@@ -4,7 +4,7 @@
  *
  * Checks the two things that are invisible until it is too late:
  *
- *  1. The four EXPO_PUBLIC_* variables the app needs are set in the EAS
+ *  1. The three EXPO_PUBLIC_* variables the app needs are set in the EAS
  *     production environment. `.env` is gitignored and does NOT travel to the
  *     build, so a missing one produces an .ipa that installs, opens, and can
  *     neither sign in nor sync — and you find out in TestFlight.
@@ -25,7 +25,6 @@ const REQUIRED = [
   "EXPO_PUBLIC_SUPABASE_URL",
   "EXPO_PUBLIC_SUPABASE_ANON_KEY",
   "EXPO_PUBLIC_GOOGLE_BOOKS_PROXY_URL",
-  "EXPO_PUBLIC_BOOKLIZ_VISION_ENDPOINT",
 ];
 
 /** Must never be defined for a build: it would ride into the bundle. */

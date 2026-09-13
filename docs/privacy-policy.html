@@ -105,12 +105,11 @@
   <p>We do <strong>not</strong> collect location data, payment information, health data, contacts, browsing history, advertising identifiers, or any usage or telemetry data. The app contains no analytics or crash-reporting SDK, so we cannot see how you use it.</p>
   <p>If you never sign in, nothing leaves your device except the metadata lookups described in section 4.</p>
 
-  <h2>3. Camera and photos</h2>
-  <p>Bookliz asks for camera access to scan ISBN barcodes, and for photo library access so you can use a picture as a book cover.</p>
+  <h2>3. Camera</h2>
+  <p>Bookliz asks for camera access for one purpose: scanning the ISBN barcode on a book.</p>
   <ul>
-    <li><strong>Scan ISBN</strong> stays on your device. The barcode is decoded locally and only the resulting ISBN &mdash; a number that identifies the edition, not you &mdash; is used for a metadata lookup. No image is sent anywhere.</li>
-    <li><strong>Take Photo and Import Photo do send the image.</strong> Both options in <em>Add a book</em> run the picture through text recognition: it is sent to our server and forwarded to <strong>Google Cloud Vision</strong>, which reads the text printed on it so the app can suggest a title and, when it is printed there, an ISBN. This applies equally to a photo you take and to one you pick from your photo library, so pick a picture of the book, not of something else.</li>
-    <li><strong>We do not keep the image.</strong> It is sent for that single recognition request, is not stored on our servers, and is not attached to your account or your library. The cover you end up with is stored as the file's location on your device, not as an uploaded image &mdash; which is why a cover made from your own photo does not appear on another device.</li>
+    <li><strong>Scan ISBN stays on your device.</strong> The barcode is decoded locally and only the resulting ISBN &mdash; a number that identifies the edition, not you &mdash; is used for a metadata lookup. No image is captured, stored or sent anywhere.</li>
+    <li><strong>Bookliz does not ask for photo library access</strong> and cannot read your photos. Covers come from the public book catalogues described in section 4, never from your own pictures.</li>
   </ul>
 
   <h2>4. Book metadata lookups</h2>
@@ -146,9 +145,6 @@
     </li>
     <li>
       <strong>Google Books API</strong> (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>) — book metadata and cover images. Receives your lookup terms and your device's IP address.
-    </li>
-    <li>
-      <strong>Google Cloud Vision</strong> (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>) &mdash; reads the text on a cover photo when you add a book that way, as described in section 3. Receives that one image and returns the text it finds.
     </li>
     <li>
       <strong>Open Library / Internet Archive</strong> (<a href="https://archive.org/about/terms.php" target="_blank" rel="noopener">terms</a>) — book metadata and cover images. Receives your lookup terms and your device's IP address.

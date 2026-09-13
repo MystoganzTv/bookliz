@@ -75,22 +75,25 @@ type IntakePathProps = {
   icon: IconName;
   accent: string;
   onPress: () => void;
+  /** Take the whole row on a phone. For the primary way in, with an odd card count. */
+  featured?: boolean;
 };
 
-export function IntakePath({ title, description, icon, accent, onPress }: IntakePathProps) {
+export function IntakePath({ title, description, icon, accent, onPress, featured = false }: IntakePathProps) {
   const c = useColors();
   const { isDark } = useTheme();
   const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
   /**
    * Two cards per row is right on a phone. On a tablet two cards across the
-   * full width are billboards with three words on them; three fits the five
-   * ways in without any of them looking like a mistake.
+   * full width are billboards with three words on them; three fits the ways
+   * in without any of them looking like a mistake — which is also why the
+   * phone gets `featured`: three cards leave an orphan in a two-up grid.
    */
   const isWide = useIsWide();
   return (
     <Pressable
       accessibilityRole="button"
-      style={[styles.pathCard, isWide && styles.pathCardWide]}
+      style={[styles.pathCard, isWide ? styles.pathCardWide : featured && styles.pathCardFeatured]}
       onPress={onPress}
     >
       <View style={[styles.pathIcon, { backgroundColor: accent, borderColor: isDark && accent === c.surface ? c.border : "transparent", borderWidth: isDark && accent === c.surface ? 1 : 0 }]}>

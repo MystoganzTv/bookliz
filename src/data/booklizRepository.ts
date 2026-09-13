@@ -106,6 +106,11 @@ export interface BooklizRepository {
   load(): Promise<BooklizSnapshot | null>;
   save(snapshot: BooklizSnapshot, options?: SaveOptions): Promise<SaveResult>;
   getStatus(): RepositoryStatus;
+  /**
+   * Re-read whether a cloud session exists, without touching the library.
+   * Returns the answer it found.
+   */
+  refreshCloudSession(): Promise<boolean>;
   /** The snapshot a conflict discarded, if one is still parked. */
   readConflictBackup(): Promise<ConflictBackup | null>;
   /** Park `snapshot` in the backup slot, replacing whatever is there. Throws on failure. */
@@ -606,6 +611,32 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
 
   getStatus() {
     return this.status;
+  }
+
+  /**
+   * Ask, on its own, whether this device holds a cloud session.
+   *
+   * `cloudSignedIn` used to move only inside `load` and `save`. That is fine
+   * while the only way to sign in is a flow that reloads the library, but
+   * linking an account does NOT guarantee a session: native Google sign-in
+   * hands Supabase an id_token whose audience is the iOS/Android client, and
+   * if that client is not listed in the provider's Authorized Client IDs the
+   * call fails and the app links the profile locally anyway. The status then
+   * still said "not signed in" while the profile said "signed in with Google",
+   * and the Profile screen showed the contradiction to the user.
+   *
+   * Swallows failures on purpose: not being able to ask is not an answer, so
+   * the last known value stands rather than flipping the UI on a flaky call.
+   */
+  async refreshCloudSession() {
+    if (!supabase) return false;
+    try {
+      const userId = await this.getSupabaseUserId();
+      this.status = { ...this.status, cloudSignedIn: Boolean(userId) };
+      return Boolean(userId);
+    } catch {
+      return this.status.cloudSignedIn;
+    }
   }
 
   private async loadRemote() {

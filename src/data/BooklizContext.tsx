@@ -1993,6 +1993,12 @@ export function BooklizProvider({ children }: PropsWithChildren) {
         email: account.email ?? current.email,
         authProvider: account.provider
       }));
+      // Linking an account and holding a cloud session are two different
+      // things — the native sign-in links the profile even when Supabase
+      // refuses the id_token. Ask now rather than letting the Profile screen
+      // report a stale "not signed in" next to a freshly linked account.
+      await repositoryRef.current.refreshCloudSession();
+      setRepositoryStatus(repositoryRef.current.getStatus());
     };
 
     const disconnectIdentityAccount = async () => {
@@ -2003,6 +2009,8 @@ export function BooklizProvider({ children }: PropsWithChildren) {
         email: undefined,
         authProvider: undefined
       }));
+      await repositoryRef.current.refreshCloudSession();
+      setRepositoryStatus(repositoryRef.current.getStatus());
     };
 
     return {

@@ -107,12 +107,11 @@
   <p>No recogemos datos de ubicación, información de pago, datos de salud, contactos, historial de navegación, identificadores publicitarios ni datos de uso o telemetría. La app no contiene ningún SDK de analítica ni de informes de fallos, así que no podemos ver cómo la usas.</p>
   <p>Si nunca inicias sesión, nada sale de tu dispositivo salvo las consultas de metadatos descritas en la sección 4.</p>
 
-  <h2>3. Cámara y fotos</h2>
-  <p>Bookliz pide acceso a la cámara para escanear códigos de barras ISBN, y acceso a la fototeca para que puedas usar una imagen como portada de un libro.</p>
+  <h2>3. Cámara</h2>
+  <p>Bookliz pide acceso a la cámara con un solo fin: escanear el código de barras ISBN de un libro.</p>
   <ul>
-    <li><strong>Escanear ISBN</strong> se queda en tu dispositivo. El código de barras se descodifica localmente y solo se usa el ISBN resultante &mdash; un número que identifica la edición, no a ti &mdash; para una consulta de metadatos. No se envía ninguna imagen a ningún sitio.</li>
-    <li><strong>Hacer foto e Importar foto sí envían la imagen.</strong> Ambas opciones de <em>Añadir un libro</em> pasan la imagen por reconocimiento de texto: se envía a nuestro servidor y se reenvía a <strong>Google Cloud Vision</strong>, que lee el texto impreso para que la app pueda sugerir un título y, cuando está impreso ahí, un ISBN. Esto vale igual para una foto que hagas y para una que elijas de tu fototeca, así que elige una imagen del libro y no de otra cosa.</li>
-    <li><strong>No conservamos la imagen.</strong> Se envía solo para esa consulta de reconocimiento, no se almacena en nuestros servidores y no queda asociada a tu cuenta ni a tu biblioteca. La portada que acabas usando se guarda como la ubicación del archivo en tu dispositivo, no como una imagen subida &mdash; por eso una portada hecha con tu propia foto no aparece en otro dispositivo.</li>
+    <li><strong>Escanear ISBN se queda en tu dispositivo.</strong> El código de barras se descodifica localmente y solo se usa el ISBN resultante &mdash; un número que identifica la edición, no a ti &mdash; para una consulta de metadatos. No se captura, ni se guarda, ni se envía ninguna imagen a ningún sitio.</li>
+    <li><strong>Bookliz no pide acceso a tu fototeca</strong> y no puede leer tus fotos. Las portadas vienen de los catálogos públicos descritos en la sección 4, nunca de tus propias imágenes.</li>
   </ul>
 
   <h2>4. Consultas de metadatos de libros</h2>
@@ -148,9 +147,6 @@
     </li>
     <li>
       <strong>API de Google Books</strong> (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">política de privacidad</a>) &mdash; metadatos y portadas de libros. Recibe tus términos de búsqueda y la IP de tu dispositivo.
-    </li>
-    <li>
-      <strong>Google Cloud Vision</strong> (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">política de privacidad</a>) &mdash; lee el texto de la foto de una portada cuando añades un libro de esa forma, como se describe en la sección 3. Recibe esa única imagen y devuelve el texto que encuentra.
     </li>
     <li>
       <strong>Open Library / Internet Archive</strong> (<a href="https://archive.org/about/terms.php" target="_blank" rel="noopener">términos</a>) &mdash; metadatos y portadas de libros. Recibe tus términos de búsqueda y la IP de tu dispositivo.

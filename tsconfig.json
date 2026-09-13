@@ -6,6 +6,7 @@
   },
   "exclude": [
     "supabase/functions",
+    "_to_delete",
     "node_modules",
     "dist",
     "ios",

@@ -22,20 +22,17 @@
       "usesAppleSignIn": true,
       "supportsTablet": false,
       "infoPlist": {
-        "NSCameraUsageDescription": "Bookliz uses the camera to photograph book covers and scan ISBN barcodes.",
-        "NSPhotoLibraryUsageDescription": "Bookliz uses your photo library to import pictures of physical books."
+        "NSCameraUsageDescription": "Bookliz uses the camera to scan the ISBN barcode on a book."
       }
     },
     "android": {
       "package": "com.mystodev.booklio",
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.READ_MEDIA_IMAGES"
+        "android.permission.CAMERA"
       ]
     },
     "plugins": [
       "expo-camera",
-      "expo-image-picker",
       "expo-apple-authentication",
       "expo-secure-store",
       [

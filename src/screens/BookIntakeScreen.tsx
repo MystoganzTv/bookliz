@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import { CameraView, BarcodeScanningResult, useCameraPermissions } from "expo-camera";
-import * as ImagePicker from "expo-image-picker";
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
@@ -15,7 +14,6 @@ import { buildLibraryIndex } from "../services/recommendationEngine";
 import { AppColors, colors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useColors, useTheme } from "../theme/ThemeContext";
 import { CoreTrackingStatus, NewBookInput, ReadingFormat } from "../types/models";
-import { analyzeBookPhoto, getBookPhotoSupportSummary } from "../utils/bookPhotoIntake";
 import { isSameLanguage, languageDisplayName, PRIORITY_LANGUAGE_CODES } from "../utils/languageUtils";
 import { shelfFieldsFor } from "../data/shelfRules";
 import {
@@ -155,7 +153,6 @@ export function BookIntakeScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<IntakeMode>("menu");
   const [scanned, setScanned] = useState(false);
-  const [coverUri, setCoverUri] = useState<string | undefined>();
   const [isBusy, setIsBusy] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -163,7 +160,6 @@ export function BookIntakeScreen() {
   const [reviewInsight, setReviewInsight] = useState<string | null>(null);
   const [dialog, setDialog] = useState<{ title: string; body: string } | null>(null);
   const [isRefreshingMetadata, setIsRefreshingMetadata] = useState(false);
-  const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   // "Edit details" section collapsed by default — user expands only if needed
@@ -249,13 +245,11 @@ export function BookIntakeScreen() {
         initialSearchRequestRef.current = null;
         setMode("menu");
         setScanned(false);
-        setCoverUri(undefined);
         setIsBusy(false);
         setIsLoadingMore(false);
         setSearchQuery("");
         setReviewBook(null);
         setReviewInsight(null);
-        setIsAnalyzingPhoto(false);
         setIsSubmittingReview(false);
         setTorchOn(false);
         setScanZoom(0);
@@ -272,7 +266,6 @@ export function BookIntakeScreen() {
     }, [])
   );
 
-  const photoSupport = getBookPhotoSupportSummary();
   const dialogNode = (
     <BooklizDialog
       open={Boolean(dialog)}
@@ -373,28 +366,6 @@ export function BookIntakeScreen() {
       void lookupAndShowMatches(initialQuery, "search", "query", request.initialSearchIntent ?? "auto");
     }
   }, [route.params]);
-
-  const takeCoverPhoto = async () => {
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [3, 4],
-      base64: true,
-      quality: 0.85
-    });
-    if (result.canceled) return;
-    await processPhotoAsset(result.assets[0]);
-  };
-
-  const pickCoverPhoto = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      aspect: [3, 4],
-      base64: true,
-      quality: 0.85
-    });
-    if (result.canceled) return;
-    await processPhotoAsset(result.assets[0]);
-  };
 
   /**
    * Fetch matches via the Book Intelligence Engine and navigate to the "matches" mode.
@@ -1042,53 +1013,6 @@ export function BookIntakeScreen() {
       });
     } finally {
       setTimeout(() => setIsSubmittingReview(false), 500);
-    }
-  };
-
-  const processPhotoAsset = async (asset?: ImagePicker.ImagePickerAsset) => {
-    const uri = asset?.uri;
-    if (!uri) return;
-
-    setCoverUri(uri);
-
-    // On iOS without a configured vision provider, static-image barcode detection
-    // doesn't work (Apple OS limitation) and AI cover recognition is unavailable.
-    // Skip the misleading spinner and go directly to the review screen with the
-    // photo saved as the cover art.
-    if (!photoSupport.imageBarcodeIsbnSupported && !photoSupport.visionProviderConfigured) {
-      await stageBook({
-        title: "",
-        authorName: "",
-        genre: ["Uncategorized"],
-        coverImageUri: uri,
-        source: "photo",
-        ownership: "owned"
-      }, t("addBook.photoSavedInsight"));
-      return;
-    }
-
-    setIsAnalyzingPhoto(true);
-
-    try {
-      const result = await analyzeBookPhoto({
-        uri,
-        base64: asset?.base64,
-        fileName: asset?.fileName
-      });
-      await stageBook(result.draft, result.notes.join(" "));
-    } catch {
-      // Unknown stays unknown: no invented title, author or synopsis. The
-      // photo is attached and the insight below says what to do next.
-      await stageBook({
-        title: "",
-        authorName: "",
-        genre: ["Uncategorized"],
-        coverImageUri: uri,
-        source: "photo",
-        ownership: "owned"
-      }, t("addBook.photoFailedInsight"));
-    } finally {
-      setIsAnalyzingPhoto(false);
     }
   };
 
@@ -2003,15 +1927,7 @@ export function BookIntakeScreen() {
 
       <View style={styles.pathGrid}>
         <IntakePath
-          accent={c.teal}
-          icon="camera"
-          title={t("addBook.takePhoto")}
-          description={photoSupport.imageBarcodeIsbnSupported || photoSupport.visionProviderConfigured
-            ? t("addBook.takePhotoBody")
-            : t("addBook.takePhotoBodyCoverOnly")}
-          onPress={takeCoverPhoto}
-        />
-        <IntakePath
+          featured
           accent={c.gold}
           icon="barcode"
           title={t("addBook.scanIsbn")}
@@ -2026,15 +1942,6 @@ export function BookIntakeScreen() {
           onPress={() => setMode("search")}
         />
         <IntakePath
-          accent={isDark ? c.surface : c.navy}
-          icon="image"
-          title={t("addBook.importPhoto")}
-          description={photoSupport.imageBarcodeIsbnSupported || photoSupport.visionProviderConfigured
-            ? t("addBook.importPhotoBody")
-            : t("addBook.importPhotoBodyCoverOnly")}
-          onPress={pickCoverPhoto}
-        />
-        <IntakePath
           accent={c.green}
           icon="create"
           title={t("addBook.manual")}
@@ -2042,26 +1949,6 @@ export function BookIntakeScreen() {
           onPress={() => setMode("manual")}
         />
       </View>
-
-      {isAnalyzingPhoto ? (
-        <View style={styles.photoBusyCard}>
-          <ActivityIndicator size="small" color={c.tealDark} />
-          <Text style={styles.photoBusyText}>{t("scan.inspectingPhoto")}</Text>
-        </View>
-      ) : null}
-
-      {!photoSupport.imageBarcodeIsbnSupported || !photoSupport.visionProviderConfigured ? (
-        <View style={styles.photoHintCard}>
-          <Text style={styles.photoHintTitle}>{t("addBook.photoTips")}</Text>
-          <Text style={styles.photoHintCopy}>
-            {photoSupport.imageBarcodeIsbnSupported
-              ? t("addBook.photoTipsGeneral")
-              : t("addBook.photoTipsIos")}
-          </Text>
-        </View>
-      ) : null}
-
-      {coverUri ? <Image source={{ uri: coverUri }} style={styles.preview} /> : null}
     </Screen>
   );
 }

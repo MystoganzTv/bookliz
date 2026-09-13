@@ -72,7 +72,7 @@ export function ProfileScreen() {
   const lockedAchievements = userProfile.achievements.filter((achievement) => !achievement.unlocked);
   const unlocked = unlockedAchievements.length;
   const goalPct = Math.min(100, Math.round((overallStats.booksReadThisYear / userProfile.yearlyGoal) * 100));
-  const repositoryCopy = getRepositoryCopy(c, repositoryStatus, t, locale);
+  const repositoryCopy = getRepositoryCopy(c, repositoryStatus, userProfile.authProvider, t, locale);
   const level = getReaderLevel(overallStats.totalBooksRead);
   const nextLevel = READER_LEVELS[level.index + 1];
   const nextLevelProgress = nextLevel
@@ -341,6 +341,7 @@ function getReaderLevel(totalBooksRead: number) {
 function getRepositoryCopy(
   c: AppColors,
   repositoryStatus: ReturnType<typeof useBookliz>["repositoryStatus"],
+  authProvider: "google" | "apple" | undefined,
   t: (key: string, vars?: Record<string, string | number>) => string,
   locale: string
 ) {
@@ -361,6 +362,20 @@ function getRepositoryCopy(
       body: repositoryStatus.lastSavedAt
         ? t("profile.syncLastSaved", { time: formatSyncTime(repositoryStatus.lastSavedAt, locale) })
         : t("profile.cloudConnectedBody")
+    };
+  }
+
+  // Linked account, no cloud session. Saying "saved on this device" here reads
+  // as a contradiction to somebody who just signed in with Google or Apple —
+  // and the contradiction is real: the native sign-in links the profile even
+  // when Supabase rejects the id_token, so the account is connected and the
+  // library still is not. Name that state instead of hiding it behind the
+  // signed-out copy.
+  if (repositoryStatus.remoteEnabled && authProvider) {
+    return {
+      accent: c.gold,
+      title: t("profile.cloudSyncPending"),
+      body: t("profile.cloudSyncPendingBody")
     };
   }
 
