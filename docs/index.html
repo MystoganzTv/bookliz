@@ -6,32 +6,10 @@
   <title>Bookliz — Every book you read, beautifully tracked.</title>
   <meta name="description" content="Bookliz is a reading tracker for iPhone. Scan your shelf, log every reading session, follow your series, and watch your stats grow. In English and Spanish." />
   <meta name="theme-color" content="#FBF7F0" />
-  <link rel="canonical" href="https://mystoganztv.github.io/bookliz/" />
-
-  <!--
-    Absolute URLs, not relative: a share card is fetched by a crawler that has
-    no page context to resolve "./bookliz-logo.png" against, so the old
-    relative og:image produced a card with no image in most clients. The image
-    itself is a purpose-made 1200x630 card -- the logo is a 490x350 transparent
-    PNG, which renders on a black slab in anything that does not composite it.
-  -->
-  <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="Bookliz" />
-  <meta property="og:url" content="https://mystoganztv.github.io/bookliz/" />
-  <meta property="og:locale" content="en_US" />
-  <meta property="og:locale:alternate" content="es_ES" />
   <meta property="og:title" content="Bookliz — Every book you read, beautifully tracked." />
   <meta property="og:description" content="Scan your shelf, log reading sessions, track series, and watch your stats grow. Built for iPhone, in English and Spanish." />
-  <meta property="og:image" content="https://mystoganztv.github.io/bookliz/og-image.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Bookliz — a reading tracker for iPhone, showing the home screen with reading streak and annual goal." />
-
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Bookliz — Every book you read, beautifully tracked." />
-  <meta name="twitter:description" content="Scan your shelf, log reading sessions, track series, and watch your stats grow. Built for iPhone, in English and Spanish." />
-  <meta name="twitter:image" content="https://mystoganztv.github.io/bookliz/og-image.png" />
-
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="./bookliz-logo.png" />
   <link rel="icon" href="./bookliz-icon-only.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -70,21 +48,21 @@
     a { color: inherit; text-decoration: none; }
     img { max-width: 100%; height: auto; display: block; }
 
-    .wrap { width: 100%; max-width: 1280px; margin: 0 auto; padding: 0 40px; }
+    .wrap { width: min(100%, 1600px); margin: 0 auto; padding: 0 48px; }
 
     /* ───────── Nav ───────── */
     .nav {
       position: sticky; top: 0; z-index: 50;
-      background: rgba(251,247,240,0.94);
+      background: rgba(251,247,240,0.82);
       backdrop-filter: saturate(180%) blur(14px);
       -webkit-backdrop-filter: saturate(180%) blur(14px);
       border-bottom: 1px solid var(--line2);
     }
     .nav-in {
       display: flex; align-items: center; justify-content: space-between;
-      gap: 16px; height: 68px;
+      gap: 16px; height: 86px;
     }
-    .brand img { height: 38px; width: auto; }
+    .brand img { height: 54px; width: auto; }
     .nav-right { display: flex; align-items: center; gap: 6px; }
     .nav-link {
       color: var(--ink2); font-size: 14.5px; font-weight: 700;
@@ -115,31 +93,22 @@
     .lede { color: var(--ink2); font-size: 18.5px; }
 
     /* ───────── Hero ───────── */
-    .hero { text-align: center; padding: 64px 0 0; }
-    /* 21ch, not 16: at 16 the headline sat 690px wide inside a 1200px column
-       and the page read as mostly empty cream. Wider here still breaks into
-       two comfortable lines at every width the clamp produces. */
-    .hero h1 { font-size: clamp(38px, 6.4vw, 68px); max-width: 21ch; margin: 18px auto 0; }
-    .hero .lede { max-width: 70ch; margin: 22px auto 0; font-size: 19.5px; }
+    .hero {
+      display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr);
+      gap: 64px; align-items: center; padding: 60px 0 88px;
+    }
+    .hero h1 { font-size: clamp(38px, 4.9vw, 70px); max-width: 14ch; margin: 18px 0 0; }
+    .hero .lede { max-width: 52ch; margin: 24px 0 0; font-size: 19.5px; }
 
-    .cta-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
-    /*
-     * Until the app is live this is a STATUS, not a button. It used to lift and
-     * deepen its shadow on hover, which promised a click that never came. The
-     * lift belongs to the anchor version -- see .badge[href] below, which is
-     * what this becomes on launch day by changing the span to
-     * <a class="badge" href="https://apps.apple.com/app/id6774150174"> and
-     * swapping the "Coming soon to the" line.
-     */
+    .cta-row { display: flex; justify-content: flex-start; flex-wrap: wrap; gap: 12px; margin-top: 36px; }
     .badge {
       display: inline-flex; align-items: center; gap: 12px;
       background: var(--ink); color: var(--white);
       padding: 12px 22px 12px 20px; border-radius: 14px;
       box-shadow: 0 8px 22px rgba(20,33,58,0.18);
-      cursor: default;
+      transition: transform .18s, box-shadow .18s;
     }
-    .badge[href] { cursor: pointer; transition: transform .18s, box-shadow .18s; }
-    .badge[href]:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(20,33,58,0.24); }
+    .badge:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(20,33,58,0.24); }
     .badge svg { flex-shrink: 0; }
     .badge-txt { text-align: left; line-height: 1.15; }
     .badge-txt small { display: block; font-size: 11px; font-weight: 700; opacity: .72; letter-spacing: .02em; }
@@ -161,41 +130,38 @@
     .phone.tilt-l { transform: rotate(-2deg); }
     .phone.tilt-r { transform: rotate(2deg); }
 
-    .hero-shot { display: flex; justify-content: center; padding: 42px 0 0; }
-    .hero-shot .phone { max-width: 322px; }
+    .hero-shot { display: flex; justify-content: center; }
+    .hero-shot .phone { max-width: 378px; }
     .hero-glow {
       position: relative;
+      /* The decorative glow is wider than the page at mid widths; clip it so it
+         cannot create a horizontal scrollbar. `clip` where supported, because
+         `hidden` would also make this a scroll container. */
+      overflow: hidden;
+      overflow: clip;
     }
     .hero-glow::before {
-      content: ''; position: absolute; left: 50%; top: 22%; transform: translateX(-50%);
-      width: min(760px, 96vw); height: 460px; border-radius: 50%;
+      content: ''; position: absolute; left: 62%; top: 8%; transform: translateX(-50%);
+      width: min(900px, 96vw); height: 620px; border-radius: 50%;
       background: radial-gradient(ellipse at center, rgba(20,184,166,0.16) 0%, rgba(245,194,74,0.10) 42%, transparent 70%);
       filter: blur(8px); pointer-events: none; z-index: -1;
     }
 
     /* ───────── Feature rows ───────── */
     .rows { padding: 26px 0 0; }
-    /*
-     * Two equal columns with an 88px gutter left a ~300px channel of empty
-     * cream down the middle of every feature row: the text was capped at 46ch
-     * inside a 596px column, and the phone is only 330px wide inside the other.
-     * The text column now takes the larger share and the gutter is narrower,
-     * so the row reads as one block instead of two distant islands.
-     */
     .row {
-      display: grid; grid-template-columns: 1.15fr 0.85fr;
-      gap: 56px; align-items: center;
-      padding: 68px 0;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 88px; align-items: center;
+      padding: 84px 0;
       border-top: 1px solid var(--line2);
     }
     .row:first-child { border-top: 0; }
     .row .shot { display: flex; justify-content: center; }
     .row.flip .txt { order: 2; }
     .row.flip .shot { order: 1; }
-    /* No cap on the heading: the column is already the measure. */
-    .row h2 { font-size: clamp(27px, 3.6vw, 40px); margin: 14px 0 0; }
-    .row p { margin-top: 18px; color: var(--ink2); font-size: 18px; max-width: 56ch; }
-    .row ul { margin-top: 22px; list-style: none; display: grid; gap: 10px; max-width: 56ch; }
+    .row h2 { font-size: clamp(27px, 3.6vw, 40px); margin: 14px 0 0; max-width: 17ch; }
+    .row p { margin-top: 18px; color: var(--ink2); font-size: 18px; max-width: 46ch; }
+    .row ul { margin-top: 22px; list-style: none; display: grid; gap: 10px; max-width: 46ch; }
     .row li { display: flex; gap: 11px; align-items: flex-start; font-size: 16px; color: var(--ink2); }
     .row li::before {
       content: ''; flex-shrink: 0; width: 7px; height: 7px; margin-top: 11px;
@@ -203,8 +169,8 @@
     }
 
     /* ───────── Grid ───────── */
-    .grid-sec { padding: 72px 0; border-top: 1px solid var(--line2); }
-    .sec-head { text-align: center; max-width: 64ch; margin: 0 auto 48px; }
+    .grid-sec { padding: 84px 0; border-top: 1px solid var(--line2); }
+    .sec-head { text-align: center; max-width: 48ch; margin: 0 auto 52px; }
     .sec-head h2 { font-size: clamp(29px, 4vw, 41px); margin-top: 14px; }
     .sec-head p { margin-top: 16px; color: var(--ink2); }
 
@@ -226,7 +192,7 @@
     .close-sec { padding: 0 0 84px; }
     .close-box {
       background: linear-gradient(165deg, #16324A 0%, var(--ink) 52%, #0C1425 100%);
-      border-radius: 34px; padding: 76px 40px; text-align: center; color: var(--cream);
+      border-radius: 34px; padding: 92px 40px; text-align: center; color: var(--cream);
       position: relative; overflow: hidden;
     }
     .close-box::after {
@@ -237,18 +203,18 @@
       pointer-events: none;
     }
     .close-box > * { position: relative; z-index: 1; }
-    .close-box h2 { font-size: clamp(30px, 4.4vw, 45px); max-width: 20ch; margin: 0 auto; }
+    .close-box h2 { font-size: clamp(30px, 4.4vw, 45px); max-width: 16ch; margin: 0 auto; }
     .close-box h2 .em { color: var(--gold); }
-    .close-box p { margin: 20px auto 0; max-width: 62ch; color: rgba(251,247,240,.80); font-size: 17.5px; }
+    .close-box p { margin: 20px auto 0; max-width: 48ch; color: rgba(251,247,240,.80); font-size: 17.5px; }
     .close-box .badge { background: var(--cream); color: var(--ink); margin-top: 32px; }
     .close-box .trust { color: rgba(251,247,240,.62); }
     .close-box .trust b { color: rgba(251,247,240,.92); }
 
     /* ───────── Footer ───────── */
     footer { border-top: 1px solid var(--line); padding: 56px 0 48px; }
-    .foot-top { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 40px 56px; }
-    .foot-brand img { height: 50px; width: auto; }
-    .foot-brand p { margin-top: 14px; color: var(--muted); font-size: 15px; max-width: 42ch; }
+    .foot-top { display: grid; grid-template-columns: 1fr auto auto; gap: 40px 100px; }
+    .foot-brand img { height: 66px; width: auto; }
+    .foot-brand p { margin-top: 14px; color: var(--muted); font-size: 15px; max-width: 34ch; }
     .foot-col h4 {
       font-family: var(--fb); font-size: 11.5px; font-weight: 900;
       letter-spacing: .13em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
@@ -265,10 +231,19 @@
     @media (max-width: 1040px) {
       .cards { grid-template-columns: repeat(2, 1fr); }
     }
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; gap: 48px; text-align: center; padding: 44px 0 64px; }
+      .hero h1 { max-width: 16ch; margin-left: auto; margin-right: auto; }
+      .hero .lede { max-width: 56ch; margin-left: auto; margin-right: auto; }
+      .cta-row { justify-content: center; }
+      .trust { text-align: center; }
+      .hero-glow::before { left: 50%; top: 14%; height: 460px; }
+    }
     @media (max-width: 860px) {
       .wrap { padding: 0 26px; }
       .row { grid-template-columns: 1fr; gap: 40px; padding: 60px 0; }
       .row.flip .txt, .row.flip .shot { order: initial; }
+      .row h2 { max-width: none; }
       .phone.tilt-l, .phone.tilt-r { transform: none; }
       .foot-top { grid-template-columns: 1fr 1fr; }
       .foot-brand { grid-column: 1 / -1; }
@@ -276,10 +251,10 @@
     @media (max-width: 620px) {
       body { font-size: 16.5px; }
       .wrap { padding: 0 18px; }
-      .hero { padding-top: 52px; }
-      .hero-shot { padding-top: 42px; }
+      .hero { padding: 36px 0 52px; gap: 40px; }
+      .nav-in { height: 72px; }
       .nav-link { padding: 8px 9px; font-size: 14px; }
-      .brand img { height: 32px; }
+      .brand img { height: 42px; }
       .cards { grid-template-columns: 1fr; }
       .close-box { padding: 56px 24px; border-radius: 26px; }
       .grid-sec { padding: 64px 0; }
@@ -287,7 +262,7 @@
     }
     @media (max-width: 430px) {
       .nav-link { padding: 8px 6px; font-size: 13px; }
-      .brand img { height: 28px; }
+      .brand img { height: 34px; }
       .lang button { padding: 6px 10px; }
     }
     @media (max-width: 340px) {
@@ -313,17 +288,17 @@
       <a class="brand" href="./index.html"><img src="./bookliz-logo.png" alt="Bookliz" /></a>
       <div class="nav-right">
         <a class="nav-link" href="./privacy-policy.html" data-href-en="./privacy-policy.html" data-href-es="./privacy-policy.es.html">
-          <span data-lang="en" lang="en">Privacy</span><span data-lang="es" lang="es">Privacidad</span>
+          <span data-lang="en">Privacy</span><span data-lang="es">Privacidad</span>
         </a>
         <a class="nav-link" href="./terms.html">
-          <span data-lang="en" lang="en">Terms</span><span data-lang="es" lang="es">Términos</span>
+          <span data-lang="en">Terms</span><span data-lang="es">Términos</span>
         </a>
         <a class="nav-link" href="./contact.html">
-          <span data-lang="en" lang="en">Contact</span><span data-lang="es" lang="es">Contacto</span>
+          <span data-lang="en">Contact</span><span data-lang="es">Contacto</span>
         </a>
         <div class="lang">
-          <button id="btn-en" class="active" onclick="setLang('en')" aria-label="English" aria-pressed="true">EN</button>
-          <button id="btn-es" onclick="setLang('es')" aria-label="Español" aria-pressed="false">ES</button>
+          <button id="btn-en" class="active" onclick="setLang('en')" aria-label="English">EN</button>
+          <button id="btn-es" onclick="setLang('es')" aria-label="Español">ES</button>
         </div>
       </div>
     </div>
@@ -332,37 +307,39 @@
   <!-- ══ Hero ══ -->
   <header class="hero-glow">
     <div class="wrap hero">
-      <span class="eyebrow"><span data-lang="en" lang="en">Reading tracker · iPhone</span><span data-lang="es" lang="es">Diario de lectura · iPhone</span></span>
+      <div class="hero-copy">
+      <span class="eyebrow"><span data-lang="en">Reading tracker · iPhone</span><span data-lang="es">Diario de lectura · iPhone</span></span>
 
       <h1>
-        <span data-lang="en" lang="en">Every book you read, <span class="em">beautifully</span> tracked.</span>
-        <span data-lang="es" lang="es">Cada libro que lees, <span class="em">bien</span> registrado.</span>
+        <span data-lang="en">Every book you read, <span class="em">beautifully</span> tracked.</span>
+        <span data-lang="es">Cada libro que lees, <span class="em">bien</span> registrado.</span>
       </h1>
 
       <p class="lede">
-        <span data-lang="en" lang="en">Scan your shelf, log every reading session, follow your series, and watch your stats grow. One app for the books on your nightstand and the ones still on the wish list.</span>
-        <span data-lang="es" lang="es">Escanea tu estantería, registra cada sesión de lectura, sigue tus sagas y mira crecer tus estadísticas. Una sola app para los libros de la mesita y los que aún están en la lista de deseos.</span>
+        <span data-lang="en">Scan your shelf, log every reading session, follow your series, and watch your stats grow. One app for the books on your nightstand and the ones still on the wish list.</span>
+        <span data-lang="es">Escanea tu estantería, registra cada sesión de lectura, sigue tus sagas y mira crecer tus estadísticas. Una sola app para los libros de la mesita y los que aún están en la lista de deseos.</span>
       </p>
 
       <div class="cta-row">
         <span class="badge">
           <svg width="26" height="30" viewBox="0 0 16 20" fill="currentColor" aria-hidden="true"><path d="M13.32 10.6c-.02-2.02 1.65-2.99 1.72-3.04-.94-1.37-2.4-1.56-2.92-1.58-1.24-.13-2.42.73-3.05.73-.63 0-1.6-.71-2.63-.69-1.35.02-2.6.79-3.29 2-1.4 2.44-.36 6.05 1.01 8.03.67.97 1.47 2.06 2.51 2.02 1.01-.04 1.39-.65 2.61-.65 1.22 0 1.56.65 2.63.63 1.09-.02 1.77-.99 2.43-1.96.77-1.12 1.08-2.21 1.1-2.27-.02-.01-2.11-.81-2.13-3.22zM11.3 4.67c.56-.68.94-1.62.83-2.56-.81.03-1.79.54-2.37 1.21-.52.6-.97 1.56-.85 2.48.9.07 1.82-.46 2.39-1.13z"/></svg>
           <span class="badge-txt">
-            <small><span data-lang="en" lang="en">Coming soon to the</span><span data-lang="es" lang="es">Próximamente en el</span></small>
+            <small><span data-lang="en">Coming soon to the</span><span data-lang="es">Próximamente en el</span></small>
             <strong>App Store</strong>
           </span>
         </span>
       </div>
 
       <p class="trust">
-        <span data-lang="en" lang="en"><b>No ads.</b> <span class="dot">·</span> English &amp; Spanish <span class="dot">·</span> Built solo by an independent developer.</span>
-        <span data-lang="es" lang="es"><b>Sin anuncios.</b> <span class="dot">·</span> Español e inglés <span class="dot">·</span> Hecho por un desarrollador independiente.</span>
+        <span data-lang="en"><b>No ads.</b> <span class="dot">·</span> English &amp; Spanish <span class="dot">·</span> Built solo by an independent developer.</span>
+        <span data-lang="es"><b>Sin anuncios.</b> <span class="dot">·</span> Español e inglés <span class="dot">·</span> Hecho por un desarrollador independiente.</span>
       </p>
-    </div>
+      </div>
 
-    <div class="wrap hero-shot">
-      <div class="phone">
-        <img src="./screens/home.webp" width="620" height="1341" alt="Bookliz home screen showing reading streak, annual goal and the book in progress" />
+      <div class="hero-shot">
+        <div class="phone">
+          <img src="./screens/home.webp" width="800" height="1730" alt="Bookliz home screen showing reading streak, annual goal and the book in progress" />
+        </div>
       </div>
     </div>
   </header>
@@ -373,48 +350,48 @@
 
     <div class="row">
       <div class="txt">
-        <span class="eyebrow"><span data-lang="en" lang="en">Library</span><span data-lang="es" lang="es">Biblioteca</span></span>
+        <span class="eyebrow"><span data-lang="en">Library</span><span data-lang="es">Biblioteca</span></span>
         <h2>
-          <span data-lang="en" lang="en">A collection you can actually search.</span>
-          <span data-lang="es" lang="es">Una colección que sí puedes buscar.</span>
+          <span data-lang="en">A collection you can actually search.</span>
+          <span data-lang="es">Una colección que sí puedes buscar.</span>
         </h2>
         <p>
-          <span data-lang="en" lang="en">Filter by in progress, finished or wish list. Search by title, author, genre, saga or list. Every row shows its progress, its series and whether the book is already yours.</span>
-          <span data-lang="es" lang="es">Filtra por en curso, terminados o lista de deseos. Busca por título, autor, género, saga o lista. Cada fila muestra su progreso, su serie y si el libro ya es tuyo.</span>
+          <span data-lang="en">Filter by in progress, finished or wish list. Search by title, author, genre, saga or list. Every row shows its progress, its series and whether the book is already yours.</span>
+          <span data-lang="es">Filtra por en curso, terminados o lista de deseos. Busca por título, autor, género, saga o lista. Cada fila muestra su progreso, su serie y si el libro ya es tuyo.</span>
         </p>
         <ul>
-          <li><span data-lang="en" lang="en">Physical, ebook and audiobook in one shelf</span><span data-lang="es" lang="es">Físico, ebook y audiolibro en un mismo estante</span></li>
-          <li><span data-lang="en" lang="en">Custom lists and tags alongside the built-in states</span><span data-lang="es" lang="es">Listas y etiquetas propias junto a los estados de siempre</span></li>
-          <li><span data-lang="en" lang="en">Light and dark mode, both hand-tuned</span><span data-lang="es" lang="es">Modo claro y oscuro, los dos cuidados a mano</span></li>
+          <li><span data-lang="en">Physical, ebook and audiobook in one shelf</span><span data-lang="es">Físico, ebook y audiolibro en un mismo estante</span></li>
+          <li><span data-lang="en">Custom lists and tags alongside the built-in states</span><span data-lang="es">Listas y etiquetas propias junto a los estados de siempre</span></li>
+          <li><span data-lang="en">Light and dark mode, both hand-tuned</span><span data-lang="es">Modo claro y oscuro, los dos cuidados a mano</span></li>
         </ul>
       </div>
       <div class="shot">
         <div class="phone tilt-r">
-          <img src="./screens/library.webp" width="620" height="1341" loading="lazy" alt="Library screen: search bar, status filters and book rows with progress bars" />
+          <img src="./screens/library.webp" width="800" height="1730" loading="lazy" alt="Library screen: search bar, status filters and book rows with progress bars" />
         </div>
       </div>
     </div>
 
     <div class="row flip">
       <div class="txt">
-        <span class="eyebrow"><span data-lang="en" lang="en">Each book</span><span data-lang="es" lang="es">Cada libro</span></span>
+        <span class="eyebrow"><span data-lang="en">Each book</span><span data-lang="es">Cada libro</span></span>
         <h2>
-          <span data-lang="en" lang="en">Every book keeps its own history.</span>
-          <span data-lang="es" lang="es">Cada libro guarda su propia historia.</span>
+          <span data-lang="en">Every book keeps its own history.</span>
+          <span data-lang="es">Cada libro guarda su propia historia.</span>
         </h2>
         <p>
-          <span data-lang="en" lang="en">Sessions, pages logged, reading pace, quotes, rating, format and ownership. Start the timer from the book itself and Bookliz does the arithmetic for you.</span>
-          <span data-lang="es" lang="es">Sesiones, páginas registradas, ritmo de lectura, citas, valoración, formato y propiedad. Arranca el temporizador desde el libro y Bookliz hace las cuentas por ti.</span>
+          <span data-lang="en">Sessions, pages logged, reading pace, quotes, rating, format and ownership. Start the timer from the book itself and Bookliz does the arithmetic for you.</span>
+          <span data-lang="es">Sesiones, páginas registradas, ritmo de lectura, citas, valoración, formato y propiedad. Arranca el temporizador desde el libro y Bookliz hace las cuentas por ti.</span>
         </p>
         <ul>
-          <li><span data-lang="en" lang="en">Pages per hour, worked out from your real sessions</span><span data-lang="es" lang="es">Páginas por hora, calculadas con tus sesiones reales</span></li>
-          <li><span data-lang="en" lang="en">Save the quotes worth keeping</span><span data-lang="es" lang="es">Guarda las citas que valen la pena</span></li>
-          <li><span data-lang="en" lang="en">Re-reads counted, not overwritten</span><span data-lang="es" lang="es">Las relecturas se cuentan, no se sobrescriben</span></li>
+          <li><span data-lang="en">Pages per hour, worked out from your real sessions</span><span data-lang="es">Páginas por hora, calculadas con tus sesiones reales</span></li>
+          <li><span data-lang="en">Save the quotes worth keeping</span><span data-lang="es">Guarda las citas que valen la pena</span></li>
+          <li><span data-lang="en">Re-reads counted, not overwritten</span><span data-lang="es">Las relecturas se cuentan, no se sobrescriben</span></li>
         </ul>
       </div>
       <div class="shot">
         <div class="phone tilt-l">
-          <img src="./screens/book.webp" width="620" height="1341" loading="lazy" alt="Book detail: cover, reading progress, session stats, quotes, format and page count" />
+          <img src="./screens/book.webp" width="800" height="1730" loading="lazy" alt="Book detail: cover, reading progress, session stats, quotes, format and page count" />
         </div>
       </div>
     </div>
@@ -425,69 +402,69 @@
   <section class="grid-sec">
     <div class="wrap">
       <div class="sec-head">
-        <span class="eyebrow"><span data-lang="en" lang="en">Features</span><span data-lang="es" lang="es">Funciones</span></span>
+        <span class="eyebrow"><span data-lang="en">Features</span><span data-lang="es">Funciones</span></span>
         <h2>
-          <span data-lang="en" lang="en">Everything you need to track your reading.</span>
-          <span data-lang="es" lang="es">Todo lo que necesitas para seguir tu lectura.</span>
+          <span data-lang="en">Everything you need to track your reading.</span>
+          <span data-lang="es">Todo lo que necesitas para seguir tu lectura.</span>
         </h2>
         <p>
-          <span data-lang="en" lang="en">Built for iPhone. Designed for people who take their shelves seriously.</span>
-          <span data-lang="es" lang="es">Hecho para iPhone. Diseñado para quien se toma en serio su estantería.</span>
+          <span data-lang="en">Built for iPhone. Designed for people who take their shelves seriously.</span>
+          <span data-lang="es">Hecho para iPhone. Diseñado para quien se toma en serio su estantería.</span>
         </p>
       </div>
 
       <div class="cards">
         <div class="card">
           <div class="ico">📷</div>
-          <h3><span data-lang="en" lang="en">Scan the barcode</span><span data-lang="es" lang="es">Escanea el código</span></h3>
+          <h3><span data-lang="en">Scan the barcode</span><span data-lang="es">Escanea el código</span></h3>
           <p>
-            <span data-lang="en" lang="en">Point the camera at any ISBN and the cover, author, page count and metadata fill themselves in. Add a whole shelf in a sitting.</span>
-            <span data-lang="es" lang="es">Apunta la cámara a cualquier ISBN y la portada, el autor, las páginas y los datos se rellenan solos. Agrega un estante entero de una sentada.</span>
+            <span data-lang="en">Point the camera at any ISBN and the cover, author, page count and metadata fill themselves in. Add a whole shelf in a sitting.</span>
+            <span data-lang="es">Apunta la cámara a cualquier ISBN y la portada, el autor, las páginas y los datos se rellenan solos. Agrega un estante entero de una sentada.</span>
           </p>
         </div>
 
         <div class="card">
           <div class="ico">📚</div>
-          <h3><span data-lang="en" lang="en">Series and sagas</span><span data-lang="es" lang="es">Series y sagas</span></h3>
+          <h3><span data-lang="en">Series and sagas</span><span data-lang="es">Series y sagas</span></h3>
           <p>
-            <span data-lang="en" lang="en">Bookliz groups multi-volume stories, shows which one you're on and what's left, and celebrates the saga when you finish it.</span>
-            <span data-lang="es" lang="es">Bookliz agrupa las historias de varios tomos, te muestra en cuál vas y qué te falta, y celebra la saga cuando la terminas.</span>
+            <span data-lang="en">Bookliz groups multi-volume stories, shows which one you're on and what's left, and celebrates the saga when you finish it.</span>
+            <span data-lang="es">Bookliz agrupa las historias de varios tomos, te muestra en cuál vas y qué te falta, y celebra la saga cuando la terminas.</span>
           </p>
         </div>
 
         <div class="card">
           <div class="ico">🔥</div>
-          <h3><span data-lang="en" lang="en">Streaks and goals</span><span data-lang="es" lang="es">Rachas y metas</span></h3>
+          <h3><span data-lang="en">Streaks and goals</span><span data-lang="es">Rachas y metas</span></h3>
           <p>
-            <span data-lang="en" lang="en">Set an annual reading goal, keep a daily streak alive, and see how close you are the moment you open the app.</span>
-            <span data-lang="es" lang="es">Fija una meta anual de lectura, mantén viva tu racha diaria y ve lo cerca que estás en cuanto abres la app.</span>
+            <span data-lang="en">Set an annual reading goal, keep a daily streak alive, and see how close you are the moment you open the app.</span>
+            <span data-lang="es">Fija una meta anual de lectura, mantén viva tu racha diaria y ve lo cerca que estás en cuanto abres la app.</span>
           </p>
         </div>
 
         <div class="card">
           <div class="ico">📊</div>
-          <h3><span data-lang="en" lang="en">Stats worth reading</span><span data-lang="es" lang="es">Estadísticas que dicen algo</span></h3>
+          <h3><span data-lang="en">Stats worth reading</span><span data-lang="es">Estadísticas que dicen algo</span></h3>
           <p>
-            <span data-lang="en" lang="en">Pages, hours, pace and achievements, all worked out from the sessions you actually logged — no guessing, no averages invented for you.</span>
-            <span data-lang="es" lang="es">Páginas, horas, ritmo y logros, calculados con las sesiones que de verdad registraste. Sin adivinar ni promedios inventados.</span>
+            <span data-lang="en">Pages, hours, pace and achievements, all worked out from the sessions you actually logged — no guessing, no averages invented for you.</span>
+            <span data-lang="es">Páginas, horas, ritmo y logros, calculados con las sesiones que de verdad registraste. Sin adivinar ni promedios inventados.</span>
           </p>
         </div>
 
         <div class="card">
           <div class="ico">☁️</div>
-          <h3><span data-lang="en" lang="en">Syncs with your account</span><span data-lang="es" lang="es">Sincroniza con tu cuenta</span></h3>
+          <h3><span data-lang="en">Syncs with your account</span><span data-lang="es">Sincroniza con tu cuenta</span></h3>
           <p>
-            <span data-lang="en" lang="en">Sign in with Apple or Google and your library follows you to a new phone. No ads, and nothing sold to anyone.</span>
-            <span data-lang="es" lang="es">Inicia sesión con Apple o Google y tu biblioteca te sigue a un teléfono nuevo. Sin anuncios y sin vender nada a nadie.</span>
+            <span data-lang="en">Sign in with Apple or Google and your library follows you to a new phone. No ads, and nothing sold to anyone.</span>
+            <span data-lang="es">Inicia sesión con Apple o Google y tu biblioteca te sigue a un teléfono nuevo. Sin anuncios y sin vender nada a nadie.</span>
           </p>
         </div>
 
         <div class="card">
           <div class="ico">🌎</div>
-          <h3><span data-lang="en" lang="en">Fully bilingual</span><span data-lang="es" lang="es">Totalmente bilingüe</span></h3>
+          <h3><span data-lang="en">Fully bilingual</span><span data-lang="es">Totalmente bilingüe</span></h3>
           <p>
-            <span data-lang="en" lang="en">The whole app in English and Spanish — not just the menus. Switch language in Settings whenever you like.</span>
-            <span data-lang="es" lang="es">Toda la app en español e inglés, no solo los menús. Cambia de idioma en Ajustes cuando quieras.</span>
+            <span data-lang="en">The whole app in English and Spanish — not just the menus. Switch language in Settings whenever you like.</span>
+            <span data-lang="es">Toda la app en español e inglés, no solo los menús. Cambia de idioma en Ajustes cuando quieras.</span>
           </p>
         </div>
       </div>
@@ -499,25 +476,25 @@
     <div class="wrap">
       <div class="close-box">
         <h2>
-          <span data-lang="en" lang="en">Bookliz is <span class="em">nearly</span> here.</span>
-          <span data-lang="es" lang="es">Bookliz ya <span class="em">casi</span> está.</span>
+          <span data-lang="en">Bookliz is <span class="em">nearly</span> here.</span>
+          <span data-lang="es">Bookliz ya <span class="em">casi</span> está.</span>
         </h2>
         <p>
-          <span data-lang="en" lang="en">Last details before the App Store. No ads, no upsells, no feed — just your books and the time you spend with them.</span>
-          <span data-lang="es" lang="es">Ultimando detalles antes del App Store. Sin anuncios, sin ventas cruzadas, sin feed: solo tus libros y el tiempo que pasas con ellos.</span>
+          <span data-lang="en">Last details before the App Store. No ads, no upsells, no feed — just your books and the time you spend with them.</span>
+          <span data-lang="es">Ultimando detalles antes del App Store. Sin anuncios, sin ventas cruzadas, sin feed: solo tus libros y el tiempo que pasas con ellos.</span>
         </p>
         <div class="cta-row">
           <span class="badge">
             <svg width="26" height="30" viewBox="0 0 16 20" fill="currentColor" aria-hidden="true"><path d="M13.32 10.6c-.02-2.02 1.65-2.99 1.72-3.04-.94-1.37-2.4-1.56-2.92-1.58-1.24-.13-2.42.73-3.05.73-.63 0-1.6-.71-2.63-.69-1.35.02-2.6.79-3.29 2-1.4 2.44-.36 6.05 1.01 8.03.67.97 1.47 2.06 2.51 2.02 1.01-.04 1.39-.65 2.61-.65 1.22 0 1.56.65 2.63.63 1.09-.02 1.77-.99 2.43-1.96.77-1.12 1.08-2.21 1.1-2.27-.02-.01-2.11-.81-2.13-3.22zM11.3 4.67c.56-.68.94-1.62.83-2.56-.81.03-1.79.54-2.37 1.21-.52.6-.97 1.56-.85 2.48.9.07 1.82-.46 2.39-1.13z"/></svg>
             <span class="badge-txt">
-              <small><span data-lang="en" lang="en">Coming soon to the</span><span data-lang="es" lang="es">Próximamente en el</span></small>
+              <small><span data-lang="en">Coming soon to the</span><span data-lang="es">Próximamente en el</span></small>
               <strong>App Store</strong>
             </span>
           </span>
         </div>
         <p class="trust">
-          <span data-lang="en" lang="en">Questions before launch? <a href="./contact.html" style="text-decoration:underline">Get in touch</a>.</span>
-          <span data-lang="es" lang="es">¿Dudas antes del lanzamiento? <a href="./contact.html" style="text-decoration:underline">Escríbenos</a>.</span>
+          <span data-lang="en">Questions before launch? <a href="./contact.html" style="text-decoration:underline">Get in touch</a>.</span>
+          <span data-lang="es">¿Dudas antes del lanzamiento? <a href="./contact.html" style="text-decoration:underline">Escríbenos</a>.</span>
         </p>
       </div>
     </div>
@@ -531,82 +508,38 @@
         <div class="foot-brand">
           <img src="./bookliz-logo.png" alt="Bookliz" />
           <p>
-            <span data-lang="en" lang="en">Your library, your reading life. A reading tracker for iPhone, in English and Spanish.</span>
-            <span data-lang="es" lang="es">Tu biblioteca, tu vida lectora. Un diario de lectura para iPhone, en español e inglés.</span>
+            <span data-lang="en">Your library, your reading life. A reading tracker for iPhone, in English and Spanish.</span>
+            <span data-lang="es">Tu biblioteca, tu vida lectora. Un diario de lectura para iPhone, en español e inglés.</span>
           </p>
         </div>
 
         <div class="foot-col">
-          <h4><span data-lang="en" lang="en">Bookliz</span><span data-lang="es" lang="es">Bookliz</span></h4>
-          <a href="./contact.html"><span data-lang="en" lang="en">Contact</span><span data-lang="es" lang="es">Contacto</span></a>
+          <h4><span data-lang="en">Bookliz</span><span data-lang="es">Bookliz</span></h4>
+          <a href="./contact.html"><span data-lang="en">Contact</span><span data-lang="es">Contacto</span></a>
         </div>
 
         <div class="foot-col">
-          <h4><span data-lang="en" lang="en">Legal</span><span data-lang="es" lang="es">Legal</span></h4>
+          <h4><span data-lang="en">Legal</span><span data-lang="es">Legal</span></h4>
           <a href="./privacy-policy.html" data-href-en="./privacy-policy.html" data-href-es="./privacy-policy.es.html">
-            <span data-lang="en" lang="en">Privacy Policy</span><span data-lang="es" lang="es">Política de Privacidad</span>
+            <span data-lang="en">Privacy Policy</span><span data-lang="es">Política de Privacidad</span>
           </a>
-          <a href="./terms.html"><span data-lang="en" lang="en">Terms of Use</span><span data-lang="es" lang="es">Términos de Uso</span></a>
+          <a href="./terms.html"><span data-lang="en">Terms of Use</span><span data-lang="es">Términos de Uso</span></a>
         </div>
       </div>
 
       <div class="foot-bot">
         <span>© 2026 Bookliz</span>
-        <span><span data-lang="en" lang="en">Made with care for readers.</span><span data-lang="es" lang="es">Hecho con cariño para lectores.</span></span>
+        <span><span data-lang="en">Made with care for readers.</span><span data-lang="es">Hecho con cariño para lectores.</span></span>
       </div>
     </div>
   </footer>
 
   <script>
-    /*
-     * Both languages live in this one document, so the <head> has to follow the
-     * body. Without this the tab, the description and the share card stayed in
-     * English for a reader who had chosen Spanish -- and a crawler that renders
-     * the page saw English metadata over Spanish content.
-     *
-     * The fuller fix is a separate URL per language with hreflang between them.
-     * That is a real split of this file into two, and it is not done here.
-     */
-    var META = {
-      en: {
-        title: 'Bookliz — Every book you read, beautifully tracked.',
-        description: 'Bookliz is a reading tracker for iPhone. Scan your shelf, log every reading session, follow your series, and watch your stats grow. In English and Spanish.',
-        ogTitle: 'Bookliz — Every book you read, beautifully tracked.',
-        ogDescription: 'Scan your shelf, log reading sessions, track series, and watch your stats grow. Built for iPhone, in English and Spanish.',
-        locale: 'en_US'
-      },
-      es: {
-        title: 'Bookliz — Cada libro que lees, bien registrado.',
-        description: 'Bookliz es un diario de lectura para iPhone. Escanea tu estantería, registra cada sesión, sigue tus sagas y mira crecer tus estadísticas. En español e inglés.',
-        ogTitle: 'Bookliz — Cada libro que lees, bien registrado.',
-        ogDescription: 'Escanea tu estantería, registra sesiones de lectura, sigue tus sagas y mira crecer tus estadísticas. Hecho para iPhone, en español e inglés.',
-        locale: 'es_ES'
-      }
-    };
-
-    function setMeta(sel, attr, value) {
-      var el = document.querySelector(sel);
-      if (el) el.setAttribute(attr, value);
-    }
-
     function setLang(lang) {
       document.body.className = 'lang-' + lang;
       document.documentElement.lang = lang;
-
-      var m = META[lang];
-      document.title = m.title;
-      setMeta('meta[name="description"]', 'content', m.description);
-      setMeta('meta[property="og:title"]', 'content', m.ogTitle);
-      setMeta('meta[property="og:description"]', 'content', m.ogDescription);
-      setMeta('meta[name="twitter:title"]', 'content', m.ogTitle);
-      setMeta('meta[name="twitter:description"]', 'content', m.ogDescription);
-      setMeta('meta[property="og:locale"]', 'content', m.locale);
-      setMeta('meta[property="og:locale:alternate"]', 'content', lang === 'en' ? 'es_ES' : 'en_US');
-
       document.getElementById('btn-en').classList.toggle('active', lang === 'en');
       document.getElementById('btn-es').classList.toggle('active', lang === 'es');
-      document.getElementById('btn-en').setAttribute('aria-pressed', String(lang === 'en'));
-      document.getElementById('btn-es').setAttribute('aria-pressed', String(lang === 'es'));
       // Pages that have their own translated file (the privacy policy) point at
       // the version in the language being read. Everything else is one page with
       // both languages inside it, so only these need swapping.
