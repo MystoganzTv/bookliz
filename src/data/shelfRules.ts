@@ -94,6 +94,10 @@ export function wantsToBuy(userStatus: { ownership?: OwnershipStatus; wantToBuy?
  *
  * Ownership decides, exactly as in {@link wantsToAcquire}. `read`, `reading`
  * and `dnf` are never grey: you had the book in hand to get that far.
+ *
+ * `undecided` is not grey either. Grey is a statement — "you do not have a
+ * copy of this" — and an unanswered scanner question has stated nothing. A
+ * shelf full of grey covers the reader never asked for reads as a bug.
  */
 const AWAITING_COPY_STATUSES: CoreTrackingStatus[] = [
   "want-to-read",
@@ -107,5 +111,18 @@ export function isAwaitingCopy(userStatus: {
   ownership?: OwnershipStatus;
 }): boolean {
   if (userStatus.ownership === "owned") return false;
+  if (userStatus.ownership === "undecided") return false;
   return AWAITING_COPY_STATUSES.includes(userStatus.status);
+}
+
+/**
+ * Is this book still carrying the scanner's unanswered ownership question?
+ *
+ * The Library asks this to raise its "books to confirm" banner. It is a
+ * strict equality on purpose: a book written by an older build has no
+ * `ownership` at all, and a missing answer that nobody was ever asked for is
+ * not a pending question — it would put every legacy row in the banner.
+ */
+export function needsOwnershipAnswer(userStatus: { ownership?: OwnershipStatus }): boolean {
+  return userStatus.ownership === "undecided";
 }

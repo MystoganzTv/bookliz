@@ -1618,6 +1618,23 @@ export function createStyles(c: AppColors, isDark: boolean) {
     justifyContent: "center",
     width: 28,
   },
+  /**
+   * The countdown under the question. A card that vanishes on its own has to
+   * say so before it goes — otherwise the reader watches a book disappear and
+   * reasonably concludes the scan was lost.
+   */
+  scanQueueCountdownTrack: {
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    overflow: "hidden",
+    marginTop: spacing.sm,
+  },
+  scanQueueCountdownFill: {
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: "rgba(255,255,255,0.55)",
+  },
   scanQueueQuestion: {
     color: "rgba(255,255,255,0.72)",
     fontFamily: fonts.body,

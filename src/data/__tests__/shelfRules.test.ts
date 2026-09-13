@@ -1,4 +1,4 @@
-import { shelfFieldsFor } from "../shelfRules";
+import { needsOwnershipAnswer, shelfFieldsFor } from "../shelfRules";
 
 describe("shelfFieldsFor", () => {
   describe("owning a copy", () => {
@@ -125,5 +125,42 @@ describe("isAwaitingCopy", () => {
   it("treats a missing ownership field as no copy, so old rows still grey out", () => {
     expect(isAwaitingCopy({ status: "wishlist" })).toBe(true);
     expect(isAwaitingCopy({ status: "reading" })).toBe(false);
+  });
+});
+
+/**
+ * The scanner's unanswered question, once it reaches the library.
+ *
+ * "undecided" is the reader having said nothing, which is not the same as
+ * having said no — the difference is the whole reason the value exists.
+ */
+describe("undecided ownership", () => {
+  it("is a pending question, and a missing field is not", () => {
+    expect(needsOwnershipAnswer({ ownership: "undecided" })).toBe(true);
+    expect(needsOwnershipAnswer({ ownership: "owned" })).toBe(false);
+    expect(needsOwnershipAnswer({ ownership: "not-owned" })).toBe(false);
+    // Books written before the field existed were never asked anything, so
+    // they must not turn up in the library's "to confirm" banner.
+    expect(needsOwnershipAnswer({})).toBe(false);
+  });
+
+  it("never greys out a cover — grey asserts \"you do not have this\"", () => {
+    for (const status of ["want-to-read", "wishlist", "want-to-buy", "upcoming-release"] as const) {
+      expect(isAwaitingCopy({ status, ownership: "undecided" })).toBe(false);
+    }
+  });
+
+  it("still keeps the book off the acquire shelves, since nothing was claimed", () => {
+    expect(wantsToAcquire({ ownership: "undecided" })).toBe(false);
+    expect(isOnWishlist({ ownership: "undecided" })).toBe(false);
+    expect(wantsToBuy({ ownership: "undecided" })).toBe(false);
+  });
+
+  it("is replaced by a real answer, never merged with one", () => {
+    expect(shelfFieldsFor("want-to-read", true).ownership).toBe("owned");
+    expect(shelfFieldsFor("wishlist").ownership).toBe("not-owned");
+    // No answer means no opinion: a status change on its own must not quietly
+    // resolve the question the reader has not answered.
+    expect(shelfFieldsFor("reading").ownership).toBeUndefined();
   });
 });

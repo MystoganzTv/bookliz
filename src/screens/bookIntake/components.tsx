@@ -20,7 +20,7 @@ import {
 import { BookMatch } from "../../services/bookLookupService";
 import { formatIsbn13 } from "../../utils/isbnUtils";
 import { matchChips, matchMetaLine } from "./matchLogic";
-import { ScanQueueEntry, ScanShelfChoice } from "./scanQueue";
+import { QUESTION_TIMEOUT_MS, ScanQueueEntry, ScanShelfChoice } from "./scanQueue";
 import { fonts, radii, spacing } from "../../theme/theme";
 import { useColors, useTheme } from "../../theme/ThemeContext";
 import { useIsWide } from "../../utils/layout";
@@ -385,6 +385,47 @@ export function MatchGridCard({ match, onSelect }: { match: BookMatch; onSelect:
  * Nothing here invents data: until a lookup returns, the card shows the ISBN
  * and a spinner, never a placeholder title.
  */
+/**
+ * The draining bar under the ownership question.
+ *
+ * It starts from however much of the window is actually left, not from full:
+ * the card can mount late (the metadata landed, the list re-rendered) and a
+ * bar that restarts at 100% would promise time the entry does not have.
+ */
+function ScanCountdownBar({
+  askedAt,
+  styles,
+}: {
+  askedAt: number;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const remaining = Math.max(0, QUESTION_TIMEOUT_MS - (Date.now() - askedAt));
+  const progress = useRef(new Animated.Value(remaining / QUESTION_TIMEOUT_MS)).current;
+
+  useEffect(() => {
+    progress.setValue(Math.max(0, QUESTION_TIMEOUT_MS - (Date.now() - askedAt)) / QUESTION_TIMEOUT_MS);
+    const animation = Animated.timing(progress, {
+      toValue: 0,
+      duration: Math.max(0, QUESTION_TIMEOUT_MS - (Date.now() - askedAt)),
+      // Width cannot be driven natively; the bar is 2px and redraws cheaply.
+      useNativeDriver: false,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [askedAt, progress]);
+
+  const width = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
+
+  return (
+    <View style={styles.scanQueueCountdownTrack}>
+      <Animated.View style={[styles.scanQueueCountdownFill, { width }]} />
+    </View>
+  );
+}
+
 export function ScanQueueCard({
   entry,
   onChoose,
@@ -425,11 +466,13 @@ export function ScanQueueCard({
           <View style={styles.scanQueueMetaRow}>
             <ActivityIndicator size="small" color={c.teal} />
             <Text style={styles.scanQueueMeta} numberOfLines={1}>
-              {entry.choice
-                ? entry.choice === "owned"
+              {!entry.choice
+                ? t("scanQueue.lookingUp")
+                : entry.choice === "owned"
                   ? t("scanQueue.queuedOwned")
-                  : t("scanQueue.queuedWishlist")
-                : t("scanQueue.lookingUp")}
+                  : entry.choice === "wishlist"
+                    ? t("scanQueue.queuedWishlist")
+                    : t("scanQueue.queuedUndecided")}
             </Text>
           </View>
         );
@@ -445,7 +488,11 @@ export function ScanQueueCard({
           <View style={styles.scanQueueMetaRow}>
             <Ionicons name="checkmark-circle" size={13} color="#4ADE80" />
             <Text style={[styles.scanQueueMeta, styles.scanQueueMetaOk]} numberOfLines={1}>
-              {entry.choice === "wishlist" ? t("scanQueue.addedWishlist") : t("scanQueue.addedOwned")}
+              {entry.choice === "wishlist"
+                ? t("scanQueue.addedWishlist")
+                : entry.choice === "undecided"
+                  ? t("scanQueue.addedUndecided")
+                  : t("scanQueue.addedOwned")}
             </Text>
           </View>
         );
@@ -520,6 +567,11 @@ export function ScanQueueCard({
       {asksQuestion ? (
         <>
           <Text style={styles.scanQueueQuestion}>{t("shelf.question")}</Text>
+          {/* Only while the question is genuinely open: once answered — by the
+              reader or by the clock — there is nothing left to count down. */}
+          {!entry.choice && !busy ? (
+            <ScanCountdownBar askedAt={entry.askedAt} styles={styles} />
+          ) : null}
           <View style={styles.scanQueueActions}>
             <ScalePressable
               accessibilityRole="button"

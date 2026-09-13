@@ -20,11 +20,12 @@ import { useIsWide } from "../utils/layout";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { buildAmazonUrl } from "../utils/amazonLink";
 import { useColors, useTheme } from "../theme/ThemeContext";
-import { wantsToAcquire } from "../data/shelfRules";
+import { needsOwnershipAnswer, wantsToAcquire } from "../data/shelfRules";
 import { normalizeBookGenres } from "../utils/genres";
 import { languageCode } from "../utils/languageUtils";
 import { CreateListSheet } from "../components/CreateListSheet";
 import { ScalePressable } from "../components/ScalePressable";
+import { OwnershipConfirmSheet } from "../components/OwnershipConfirmSheet";
 
 type ViewMode = "grid" | "list";
 type LibraryFilter = "all" | "reading" | "read" | "wishlist";
@@ -59,6 +60,7 @@ export function LibraryScreen() {
   const [contextBook, setContextBook] = useState<{ book: Book; authorName: string } | null>(null);
   const [statusSheetBook, setStatusSheetBook] = useState<Book | null>(null);
   const [listSheetBookId, setListSheetBookId] = useState<string | null>(null);
+  const [confirmSheetOpen, setConfirmSheetOpen] = useState(false);
   const deferredQuery = useDeferredValue(query);
 
   const openAmazon = (book: Book, authorName: string) => {
@@ -81,6 +83,17 @@ export function LibraryScreen() {
   // (reading now, saga momentum, wishlist pressure, unfinished) were computed on
   // every render for a section that was never rendered — removed.
   const ownedCount = books.filter((b) => b.userStatus.ownership === "owned").length;
+  /**
+   * Books the scanner added while the ownership question timed out.
+   *
+   * No sort: `addBook` prepends, so `books` is already newest-first, which is
+   * the order the reader wants — they just walked away from the camera and the
+   * last thing they scanned is the one they still remember holding.
+   */
+  const unconfirmedBooks = useMemo(
+    () => books.filter((b) => needsOwnershipAnswer(b.userStatus)),
+    [books]
+  );
   const readCount = books.filter((b) => b.userStatus.status === "read").length;
 
   const latestLogByBook = useMemo(
@@ -252,6 +265,32 @@ export function LibraryScreen() {
           <MiniStat value={String(ownedCount)} label={t("library.owned")} styles={styles} />
         </View>
       </View>
+
+      {/* ── Scans still carrying the ownership question ──
+          It sits above everything because it is the only thing on this screen
+          with a deadline of sorts: the reader just scanned these and still
+          remembers them. Dismissable by answering, never nagging — there is no
+          close button because answering IS the close button. */}
+      {unconfirmedBooks.length > 0 ? (
+        <ScalePressable
+          accessibilityRole="button"
+          style={styles.confirmBanner}
+          onPress={() => setConfirmSheetOpen(true)}
+        >
+          <View style={styles.confirmBannerIcon}>
+            <Ionicons name="help-circle-outline" size={18} color={c.teal} />
+          </View>
+          <View style={styles.confirmBannerCopy}>
+            <Text style={styles.confirmBannerText} numberOfLines={2}>
+              {unconfirmedBooks.length === 1
+                ? t("library.confirmBannerOne")
+                : t("library.confirmBannerMany", { count: String(unconfirmedBooks.length) })}
+            </Text>
+            <Text style={styles.confirmBannerCta}>{t("library.confirmBannerCta")}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={c.gray} />
+        </ScalePressable>
+      ) : null}
 
       {/* ── Lists rail — compact pills ── */}
       {userLists.length > 0 ? (
@@ -509,6 +548,24 @@ export function LibraryScreen() {
       ) : null}
 
       {/* Status sheet triggered from context menu */}
+      <OwnershipConfirmSheet
+        open={confirmSheetOpen}
+        books={unconfirmedBooks}
+        authorNameFor={(book) => getAuthor(book.authorId)?.name ?? ""}
+        onAnswer={(book, owned) =>
+          // "I want it" is the wishlist, exactly as on the camera. "I have it"
+          // keeps whatever reading status the book already had and only
+          // answers the ownership half — see shelfRules.shelfFieldsFor.
+          updateBookStatus(
+            book.id,
+            owned ? book.userStatus.status : "wishlist",
+            book.userStatus.rating,
+            owned
+          )
+        }
+        onClose={() => setConfirmSheetOpen(false)}
+      />
+
       {statusSheetBook && (
         <BookStatusSheet
           open={Boolean(statusSheetBook)}
@@ -805,6 +862,32 @@ function createStyles(c: AppColors, isDark: boolean) {
       fontWeight: "800",
       textTransform: "uppercase"
     },
+    /**
+     * The "books to confirm" banner. Teal-tinted rather than warning-coloured:
+     * nothing is wrong, there is just a question outstanding, and a red badge
+     * for an unanswered question teaches the reader to dread their own library.
+     */
+    confirmBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: radii.md,
+      backgroundColor: isDark ? "rgba(20,184,166,0.12)" : "rgba(20,184,166,0.10)",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: isDark ? "rgba(20,184,166,0.30)" : "rgba(20,184,166,0.28)",
+      marginTop: spacing.sm,
+    },
+    confirmBannerIcon: {
+      width: 30, height: 30, borderRadius: 15,
+      alignItems: "center", justifyContent: "center",
+      backgroundColor: isDark ? "rgba(20,184,166,0.16)" : "rgba(20,184,166,0.14)",
+    },
+    confirmBannerCopy: { flex: 1, minWidth: 0 },
+    confirmBannerText: { fontFamily: fonts.body, fontSize: 13.5, color: c.ink, lineHeight: 18 },
+    confirmBannerCta: { fontFamily: fonts.body, fontSize: 12, color: c.teal, marginTop: 1 },
+
     listsRail: {
       marginBottom: spacing.sm,
       marginTop: spacing.xs

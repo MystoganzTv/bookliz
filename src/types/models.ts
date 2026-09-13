@@ -7,7 +7,21 @@ export type CoreTrackingStatus =
   | "dnf"
   | "upcoming-release";
 
-export type OwnershipStatus = "owned" | "not-owned";
+/**
+ * Do you have a copy?
+ *
+ * `undecided` is not a shade of "no" — it means the reader has not answered.
+ * The continuous scanner creates it: the ownership question on the camera
+ * expires after a few seconds so the card stops covering the barcode, and the
+ * book still lands in the library carrying the unanswered question, which the
+ * Library resolves later (see `needsOwnershipAnswer` in data/shelfRules).
+ *
+ * Everything that decides a shelf asks `=== "owned"` / `!== "owned"`, so
+ * `undecided` behaves like "no copy" for shelving — with one deliberate
+ * exception: it never greys out a cover, because a grey cover asserts "you do
+ * not have this" and that is precisely what nobody has said yet.
+ */
+export type OwnershipStatus = "owned" | "not-owned" | "undecided";
 export type ReadingFormat =
   // Physical formats
   | "paperback"

@@ -7,15 +7,20 @@
  *  3. An answer given while resolving is remembered and applied on resolution.
  *  4. Failures and duplicates never produce a commit.
  *  5. Undo returns the entry to the question instead of dropping it.
+ *  6. The question expires into "undecided" and still commits — a scan is
+ *     never lost for going unanswered — but a real answer always beats it.
  */
 import {
   AUTO_DISMISS_MS,
+  AUTO_DISMISS_TIMED_OUT_MS,
   MAX_QUEUE_ENTRIES,
+  QUESTION_TIMEOUT_MS,
   ScanQueueEntry,
   entriesAwaitingCommit,
   expiredEntries,
   hasResolvingEntry,
   scanQueueReducer,
+  timedOutQuestions,
   unansweredEntries,
 } from "../scanQueue";
 import { NewBookInput } from "../../../types/models";
@@ -248,5 +253,91 @@ describe("unansweredEntries", () => {
     let state = scanQueueReducer([], { type: "scanned", isbn13: "111", at: 0 });
     state = scanQueueReducer(state, { type: "failed", isbn13: "111" });
     expect(unansweredEntries(state)).toEqual([]);
+  });
+});
+
+/**
+ * The countdown. The camera cannot hold a question open forever — the card is
+ * sitting on the barcode frame — so the clock answers "undecided" and the book
+ * commits anyway, carrying the question into the library.
+ */
+describe("the ownership question expires", () => {
+  const resolved = (at = 1) =>
+    run([
+      scan(ISBN, at),
+      { type: "resolved", isbn13: ISBN, book: book("The Name of the Wind"), at },
+    ]);
+
+  it("does not expire a question that still has time on it", () => {
+    const state = resolved(1000);
+    expect(timedOutQuestions(state, 1000 + QUESTION_TIMEOUT_MS - 1)).toEqual([]);
+  });
+
+  it("expires a question once the window is up", () => {
+    const state = resolved(1000);
+    expect(timedOutQuestions(state, 1000 + QUESTION_TIMEOUT_MS).map((e) => e.isbn13)).toEqual([ISBN]);
+  });
+
+  it("restarts the countdown when the metadata lands, so a slow lookup costs the network, not the reader", () => {
+    // Scanned at 0, metadata back at 5000: the reader has seen a title only
+    // since 5000 and gets the whole window from there.
+    const state = run([
+      scan(ISBN, 0),
+      { type: "resolved", isbn13: ISBN, book: book("The Name of the Wind"), at: 5000 },
+    ]);
+    expect(state[0].askedAt).toBe(5000);
+    expect(timedOutQuestions(state, QUESTION_TIMEOUT_MS)).toEqual([]);
+    expect(timedOutQuestions(state, 5000 + QUESTION_TIMEOUT_MS)).toHaveLength(1);
+  });
+
+  it("commits the book as undecided — the scan is not thrown away", () => {
+    const state = run([{ type: "timedOut", isbn13: ISBN }], resolved(1000));
+    expect(state[0].status).toBe("adding");
+    expect(state[0].choice).toBe("undecided");
+    expect(entriesAwaitingCommit(state)).toHaveLength(1);
+  });
+
+  it("remembers the timeout through a lookup that had not finished yet", () => {
+    // The clock can reach an entry whose metadata is still in flight. The
+    // answer waits for the book exactly as a tapped one would.
+    const state = run([
+      scan(ISBN, 0),
+      { type: "timedOut", isbn13: ISBN },
+      { type: "resolved", isbn13: ISBN, book: book("The Name of the Wind"), at: 9000 },
+    ]);
+    expect(state[0].status).toBe("adding");
+    expect(state[0].choice).toBe("undecided");
+  });
+
+  it("never overrules an answer the reader actually gave", () => {
+    const state = run(
+      [{ type: "choose", isbn13: ISBN, choice: "owned" }, { type: "timedOut", isbn13: ISBN }],
+      resolved(1000)
+    );
+    expect(state[0].choice).toBe("owned");
+  });
+
+  it("does not expire a failed lookup — that card has its own buttons and no clock", () => {
+    const state = run([scan(ISBN, 0), { type: "failed", isbn13: ISBN }]);
+    expect(timedOutQuestions(state, 10 * QUESTION_TIMEOUT_MS)).toEqual([]);
+  });
+
+  it("stops counting an entry as unanswered once the clock has spoken", () => {
+    const state = run([{ type: "timedOut", isbn13: ISBN }], resolved(1000));
+    expect(unansweredEntries(state)).toEqual([]);
+  });
+
+  it("clears an undecided confirmation faster than a chosen one", () => {
+    const added = run(
+      [
+        { type: "timedOut", isbn13: ISBN },
+        { type: "added", isbn13: ISBN, bookId: "b1", at: 1000 },
+      ],
+      resolved(1)
+    );
+    // Gone on the short clock…
+    expect(expiredEntries(added, 1000 + AUTO_DISMISS_TIMED_OUT_MS)).toHaveLength(1);
+    // …which is genuinely shorter than the one a deliberate answer gets.
+    expect(AUTO_DISMISS_TIMED_OUT_MS).toBeLessThan(AUTO_DISMISS_MS);
   });
 });
