@@ -11,6 +11,7 @@
  * the proxy in the web demo.
  */
 
+import { credibleFirstPublishYear } from "../utils/publicationYear";
 import { BookEdition, BookWork, EditionFormat } from "../types/bookMetadata";
 import { normalizeLanguage } from "../utils/languageUtils";
 import { normalizeBookGenres } from "../utils/genres";
@@ -68,6 +69,8 @@ interface OLSearchDoc {
   isbn?: string[];
   cover_i?: number;
   first_publish_year?: number;
+  /** Every edition's year, unordered — used to overrule a mis-catalogued minimum. */
+  publish_year?: number[];
   publisher?: string[];
   number_of_pages_median?: number;
   subject?: string[];
@@ -270,7 +273,7 @@ export async function fetchWorksByQuery(
   try {
     const fields = [
       "key", "title", "subtitle", "author_name", "isbn",
-      "cover_i", "first_publish_year", "publisher",
+      "cover_i", "first_publish_year", "publish_year", "publisher",
       "number_of_pages_median", "subject", "language", "edition_count",
     ].join(",");
 
@@ -317,7 +320,9 @@ export async function fetchWorksByQuery(
           publishedDate: undefined,
           // Year of FIRST publication of the work — a dedicated field that
           // does not pretend to be an exact edition date.
-          publishedYear: doc.first_publish_year,
+          // `first_publish_year` is min(edition years), so one bad record
+          // (Baldacci's 2014 "The Escape" → 1970) rewrites the whole work.
+          publishedYear: credibleFirstPublishYear(doc.first_publish_year, doc.publish_year),
           pageCount: undefined,
           coverUrl: olCoverUrl(doc.cover_i),
         };

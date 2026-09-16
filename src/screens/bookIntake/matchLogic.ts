@@ -8,7 +8,7 @@ import { buildLibraryIndex } from "../../services/recommendationEngine";
 import { UserTasteProfile } from "../../services/userTasteProfile";
 import { languageDisplayName } from "../../utils/languageUtils";
 
-export type MatchSortOrder = "relevance" | "popular" | "rating" | "year_desc" | "year_asc";
+export type MatchSortOrder = "relevance" | "popular" | "rating" | "year_desc" | "year_asc" | "title";
 /**
  * Remove library catalog junk from synopses before showing to the user.
  * Patterns: donation records, provenance notes, bookseller stamps, etc.
@@ -36,10 +36,23 @@ export function sanitizeSynopsis(text: string | undefined): string | undefined {
   // Otherwise return as-is (might have partial junk but user can edit)
   return cleaned || undefined;
 }
-export function matchPublishedYear(match: Pick<BookMatch, "publishedDate">): number {
-  if (!match.publishedDate) return 0;
-  const year = parseInt(match.publishedDate.slice(0, 4), 10);
-  return Number.isNaN(year) ? 0 : year;
+/**
+ * The year a row sorts by. Google Books rows carry an edition date; Open
+ * Library rows carry only the work's first-publication year. Reading just
+ * `publishedDate` gave every OL row year 0, so "Newest" put the three Google
+ * rows on top and left the rest in popularity order (2000, 2012, 2007, 1996…).
+ * The earlier of the two is the better answer to "when did this book come
+ * out" — a 2023 reprint of a 1996 novel is not new.
+ */
+export function matchPublishedYear(match: Pick<BookMatch, "publishedDate" | "publishedYear">): number {
+  const fromDate = match.publishedDate ? parseInt(match.publishedDate.slice(0, 4), 10) : NaN;
+  const candidates = [fromDate, match.publishedYear ?? NaN].filter((year) => Number.isFinite(year) && year > 0);
+  return candidates.length ? Math.min(...candidates) : 0;
+}
+
+/** Title for alphabetical order: accents, case and a leading article ignored. */
+export function titleSortKey(title: string | undefined): string {
+  return normalizeSearchText(title).replace(/^(the|a|an|el|la|los|las|un|una|le|les|l)\s+/, "");
 }
 export function normalizeSearchText(value: string | undefined): string {
   return (value ?? "")
@@ -193,7 +206,19 @@ export function compareMatches(
   const aHasCover = a.coverUrl ? 1 : 0;
   const bHasCover = b.coverUrl ? 1 : 0;
 
-  if (aHasCover !== bHasCover) return bHasCover - aHasCover;
+  // An explicit order the reader picked is obeyed literally; cover presence is
+  // only a tiebreaker there. Before, a coverless row could jump the order.
+  if (sortOrder === "title") {
+    return (
+      titleSortKey(a.title).localeCompare(titleSortKey(b.title)) ||
+      bYear - aYear ||
+      bHasCover - aHasCover
+    );
+  }
+
+  if (sortOrder !== "year_desc" && sortOrder !== "year_asc" && aHasCover !== bHasCover) {
+    return bHasCover - aHasCover;
+  }
 
   if (sortOrder === "popular") {
     return (
@@ -216,6 +241,7 @@ export function compareMatches(
   if (sortOrder === "year_desc") {
     return (
       bYear - aYear ||
+      bHasCover - aHasCover ||
       bPopularity - aPopularity ||
       bRating - aRating ||
       browseScoreForMatch(b) - browseScoreForMatch(a)
@@ -227,6 +253,7 @@ export function compareMatches(
     const bSortableYear = bYear || 9999;
     return (
       aSortableYear - bSortableYear ||
+      bHasCover - aHasCover ||
       bPopularity - aPopularity ||
       bRating - aRating ||
       browseScoreForMatch(b) - browseScoreForMatch(a)

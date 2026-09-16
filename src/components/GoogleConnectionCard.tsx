@@ -26,6 +26,7 @@ import { useColors } from "../theme/ThemeContext";
 import { buildAppleDisplayName, getGoogleAuthConfig } from "../utils/googleAuth";
 import { IS_EXPO_GO, DEV_MOCK_USER } from "../utils/devUtils";
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
+import { describeAuthError } from "../utils/authErrors";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -176,6 +177,7 @@ export function GoogleConnectionCard({ variant = "settings" }: GoogleConnectionC
       // Supabase cloud sync — non-fatal on native iOS/Android because the id_token
       // audience will be the iOS/Android client ID, not the web client ID Supabase
       // expects. Local profile linking always succeeds regardless.
+      let googleCloudFailure: string | null = null;
       if (supabase && idToken) {
         const { error } = await supabase.auth.signInWithIdToken({
           provider: "google",
@@ -183,6 +185,7 @@ export function GoogleConnectionCard({ variant = "settings" }: GoogleConnectionC
         });
         if (error) {
           console.warn("Bookliz: Supabase cloud sync skipped for native Google sign-in:", error.message);
+          googleCloudFailure = describeAuthError(error, "cloud").detail;
           // Do NOT throw — local profile linking works fine without cloud sync.
           // To enable cloud sync on native, add your iOS/Android client IDs to
           // the Supabase dashboard → Authentication → Providers → Google →
@@ -199,6 +202,13 @@ export function GoogleConnectionCard({ variant = "settings" }: GoogleConnectionC
         givenName: account.givenName ?? undefined,
         familyName: account.familyName ?? undefined
       });
+
+      if (googleCloudFailure) {
+        dialog.alert(
+          t("auth.cloudLinkPartialTitle"),
+          `${t("auth.cloudLinkPartialBody", { provider: "Google" })}\n\n${t("auth.errorDetail", { detail: googleCloudFailure })}`
+        );
+      }
 
     } catch (error) {
       console.error("Bookliz native Google sign-in failed", error);
@@ -228,13 +238,25 @@ export function GoogleConnectionCard({ variant = "settings" }: GoogleConnectionC
         rawNonce
       );
 
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL
-        ],
-        nonce: hashedNonce
-      });
+      let credential: Awaited<ReturnType<typeof AppleAuthentication.signInAsync>>;
+      try {
+        credential = await AppleAuthentication.signInAsync({
+          requestedScopes: [
+            AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+            AppleAuthentication.AppleAuthenticationScope.EMAIL
+          ],
+          nonce: hashedNonce
+        });
+      } catch (error) {
+        const failure = describeAuthError(error, "native");
+        if (failure.kind === "cancelled") return;
+        console.error("Bookliz Apple sign-in failed (native)", error);
+        dialog.alert(
+          t("auth.appleUnavailableTitle"),
+          `${t("auth.appleNativeFailedBody")}\n\n${t("auth.errorDetail", { detail: failure.detail })}`
+        );
+        return;
+      }
 
       const displayName = buildAppleDisplayName({
         fullName: credential.fullName ?? undefined,
@@ -242,16 +264,25 @@ export function GoogleConnectionCard({ variant = "settings" }: GoogleConnectionC
         fallbackEmail: credential.email ?? userProfile.email
       });
 
+      // Cloud session — same contract as native Google: a Supabase refusal
+      // (usually the Apple provider's Client IDs not listing this bundle id)
+      // must not throw away an Apple sign-in that worked. The account is
+      // linked locally, Profile shows "linked, not syncing yet", and the
+      // person is told why instead of getting a dead-end error.
+      let cloudFailure: string | null = null;
       if (supabase && credential.identityToken) {
-        const { error } = await supabase.auth.signInWithIdToken({
-          provider: "apple",
-          token: credential.identityToken,
-          // The raw value, not the hash: Supabase hashes this itself and
-          // compares against the token's `nonce` claim.
-          nonce: rawNonce
-        });
-        if (error) {
-          throw error;
+        try {
+          const { error } = await supabase.auth.signInWithIdToken({
+            provider: "apple",
+            token: credential.identityToken,
+            // The raw value, not the hash: Supabase hashes this itself and
+            // compares against the token's `nonce` claim.
+            nonce: rawNonce
+          });
+          if (error) throw error;
+        } catch (error) {
+          cloudFailure = describeAuthError(error, "cloud").detail;
+          console.warn("Bookliz: Supabase rejected the Apple identity token:", cloudFailure);
         }
       }
 
@@ -264,12 +295,20 @@ export function GoogleConnectionCard({ variant = "settings" }: GoogleConnectionC
         familyName: credential.fullName?.familyName ?? undefined
       });
 
-    } catch (error) {
-      if (error instanceof Error && error.message?.includes("ERR_REQUEST_CANCELED")) {
-        return;
+      if (cloudFailure) {
+        dialog.alert(
+          t("auth.cloudLinkPartialTitle"),
+          `${t("auth.cloudLinkPartialBody", { provider: "Apple" })}\n\n${t("auth.errorDetail", { detail: cloudFailure })}`
+        );
       }
+    } catch (error) {
+      const failure = describeAuthError(error, "native");
+      if (failure.kind === "cancelled") return;
       console.error("Bookliz Apple sign-in failed", error);
-      dialog.alert(t("auth.appleUnavailableTitle"), t("auth.appleFailedBody"));
+      dialog.alert(
+        t("auth.appleUnavailableTitle"),
+        `${t("auth.appleFailedBody")}\n\n${t("auth.errorDetail", { detail: failure.detail })}`
+      );
     } finally {
       setActiveProvider(null);
     }

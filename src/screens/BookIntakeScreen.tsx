@@ -13,7 +13,7 @@ import { RootStackParamList } from "../navigation/types";
 import { buildLibraryIndex } from "../services/recommendationEngine";
 import { AppColors, colors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useColors, useTheme } from "../theme/ThemeContext";
-import { CoreTrackingStatus, NewBookInput, ReadingFormat } from "../types/models";
+import { NewBookInput, ReadingFormat } from "../types/models";
 import { isSameLanguage, languageDisplayName, PRIORITY_LANGUAGE_CODES } from "../utils/languageUtils";
 import { shelfFieldsFor } from "../data/shelfRules";
 import {
@@ -48,6 +48,7 @@ import {
   scoreMatchByTaste,
   isSupplementaryMaterial,
 } from "./bookIntake/matchLogic";
+import { displayTitle } from "../utils/titleCase";
 import {
   Choice,
   CompactLanguageModal,
@@ -57,6 +58,7 @@ import {
   IntakePath,
   MatchCard,
   MatchGridCard,
+  MatchLibraryState,
   ScanLine,
   ScanQueueCard,
   splitList,
@@ -78,6 +80,17 @@ import { groupEditionCandidates } from "../utils/editionMatchValidation";
 import { hapticLight, hapticSuccess } from "../utils/haptics";
 
 type IntakeMode = "menu" | "isbn" | "manual" | "search" | "matches" | "review";
+
+/**
+ * Pause after the last keystroke before a live search fires. 600 ms fired
+ * mid-name ("David bald…"), and because the first live search also swaps the
+ * search screen for the results screen, the keyboard went away while the
+ * reader was still typing.
+ */
+const LIVE_SEARCH_DEBOUNCE_MS = 1200;
+const LIVE_SEARCH_MIN_CHARS = 3;
+
+const SORT_OPTIONS: MatchSortOrder[] = ["relevance", "popular", "rating", "year_desc", "year_asc", "title"];
 type DiscoverSearchIntent = "auto" | "author" | "series" | "title";
 
 /**
@@ -201,9 +214,29 @@ export function BookIntakeScreen() {
   const [languageFilter, setLanguageFilter] = useState<string | undefined>(undefined);
   const [showSortSheet, setShowSortSheet] = useState(false);
   const [showLanguageSheet, setShowLanguageSheet] = useState(false);
-  /** Where the reader wanted to go, held while unanswered scans are settled. */
-  /** The book that just landed, while the rating prompt is up. */
-  const [justAdded, setJustAdded] = useState<{ id: string; title: string; status: CoreTrackingStatus } | null>(null);
+  /**
+   * Results that are already on a shelf because they were added from this
+   * list (match id → book id). Library matches found by title/ISBN are
+   * detected on the fly; this covers edits the reader made on the review
+   * screen that change the title.
+   */
+  const [addedMatchIds, setAddedMatchIds] = useState<Record<string, string>>({});
+  const [addingMatchIds, setAddingMatchIds] = useState<Record<string, true>>({});
+  const addingMatchRef = useRef<Set<string>>(new Set());
+  /** Result the review screen was opened from, so its row flips to ✓ on add. */
+  const reviewMatchIdRef = useRef<string | null>(null);
+  /** "Added · View" banner shown on the results after a book lands. */
+  const [addedBanner, setAddedBanner] = useState<{ bookId: string; title: string; already?: boolean } | null>(null);
+  /** Keep the keyboard up when live search swaps the search screen for results. */
+  const [focusResultsInput, setFocusResultsInput] = useState(false);
+  const addBookRef = useRef(addBook);
+  addBookRef.current = addBook;
+  /**
+   * Set right before opening a book from the results, so the blur reset below
+   * keeps the list: Back from Book details should land on the same results,
+   * not on an empty Add menu.
+   */
+  const preserveOnBlurRef = useRef(false);
   // Grid / list toggle for results
   const [matchViewMode, setMatchViewMode] = useState<"list" | "grid">("list");
   const isAuthorQuery = useMemo(
@@ -239,6 +272,10 @@ export function BookIntakeScreen() {
     useCallback(() => {
       return () => {
         if (liveSearchTimerRef.current) clearTimeout(liveSearchTimerRef.current);
+        if (preserveOnBlurRef.current) {
+          preserveOnBlurRef.current = false;
+          return;
+        }
         if (notIsbnTimerRef.current) clearTimeout(notIsbnTimerRef.current);
         notIsbnTimerRef.current = null;
         searchSeqRef.current += 1; // invalidate any in-flight lookup
@@ -260,6 +297,12 @@ export function BookIntakeScreen() {
         setMatches([]);
         setMatchLookupLabel("");
         setMatchViewMode("list");
+        setAddedMatchIds({});
+        setAddingMatchIds({});
+        addingMatchRef.current.clear();
+        reviewMatchIdRef.current = null;
+        setAddedBanner(null);
+        setFocusResultsInput(false);
         setIsLoadingEditions(false);
         setManual({ title: "", authorName: "", isbn: "", pages: "", genre: "", publisher: "" });
       };
@@ -279,7 +322,9 @@ export function BookIntakeScreen() {
     setDialog({ title, body });
   };
 
-  const stageBook = async (input: NewBookInput, insight?: string | null) => {
+  const stageBook = async (input: NewBookInput, insight?: string | null, fromMatchId?: string) => {
+    // Only a review opened from a result row returns to the results on add.
+    reviewMatchIdRef.current = fromMatchId ?? null;
     const draft: NewBookInput = {
       ownership: "owned",
       wishlist: false,
@@ -294,17 +339,136 @@ export function BookIntakeScreen() {
     setMode("review");
   };
 
+  /**
+   * Save the reviewed book, then go back to where the reader was.
+   *
+   * It used to pop a "Rate it?" prompt and then jump to Book details. A book
+   * just added to read later has nothing to rate, and leaving the results
+   * meant searching again for every next book by the same author. Now: from
+   * a result list you land back on that list with the row marked ✓ and an
+   * "Added · View" banner; from anywhere else (manual entry, Discover) the
+   * book opens, as before, minus the prompt.
+   */
   const confirmAndOpen = (input: NewBookInput) => {
     const book = addBook(input);
     hapticSuccess(); // book landed in the library
-    // Offer a rating before leaving. Skippable on purpose: a book added to be
-    // read later has nothing to rate yet, and a prompt that cannot be waved
-    // away would collect stars that are not about having read anything.
-    setJustAdded({ id: book.id, title: book.title, status: book.userStatus.status });
+    const fromMatchId = reviewMatchIdRef.current;
+    reviewMatchIdRef.current = null;
+    if (!launchedFromDiscover && fromMatchId && matches.length > 0) {
+      setAddedMatchIds((current) => ({ ...current, [fromMatchId]: book.id }));
+      setAddedBanner({ bookId: book.id, title: book.title });
+      setReviewBook(null);
+      setMode("matches");
+      return;
+    }
+    openAddedBook(book.id);
+  };
+
+  /** Finished input the way the review screen's "Add to library" builds it. */
+  const finalizeInput = (input: NewBookInput): NewBookInput => ({
+    ...input,
+    title: input.title.trim() || "Untitled Book",
+    authorName: input.authorName.trim() || "Author to identify",
+    genre: input.genre?.length ? input.genre : ["Uncategorized"],
+    // Unknown page count stays unknown — never invent a number.
+    pages: input.pages && input.pages > 0 ? input.pages : undefined,
+  });
+
+  /**
+   * Result id → library book id, for rows already on a shelf. The cheap title
+   * / ISBN pre-check keeps the full duplicate rule (which walks books × authors)
+   * off the rows that cannot possibly match.
+   */
+  const libraryIdByMatch = useMemo(() => {
+    const titles = new Set(books.map((book) => book.title.trim().toLowerCase()));
+    const isbns = new Set(books.map((book) => (book.isbn ?? "").replace(/[^0-9X]/gi, "")).filter(Boolean));
+    const bookIds = new Set(books.map((book) => book.id));
+    const result: Record<string, string> = {};
+    for (const match of matches) {
+      const addedId = addedMatchIds[match.id];
+      if (addedId && bookIds.has(addedId)) {
+        result[match.id] = addedId;
+        continue;
+      }
+      const isbn = (match.isbn13 ?? match.isbn10 ?? "").replace(/[^0-9X]/gi, "");
+      if (!titles.has(match.title.trim().toLowerCase()) && !(isbn && isbns.has(isbn))) continue;
+      const dupe = findDuplicateBook(bookMatchToNewBookInput(match));
+      if (dupe) result[match.id] = dupe.id;
+    }
+    return result;
+  }, [books, matches, addedMatchIds, findDuplicateBook]);
+
+  /** The library copy a result already corresponds to, if any. */
+  const libraryBookIdForMatch = (match: BookMatch): string | null => libraryIdByMatch[match.id] ?? null;
+
+  const libraryStateFor = (match: BookMatch): MatchLibraryState =>
+    addingMatchIds[match.id] ? "adding" : libraryBookIdForMatch(match) ? "added" : "none";
+
+  /**
+   * The + on a result: add it now, stay on the list. Adding five books by
+   * the same author is five taps instead of five search → review → details
+   * round trips. The review screen is still one tap away on the card itself
+   * for anyone who wants to pick an edition or fix details first.
+   */
+  const quickAddMatch = async (match: BookMatch) => {
+    if (addingMatchRef.current.has(match.id)) return;
+    const existingId = libraryBookIdForMatch(match);
+    if (existingId) {
+      openFromResults(existingId);
+      return;
+    }
+    addingMatchRef.current.add(match.id);
+    setAddingMatchIds((current) => ({ ...current, [match.id]: true }));
+    hapticLight();
+    try {
+      const source: NewBookInput["source"] = matchReturnMode === "isbn" ? "isbn" : "search";
+      let input = bookMatchToNewBookInput(match, source);
+      // Same edition resolution the review screen does — a search row is a
+      // work, and the library needs an edition (ISBN, publisher, pages).
+      const missingEditionFacts = !input.isbn || !input.publisher || !input.pages;
+      if (missingEditionFacts || !input.synopsis || input.synopsis.trim().length < 40) {
+        try { input = await enrichBookInput(input); } catch { /* keep what the row had */ }
+      }
+      const draft = finalizeInput({
+        ownership: "owned",
+        wishlist: false,
+        wantToBuy: false,
+        format: "physical",
+        ...input,
+        synopsis: sanitizeSynopsis(input.synopsis),
+      });
+      // The library may have changed while the edition resolved.
+      const dupe = findDuplicateRef.current(draft);
+      if (dupe) {
+        setAddedMatchIds((current) => ({ ...current, [match.id]: dupe.id }));
+        setAddedBanner({ bookId: dupe.id, title: dupe.title, already: true });
+        return;
+      }
+      const book = addBookRef.current(draft);
+      hapticSuccess();
+      setAddedMatchIds((current) => ({ ...current, [match.id]: book.id }));
+      setAddedBanner({ bookId: book.id, title: book.title });
+    } finally {
+      addingMatchRef.current.delete(match.id);
+      setAddingMatchIds((current) => {
+        const next = { ...current };
+        delete next[match.id];
+        return next;
+      });
+    }
+  };
+
+  /** Open a library book on top of the results, keeping them for Back. */
+  const openFromResults = (bookId: string) => {
+    if (launchedFromDiscover) {
+      openAddedBook(bookId);
+      return;
+    }
+    preserveOnBlurRef.current = true;
+    navigation.navigate("BookDetail", { bookId });
   };
 
   const openAddedBook = (bookId: string) => {
-    setJustAdded(null);
     // Reset so back-press from BookDetail lands on Library, not the Add tab
     navigation.reset({
       index: 1,
@@ -396,6 +560,10 @@ export function BookIntakeScreen() {
 
     setSortOrder(initialSortOrder);
     setMatches([]);
+    setAddedBanner(null);
+    // A live search launched from the search screen mounts a new input on the
+    // results screen — give it the keyboard so typing just continues.
+    setFocusResultsInput(silent);
     // Silent (live) searches keep whatever the user is typing in the input.
     if (!silent) setMatchLookupLabel(query);
     else setMatchLookupLabel((current) => (current.trim() ? current : query));
@@ -510,9 +678,21 @@ export function BookIntakeScreen() {
         ? legacyMatches
         : legacyMatches.filter((match) => match.coverUrl && !isSupplementaryMaterial(match));
 
-      const dedupedMatches = visibleMatches.filter((match, index, all) => (
-        all.findIndex((candidate) => candidate.id === match.id) === index
-      ));
+      const dedupedMatches = visibleMatches
+        .filter((match, index, all) => (
+          all.findIndex((candidate) => candidate.id === match.id) === index
+        ))
+        // Catalogue sentence case ("The forgotten") next to title case ("Nash
+        // Falls") — normalise English titles using the author's other rows
+        // as evidence. See utils/titleCase.
+        .map((match, _index, all) => {
+          const author = normalizeSearchText(match.authors[0]);
+          const siblings = all
+            .filter((other) => other !== match && normalizeSearchText(other.authors[0]) === author)
+            .map((other) => other.title);
+          const title = displayTitle(match.title, siblings);
+          return title === match.title ? match : { ...match, title };
+        });
       const queryTokens = queryTokensOf(query);
       const rankedMatches = [...dedupedMatches].sort((a, b) =>
         compareMatches(a, b, initialSortOrder, queryTokens)
@@ -545,10 +725,10 @@ export function BookIntakeScreen() {
   const scheduleLiveSearch = (raw: string, returnMode: "menu" | "isbn" | "search") => {
     if (liveSearchTimerRef.current) clearTimeout(liveSearchTimerRef.current);
     const query = raw.trim();
-    if (query.length < 3) return;
+    if (query.length < LIVE_SEARCH_MIN_CHARS) return;
     liveSearchTimerRef.current = setTimeout(() => {
       void lookupAndShowMatches(query, returnMode, "query", "auto", true);
-    }, 600);
+    }, LIVE_SEARCH_DEBOUNCE_MS);
   };
 
   /**
@@ -572,7 +752,7 @@ export function BookIntakeScreen() {
       try { input = await enrichBookInput(input); } catch { /* keep original */ }
       finally { setIsBusy(false); }
     }
-    void stageBook(input, insight);
+    void stageBook(input, insight, match.id);
   };
 
   // ── Continuous scanner ─────────────────────────────────────────────────────
@@ -1003,14 +1183,7 @@ export function BookIntakeScreen() {
 
     setIsSubmittingReview(true);
     try {
-      confirmAndOpen({
-        ...reviewBook,
-        title: reviewBook.title.trim() || "Untitled Book",
-        authorName: reviewBook.authorName.trim() || "Author to identify",
-        genre: reviewBook.genre?.length ? reviewBook.genre : ["Uncategorized"],
-        // Unknown page count stays unknown — never invent a number.
-        pages: reviewBook.pages && reviewBook.pages > 0 ? reviewBook.pages : undefined
-      });
+      confirmAndOpen(finalizeInput(reviewBook));
     } finally {
       setTimeout(() => setIsSubmittingReview(false), 500);
     }
@@ -1205,13 +1378,7 @@ export function BookIntakeScreen() {
               setDuplicateDialog(null);
               setIsSubmittingReview(true);
               try {
-                confirmAndOpen({
-                  ...reviewBook,
-                  title: reviewBook.title.trim() || "Untitled Book",
-                  authorName: reviewBook.authorName.trim() || "Author to identify",
-                  genre: reviewBook.genre?.length ? reviewBook.genre : ["Uncategorized"],
-                  pages: reviewBook.pages && reviewBook.pages > 0 ? reviewBook.pages : undefined,
-                });
+                confirmAndOpen(finalizeInput(reviewBook));
               } finally {
                 setTimeout(() => setIsSubmittingReview(false), 500);
               }
@@ -1241,6 +1408,14 @@ export function BookIntakeScreen() {
       </Screen>
     );
   }
+
+  const sortLabel = (option: MatchSortOrder, long: boolean) =>
+    option === "relevance" ? t("search.sortBestMatch") :
+    option === "popular" ? t("search.sortPopular") :
+    option === "year_desc" ? t(long ? "search.sortNewestLong" : "search.sortNewest") :
+    option === "year_asc" ? t(long ? "search.sortOldestLong" : "search.sortOldest") :
+    option === "title" ? t(long ? "search.sortTitleLong" : "search.sortTitle") :
+    t("search.sortTopRated");
 
   if (mode === "matches") {
     const queryTokens = queryTokensOf(matchLookupLabel);
@@ -1290,7 +1465,8 @@ export function BookIntakeScreen() {
               }}
               placeholderTextColor={c.muted}
               placeholder={t("search.searchAgainPlaceholder")}
-              selectTextOnFocus
+              autoFocus={focusResultsInput}
+              selectTextOnFocus={!focusResultsInput}
             />
             {isBusy ? (
               <ActivityIndicator size="small" color={c.teal} style={{ marginRight: 4 }} />
@@ -1416,6 +1592,30 @@ export function BookIntakeScreen() {
           </View>
         ) : (
           <>
+            {addedBanner ? (
+              <View style={styles.addedBanner}>
+                <Ionicons name="checkmark-circle" size={18} color={c.teal} />
+                <Text style={styles.addedBannerText} numberOfLines={2}>
+                  {t(addedBanner.already ? "search.alreadyInLibrary" : "search.addedToLibrary", { title: addedBanner.title })}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  onPress={() => openFromResults(addedBanner.bookId)}
+                >
+                  <Text style={styles.addedBannerAction}>{t("search.viewBook")}</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("a11y.dismiss")}
+                  hitSlop={8}
+                  onPress={() => setAddedBanner(null)}
+                >
+                  <Ionicons name="close" size={16} color={c.muted} />
+                </Pressable>
+              </View>
+            ) : null}
+
             {/* Results header: count + sort button */}
             <View style={styles.resultsHeader}>
               <Text style={styles.resultsHeaderTitle} numberOfLines={1}>
@@ -1439,12 +1639,7 @@ export function BookIntakeScreen() {
                 </Pressable>
                 <Pressable accessibilityRole="button" style={styles.sortButton} onPress={() => setShowSortSheet(true)}>
                   <Ionicons name="funnel-outline" size={14} color={c.tealDark} />
-                  <Text style={styles.sortButtonText}>
-                    {sortOrder === "relevance" ? t("search.sortBestMatch") :
-                     sortOrder === "popular" ? t("search.sortPopular") :
-                     sortOrder === "year_desc" ? t("search.sortNewest") :
-                     sortOrder === "year_asc" ? t("search.sortOldest") : t("search.sortTopRated")}
-                  </Text>
+                  <Text style={styles.sortButtonText}>{sortLabel(sortOrder, false)}</Text>
                 </Pressable>
               </View>
             </View>
@@ -1474,6 +1669,9 @@ export function BookIntakeScreen() {
                     key={`${match.id}-${index}`}
                     match={match}
                     onSelect={() => void selectMatch(match)}
+                    libraryState={libraryStateFor(match)}
+                    onQuickAdd={() => void quickAddMatch(match)}
+                    onOpenInLibrary={() => { const id = libraryBookIdForMatch(match); if (id) openFromResults(id); }}
                   />
                 ))}
               </View>
@@ -1486,6 +1684,9 @@ export function BookIntakeScreen() {
                     isPrimary
                     hideConfidence
                     onSelect={() => void selectMatch(primaryMatch)}
+                    libraryState={libraryStateFor(primaryMatch)}
+                    onQuickAdd={() => void quickAddMatch(primaryMatch)}
+                    onOpenInLibrary={() => { const id = libraryBookIdForMatch(primaryMatch); if (id) openFromResults(id); }}
                   />
                 ) : null}
 
@@ -1496,6 +1697,9 @@ export function BookIntakeScreen() {
                     match={match}
                     hideConfidence
                     onSelect={() => void selectMatch(match)}
+                    libraryState={libraryStateFor(match)}
+                    onQuickAdd={() => void quickAddMatch(match)}
+                    onOpenInLibrary={() => { const id = libraryBookIdForMatch(match); if (id) openFromResults(id); }}
                   />
                 ))}
               </>
@@ -1519,18 +1723,14 @@ export function BookIntakeScreen() {
             <Pressable accessibilityRole="button" style={styles.sortSheet} onPress={(e) => e.stopPropagation()}>
               <View style={styles.sortSheetHandle} />
               <Text style={styles.sortSheetTitle}>{t("search.sortBy")}</Text>
-              {(["relevance", "popular", "rating", "year_desc", "year_asc"] as const).map((option) => (
+              {SORT_OPTIONS.map((option) => (
                 <Pressable accessibilityRole="button"
                   key={option}
                   style={[styles.sortOption, sortOrder === option && styles.sortOptionActive]}
                   onPress={() => { setSortOrder(option); setShowSortSheet(false); }}
                 >
                   <Text style={[styles.sortOptionText, sortOrder === option && styles.sortOptionTextActive]}>
-                    {option === "relevance" ? t("search.sortBestMatch") :
-                     option === "popular" ? t("search.sortPopular") :
-                     option === "year_desc" ? t("search.sortNewestLong") :
-                     option === "year_asc" ? t("search.sortOldestLong") :
-                     t("search.sortTopRated")}
+                    {sortLabel(option, true)}
                   </Text>
                   {sortOrder === option ? (
                     <Ionicons name="checkmark" size={16} color={c.tealDark} />
@@ -1539,46 +1739,6 @@ export function BookIntakeScreen() {
               ))}
             </Pressable>
           </Pressable>
-        </Modal>
-
-        {/* Rating prompt — the book is already saved; this only adds stars */}
-        <Modal
-          visible={Boolean(justAdded)}
-          transparent
-          animationType="fade"
-          onRequestClose={() => justAdded && openAddedBook(justAdded.id)}
-        >
-          <View style={styles.ratePromptOverlay}>
-            <View style={styles.ratePrompt}>
-              <Ionicons name="checkmark-circle" size={32} color={c.teal} />
-              <Text style={styles.ratePromptTitle}>{t("search.ratePromptTitle")}</Text>
-              <Text style={styles.ratePromptBody} numberOfLines={2}>{justAdded?.title}</Text>
-              <View style={styles.ratePromptStars}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Pressable
-                    key={star}
-                    accessibilityRole="button"
-                    accessibilityLabel={t("search.rateStars", { count: star })}
-                    hitSlop={6}
-                    onPress={() => {
-                      if (!justAdded) return;
-                      updateBookStatus(justAdded.id, justAdded.status, star);
-                      openAddedBook(justAdded.id);
-                    }}
-                  >
-                    <Ionicons name="star-outline" size={32} color={c.gold} />
-                  </Pressable>
-                ))}
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                style={styles.ratePromptSkip}
-                onPress={() => justAdded && openAddedBook(justAdded.id)}
-              >
-                <Text style={styles.ratePromptSkipText}>{t("search.rateNotNow")}</Text>
-              </Pressable>
-            </View>
-          </View>
         </Modal>
 
         {/* Language bottom sheet */}

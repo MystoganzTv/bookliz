@@ -349,8 +349,83 @@ export function StarRating({ rating, count }: { rating: number; count?: number }
 }
 
 
+/**
+ * Where a search result stands against the library.
+ *  - "none"   → the + adds it straight away (no review screen)
+ *  - "adding" → resolving the edition and saving
+ *  - "added"  → already on a shelf; the check opens it
+ */
+export type MatchLibraryState = "none" | "adding" | "added";
+
+/**
+ * Community ratings are only shown with enough votes to mean something. One
+ * 5-star vote rendered as five gold stars reads as "excellent", and it is not.
+ */
+export const MIN_RATINGS_TO_SHOW = 5;
+
+function MatchAddButton({
+  state,
+  title,
+  onQuickAdd,
+  onOpenInLibrary,
+  size = 32,
+}: {
+  state: MatchLibraryState;
+  title: string;
+  onQuickAdd: () => void;
+  onOpenInLibrary: () => void;
+  size?: number;
+}) {
+  const c = useColors();
+  const { t } = useI18n();
+  const circle = { alignItems: "center" as const, justifyContent: "center" as const, width: size, height: size, borderRadius: size / 2 };
+  if (state === "adding") {
+    return (
+      <View style={[circle, { backgroundColor: c.teal + "33" }]} accessibilityLabel={t("search.addingBook", { title })}>
+        <ActivityIndicator size="small" color={c.teal} />
+      </View>
+    );
+  }
+  if (state === "added") {
+    return (
+      <Pressable
+        onPress={onOpenInLibrary}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={t("search.inLibraryOpen", { title })}
+        style={[circle, { backgroundColor: c.teal + "22", borderColor: c.teal, borderWidth: 1.5 }]}
+      >
+        <Ionicons name="checkmark" size={size * 0.56} color={c.teal} />
+      </Pressable>
+    );
+  }
+  return (
+    <Pressable
+      onPress={onQuickAdd}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={t("search.addToLibraryA11y", { title })}
+      style={[circle, { backgroundColor: c.teal }]}
+    >
+      <Ionicons name="add" size={size * 0.56} color="#fff" />
+    </Pressable>
+  );
+}
+
 /** Compact 2-col grid result — cover-first, with a + to add. */
-export function MatchGridCard({ match, onSelect }: { match: BookMatch; onSelect: () => void }) {
+export function MatchGridCard({
+  match,
+  onSelect,
+  libraryState = "none",
+  onQuickAdd,
+  onOpenInLibrary,
+}: {
+  match: BookMatch;
+  onSelect: () => void;
+  libraryState?: MatchLibraryState;
+  onQuickAdd?: () => void;
+  onOpenInLibrary?: () => void;
+}) {
   const c = useColors();
   const { isDark } = useTheme();
   const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
@@ -367,8 +442,14 @@ export function MatchGridCard({ match, onSelect }: { match: BookMatch; onSelect:
             <Ionicons name="book-outline" size={26} color={c.muted} />
           </View>
         )}
-        <View style={styles.matchGridAddBtn}>
-          <Ionicons name="add" size={16} color="#fff" />
+        <View style={{ position: "absolute", right: 8, bottom: 8 }}>
+          <MatchAddButton
+            state={libraryState}
+            title={match.title}
+            size={28}
+            onQuickAdd={onQuickAdd ?? onSelect}
+            onOpenInLibrary={onOpenInLibrary ?? onSelect}
+          />
         </View>
       </View>
       <Text numberOfLines={2} style={styles.matchGridTitle}>{match.title}</Text>
@@ -662,11 +743,17 @@ export function MatchCard({
   onSelect,
   isPrimary = false,
   hideConfidence = false,
+  libraryState = "none",
+  onQuickAdd,
+  onOpenInLibrary,
 }: {
   match: BookMatch;
   onSelect: () => void;
   isPrimary?: boolean;
   hideConfidence?: boolean;
+  libraryState?: MatchLibraryState;
+  onQuickAdd?: () => void;
+  onOpenInLibrary?: () => void;
 }) {
   const { t, locale } = useI18n();
   const c = useColors();
@@ -718,7 +805,7 @@ export function MatchCard({
         ) : null}
 
         {/* Ratings */}
-        {match.averageRating ? (
+        {match.averageRating && (match.ratingsCount ?? 0) >= MIN_RATINGS_TO_SHOW ? (
           <View style={{ marginTop: 4 }}>
             <StarRating rating={match.averageRating} count={match.ratingsCount} />
           </View>
@@ -728,18 +815,15 @@ export function MatchCard({
         {meta ? <Text style={styles.matchMeta} numberOfLines={1}>{meta}</Text> : null}
       </View>
 
-      {/* Add button */}
-      <Pressable
-        style={styles.matchAddBtn}
-        onPress={onSelect}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel={t("a11y.addBookToList", { title: match.title })}
-      >
-        <View style={styles.matchAddCircle}>
-          <Ionicons name="add" size={18} color="#fff" />
-        </View>
-      </Pressable>
+      {/* + adds straight away; the card body opens the review screen */}
+      <View style={styles.matchAddBtn}>
+        <MatchAddButton
+          state={libraryState}
+          title={match.title}
+          onQuickAdd={onQuickAdd ?? onSelect}
+          onOpenInLibrary={onOpenInLibrary ?? onSelect}
+        />
+      </View>
     </Pressable>
   );
 }

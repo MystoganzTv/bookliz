@@ -92,7 +92,7 @@ export const KNOWN_SERIES: KnownSeries[] = [
       },
       {
         order: 3,
-        titles: ["Onyx Storm", "Tormenta de ónix", "Tormenta Onyx"],
+        titles: ["Onyx Storm", "Alas de ónix", "Tormenta de ónix", "Tormenta Onyx"],
         isbns: [
           "9781649374257", // EN Hardcover
           "9786073934756", // ES Planeta MX

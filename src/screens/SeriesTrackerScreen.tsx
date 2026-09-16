@@ -15,6 +15,15 @@ import { useColors } from "../theme/ThemeContext";
 import { Book } from "../types/models";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { statusLabelKey } from "../utils/statusLabels";
+import { buildSagaProgress } from "../utils/sagaProgress";
+
+/**
+ * The hero card and the pills sit on fixed dark fills in BOTH themes, so their
+ * text cannot use `c.card` — in dark mode that token is itself a dark navy, and
+ * the saga title rendered navy-on-navy (invisible).
+ */
+const HERO_INK = "#F7F1E7";
+const HERO_INK_MUTED = "rgba(247,241,231,0.68)";
 
 type OrderMode = "reading" | "release";
 
@@ -34,6 +43,14 @@ export function SeriesTrackerScreen() {
     [books, route.params.seriesId]
   );
 
+  // Every count on this screen comes from here: the saga's length is what the
+  // book numbers and the curated catalogue prove, not how many copies are on
+  // the shelf. See utils/sagaProgress.
+  const progress = useMemo(
+    () => buildSagaProgress(sagaBooks, saga?.name ?? t("series.defaultTitle")),
+    [sagaBooks, saga?.name, t]
+  );
+
   const orderedBooks = useMemo(
     () =>
       [...sagaBooks].sort((a, b) =>
@@ -44,24 +61,41 @@ export function SeriesTrackerScreen() {
     [order, sagaBooks]
   );
 
-  const completed = sagaBooks.filter((book) => book.userStatus.status === "read").length;
-  const owned = sagaBooks.filter((book) => book.userStatus.ownership === "owned").length;
+  const primaryAuthorName = sagaBooks[0] ? getAuthor(sagaBooks[0].authorId)?.name ?? "" : "";
   const upcoming = sagaBooks.filter((book) => book.userStatus.status === "upcoming-release" || book.upcomingReleaseDate);
-  const completion = sagaBooks.length ? Math.round((completed / sagaBooks.length) * 100) : 0;
+  const completion = progress.total ? Math.round((progress.finished / progress.total) * 100) : 0;
   const activeBook = orderedBooks.find((book) => book.userStatus.status === "reading");
-  const nextUnread = orderedBooks.find((book) => !["read", "dnf"].includes(book.userStatus.status));
-  const queuedBooks = orderedBooks.filter((book) => book.id !== nextUnread?.id && book.userStatus.status !== "read").slice(0, 2);
+  // The next step through the saga, in reading order — a book you have not
+  // finished, or a position you do not have yet.
+  const nextSlot = progress.slots.find((slot) =>
+    slot.kind === "missing" || !["read", "dnf"].includes(slot.book.userStatus.status)
+  );
+  const queuedSlots = progress.slots
+    .filter((slot) => slot !== nextSlot && (slot.kind === "missing" || slot.book.userStatus.status !== "read"))
+    .slice(0, 2);
   const orderLabel = order === "reading" ? t("series.readingOrder") : t("series.releaseOrder");
+
+  const findMissing = (slot: { order: number; knownTitle?: string }) => {
+    const query = slot.knownTitle
+      ? [slot.knownTitle, primaryAuthorName].filter(Boolean).join(" by ")
+      : [progress.name, primaryAuthorName].filter(Boolean).join(" ");
+    navigation.navigate("BookIntake", {
+      initialMode: "search",
+      initialQuery: query,
+      autoRun: true,
+      initialSearchIntent: slot.knownTitle ? "auto" : "series",
+    });
+  };
 
   return (
     <Screen>
       <View style={styles.hero}>
         <Text style={styles.eyebrow}>{t("series.eyebrow")}</Text>
-        <Text style={styles.title}>{saga?.name ?? sagaBooks[0]?.seriesName ?? t("series.defaultTitle")}</Text>
+        <Text style={styles.title}>{progress.name}</Text>
         {saga?.description ? <Text style={styles.subtitle}>{saga.description}</Text> : null}
 
         <View style={styles.progressHeader}>
-          <Text style={styles.progressTitle}>{completed}/{sagaBooks.length} {t("series.finished")}</Text>
+          <Text style={styles.progressTitle}>{progress.finished}/{progress.total} {t("series.finished")}</Text>
           <Text style={styles.progressPct}>{completion}%</Text>
         </View>
         <View style={styles.completionTrack}>
@@ -69,36 +103,49 @@ export function SeriesTrackerScreen() {
         </View>
 
         <View style={styles.statRow}>
-          <StatChip label={t("series.owned")} value={String(owned)} accent={c.teal} styles={styles} />
-          <StatChip label={t("series.unread")} value={String(Math.max(sagaBooks.length - completed, 0))} accent={c.gold} styles={styles} />
+          <StatChip label={t("series.owned")} value={String(progress.owned)} accent={c.teal} styles={styles} />
+          <StatChip label={t("series.unread")} value={String(Math.max(progress.total - progress.finished, 0))} accent={c.gold} styles={styles} />
           <StatChip label={t("series.upcomingLabel")} value={String(upcoming.length)} accent={c.coral} styles={styles} />
         </View>
       </View>
 
       <View style={styles.shelfCard}>
         <View style={styles.sectionTopline}>
-          <Text style={styles.sectionTitle}>{t("series.sagaShelf")}</Text>
-          <Text style={styles.sectionMeta}>{orderLabel}</Text>
+          <Text style={styles.sectionTitle} numberOfLines={1}>{t("series.sagaShelf")}</Text>
+          <Text style={styles.sectionMeta} numberOfLines={1}>{orderLabel}</Text>
         </View>
         <View style={styles.coverRail}>
-          {orderedBooks.map((book) => (
-            <Pressable accessibilityRole="button" key={book.id} onPress={() => navigation.navigate("BookDetail", { bookId: book.id })}>
-              <BookCover book={book} size="sm" style={styles.railCover} />
-            </Pressable>
-          ))}
+          {progress.slots.map((slot) =>
+            slot.kind === "book" ? (
+              <Pressable accessibilityRole="button" key={slot.book.id} onPress={() => navigation.navigate("BookDetail", { bookId: slot.book.id })}>
+                <BookCover book={slot.book} size="sm" style={styles.railCover} />
+              </Pressable>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("series.missingSlotA11y", { num: slot.order })}
+                key={`missing-${slot.order}`}
+                style={[styles.railCover, styles.missingCover]}
+                onPress={() => findMissing(slot)}
+              >
+                <Text style={styles.missingCoverNum}>#{slot.order}</Text>
+                <Ionicons name="add" size={16} color={c.muted} />
+              </Pressable>
+            )
+          )}
         </View>
       </View>
 
       <View style={styles.pathCard}>
         <View style={styles.sectionTopline}>
-          <Text style={styles.sectionTitle}>{t("series.yourPath")}</Text>
-          <Text style={styles.sectionMeta}>{order === "reading" ? t("series.bestFlow") : t("series.pubTimeline")}</Text>
+          <Text style={styles.sectionTitle} numberOfLines={2}>{t("series.yourPath")}</Text>
+          <Text style={styles.sectionMeta} numberOfLines={1}>{order === "reading" ? t("series.bestFlow") : t("series.pubTimeline")}</Text>
         </View>
 
         {activeBook ? (
           <View style={styles.activeRow}>
             <View style={styles.activePill}>
-              <Ionicons name="book-outline" size={14} color={c.card} />
+              <Ionicons name="book-outline" size={14} color={HERO_INK} />
               <Text style={styles.activePillText}>{t("series.currentlyReading")}</Text>
             </View>
             <Text style={styles.activeTitle}>{activeBook.title}</Text>
@@ -109,45 +156,88 @@ export function SeriesTrackerScreen() {
               <View style={[styles.activeFill, { width: `${activeBook.userStatus.progressPercent}%` }]} />
             </View>
           </View>
-        ) : nextUnread ? (
+        ) : nextSlot?.kind === "missing" ? (
           <View style={styles.activeRow}>
             <View style={[styles.activePill, styles.activePillSoft]}>
               <Ionicons name="sparkles-outline" size={14} color={c.navy} />
               <Text style={[styles.activePillText, styles.activePillTextSoft]}>{t("series.bestNext")}</Text>
             </View>
-            <Text style={styles.activeTitle}>{nextUnread.title}</Text>
+            <Text style={styles.activeTitle}>
+              {nextSlot.knownTitle ?? t("series.bookInSeries", { num: nextSlot.order })}
+            </Text>
             <Text style={styles.activeMeta}>
-              {getAuthor(nextUnread.authorId)?.name} · {nextUnread.pages} {t("series.pagesLower")}
+              {nextSlot.knownTitle ? `${t("series.bookInSeries", { num: nextSlot.order })} · ` : ""}{t("series.missingSlot")}
+            </Text>
+            <Pressable accessibilityRole="button" style={styles.findButton} onPress={() => findMissing(nextSlot)}>
+              <Ionicons name="search" size={14} color="#FFFFFF" />
+              <Text style={styles.findButtonText}>{t("series.findBook")}</Text>
+            </Pressable>
+          </View>
+        ) : nextSlot?.kind === "book" ? (
+          <View style={styles.activeRow}>
+            <View style={[styles.activePill, styles.activePillSoft]}>
+              <Ionicons name="sparkles-outline" size={14} color={c.navy} />
+              <Text style={[styles.activePillText, styles.activePillTextSoft]}>{t("series.bestNext")}</Text>
+            </View>
+            <Text style={styles.activeTitle}>{nextSlot.book.title}</Text>
+            <Text style={styles.activeMeta}>
+              {[
+                getAuthor(nextSlot.book.authorId)?.name,
+                nextSlot.book.pages ? `${nextSlot.book.pages} ${t("series.pagesLower")}` : null,
+              ].filter(Boolean).join(" · ")}
             </Text>
           </View>
-        ) : (
+        ) : progress.complete ? (
           <View style={styles.activeRow}>
             <View style={[styles.activePill, { backgroundColor: c.green }]}>
-              <Ionicons name="trophy-outline" size={14} color={c.card} />
+              <Ionicons name="trophy-outline" size={14} color={HERO_INK} />
               <Text style={styles.activePillText}>{t("series.sagaComplete")}</Text>
             </View>
             <Text style={styles.activeTitle}>{t("series.sagaCompleteTitle")}</Text>
             <Text style={styles.activeMeta}>{t("series.sagaCompleteBody")}</Text>
           </View>
+        ) : (
+          <View style={styles.activeRow}>
+            <View style={[styles.activePill, { backgroundColor: c.teal }]}>
+              <Ionicons name="checkmark-done-outline" size={14} color={HERO_INK} />
+              <Text style={styles.activePillText}>{t("series.shelfFinishedPill")}</Text>
+            </View>
+            <Text style={styles.activeTitle}>{t("series.shelfFinishedTitle")}</Text>
+            <Text style={styles.activeMeta}>{t("series.shelfFinishedBody")}</Text>
+          </View>
         )}
 
-        {queuedBooks.length > 0 ? (
+        {queuedSlots.length > 0 ? (
           <View style={styles.queueWrap}>
             <Text style={styles.queueLabel}>{t("series.afterThat")}</Text>
-            {queuedBooks.map((book, index) => (
+            {queuedSlots.map((slot, index) => (
               <Pressable accessibilityRole="button"
-                key={book.id}
+                key={slot.kind === "book" ? slot.book.id : `missing-${slot.order}`}
                 style={styles.queueRow}
-                onPress={() => navigation.navigate("BookDetail", { bookId: book.id })}
+                onPress={() =>
+                  slot.kind === "book"
+                    ? navigation.navigate("BookDetail", { bookId: slot.book.id })
+                    : findMissing(slot)
+                }
               >
-                <Text style={styles.queueIndex}>#{index + 2}</Text>
+                <Text style={styles.queueIndex}>#{slot.order ?? index + 2}</Text>
                 <View style={styles.queueCopy}>
-                  <Text style={styles.queueTitle}>{book.title}</Text>
-                  <Text style={styles.queueMeta}>
-                    {order === "reading" ? `${t("series.readingOrder")} ${book.sagaOrder ?? book.seriesNumber ?? "—"}` : `${t("series.published")} ${book.publishedDate.slice(0, 4)}`}
+                  <Text style={styles.queueTitle} numberOfLines={1}>
+                    {slot.kind === "book"
+                      ? slot.book.title
+                      : slot.knownTitle ?? t("series.bookInSeries", { num: slot.order })}
+                  </Text>
+                  <Text style={styles.queueMeta} numberOfLines={1}>
+                    {slot.kind === "missing"
+                      ? t("series.missingSlot")
+                      : order === "reading"
+                      ? `${t("series.readingOrder")} ${slot.book.sagaOrder ?? slot.book.seriesNumber ?? "—"}`
+                      : slot.book.publishedDate
+                      ? `${t("series.published")} ${slot.book.publishedDate.slice(0, 4)}`
+                      : t(statusLabelKey(slot.book.userStatus.status))}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color={c.muted} />
+                <Ionicons name={slot.kind === "book" ? "chevron-forward" : "search"} size={16} color={c.muted} />
               </Pressable>
             ))}
           </View>
@@ -161,8 +251,8 @@ export function SeriesTrackerScreen() {
 
       <View style={styles.roadmapCard}>
         <View style={styles.sectionTopline}>
-          <Text style={styles.sectionTitle}>{t("series.roadmap")}</Text>
-          <Text style={styles.sectionMeta}>{t("series.roadmapMeta")}</Text>
+          <Text style={styles.sectionTitle} numberOfLines={1}>{t("series.roadmap")}</Text>
+          <Text style={styles.sectionMeta} numberOfLines={1}>{t("series.roadmapMeta")}</Text>
         </View>
 
         {orderedBooks.map((book) => (
@@ -179,8 +269,8 @@ export function SeriesTrackerScreen() {
       {upcoming.length > 0 ? (
         <View style={styles.upcomingCard}>
           <View style={styles.sectionTopline}>
-            <Text style={styles.sectionTitle}>{t("series.upcoming")}</Text>
-            <Text style={styles.sectionMeta}>{upcoming.length} {t("series.tracked")}</Text>
+            <Text style={styles.sectionTitle} numberOfLines={1}>{t("series.upcoming")}</Text>
+            <Text style={styles.sectionMeta} numberOfLines={1}>{upcoming.length} {t("series.tracked")}</Text>
           </View>
           {upcoming.map((book) => (
             <Pressable accessibilityRole="button"
@@ -194,7 +284,7 @@ export function SeriesTrackerScreen() {
               <View style={styles.upcomingCopy}>
                 <Text style={styles.upcomingTitle}>{book.title}</Text>
                 <Text style={styles.upcomingMeta}>
-                  {getAuthor(book.authorId)?.name} · {book.publisher}
+                  {[getAuthor(book.authorId)?.name, book.publisher].filter(Boolean).join(" · ")}
                 </Text>
               </View>
               <Ionicons name="calendar-outline" size={18} color={c.gold} />
@@ -255,7 +345,11 @@ function SagaRoadmapRow({
         </View>
         <Text style={styles.bookTitle}>{book.title}</Text>
         <Text style={styles.bookMeta}>
-          {authorName} · {book.publishedDate.slice(0, 4)} · {book.pages} {t("series.pagesLower")}
+          {[
+            authorName,
+            book.publishedDate ? book.publishedDate.slice(0, 4) : null,
+            book.pages ? `${book.pages} ${t("series.pagesLower")}` : null,
+          ].filter(Boolean).join(" · ")}
         </Text>
         <View style={styles.badges}>
           <Badge label={`${order === "reading" ? t("series.currentLane") : t("series.currentRelease")} ${orderValue ?? "—"}`} tone="navy" />
@@ -289,7 +383,7 @@ function createStyles(c: AppColors) {
     textTransform: "uppercase"
   },
   title: {
-    color: c.card,
+    color: HERO_INK,
     fontFamily: fonts.display,
     fontSize: 34,
     fontWeight: "900",
@@ -297,7 +391,7 @@ function createStyles(c: AppColors) {
     marginTop: spacing.sm
   },
   subtitle: {
-    color: c.muted,
+    color: HERO_INK_MUTED,
     fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 21,
@@ -310,7 +404,7 @@ function createStyles(c: AppColors) {
     marginTop: spacing.lg
   },
   progressTitle: {
-    color: c.card,
+    color: HERO_INK,
     fontFamily: fonts.display,
     fontSize: 20,
     fontWeight: "900"
@@ -353,7 +447,7 @@ function createStyles(c: AppColors) {
     fontWeight: "900"
   },
   statLabel: {
-    color: c.muted,
+    color: HERO_INK_MUTED,
     fontFamily: fonts.body,
     fontSize: 11,
     fontWeight: "800",
@@ -377,20 +471,55 @@ function createStyles(c: AppColors) {
   },
   sectionTitle: {
     color: c.ink,
+    flexShrink: 1,
     fontFamily: fonts.display,
     fontSize: 22,
     fontWeight: "900"
   },
   sectionMeta: {
     color: c.muted,
+    flexShrink: 0,
     fontFamily: fonts.body,
     fontSize: 12,
     fontWeight: "900"
   },
   coverRail: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
     marginTop: spacing.md
+  },
+  missingCover: {
+    alignItems: "center",
+    borderColor: c.border,
+    borderRadius: 8,
+    borderStyle: "dashed",
+    borderWidth: 1.5,
+    gap: 2,
+    justifyContent: "center"
+  },
+  missingCoverNum: {
+    color: c.muted,
+    fontFamily: fonts.display,
+    fontSize: 15,
+    fontWeight: "900"
+  },
+  findButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: c.teal,
+    borderRadius: radii.pill,
+    flexDirection: "row",
+    gap: 6,
+    marginTop: spacing.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 9
+  },
+  findButtonText: {
+    color: "#FFFFFF",
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: "900"
   },
   railCover: {
     width: 62,
@@ -422,7 +551,7 @@ function createStyles(c: AppColors) {
     backgroundColor: c.gold
   },
   activePillText: {
-    color: c.card,
+    color: HERO_INK,
     fontFamily: fonts.body,
     fontSize: 12,
     fontWeight: "900"

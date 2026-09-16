@@ -50,6 +50,7 @@ import { languageCode } from "../utils/languageUtils";
 import { isOnWishlist, shelfFieldsFor, wantsToBuy } from "./shelfRules";
 import { localDateKey } from "../utils/dateUtils";
 import { inferSeriesData } from "../utils/knownWorks";
+import { buildSagaProgress, cleanSeriesName } from "../utils/sagaProgress";
 import { computeReadingIdentity, loadStoredIdentity, READING_IDENTITY_KEY, ReadingIdentity, storeIdentity } from "../utils/readingIdentity";
 
 /** Onboarding completion flag — stored separately from the library snapshot. */
@@ -237,13 +238,30 @@ const migrateAchievements = (
  * `metadataMergePolicy` exists to forbid.
  */
 const hydrateBooks = (books: Book[]) =>
-  books.map((book) =>
-    normalizeReadState(
-      !book.seriesId && book.seriesName?.trim()
-        ? { ...book, seriesId: buildSeriesId(book.seriesName) }
-        : book
-    )
-  );
+  books.map((book) => normalizeReadState(normalizeSeriesFields(book)));
+
+/**
+ * A series name that carries its own number ("Book 3 • The Empyrean") splits
+ * one saga into as many hubs as there are spellings, and every hub then counts
+ * a single book as the whole saga. Store the bare name, keep the number the
+ * string carried if the book had none, and derive the id from the bare name.
+ */
+const normalizeSeriesFields = (book: Book): Book => {
+  const raw = book.seriesName?.trim();
+  if (!raw) return book;
+  const cleaned = cleanSeriesName(raw);
+  const seriesId = buildSeriesId(cleaned.name);
+  if (cleaned.name === raw) {
+    // Clean already: only backfill a missing id, never move an existing one.
+    return book.seriesId ? book : { ...book, seriesId };
+  }
+  return {
+    ...book,
+    seriesName: cleaned.name,
+    seriesId,
+    seriesNumber: book.seriesNumber ?? cleaned.number,
+  };
+};
 
 /** Coarse format family — print / digital / audio. Same book in a different
  * family is a separate copy, not a duplicate. */
@@ -523,7 +541,8 @@ const slugify = (value: string) =>
 /** Stable series id derived from the series name, so books that share a
  * series name group together (SeriesTracker, completion detection). */
 const buildSeriesId = (seriesName?: string): string | undefined => {
-  const slug = slugify((seriesName ?? "").trim());
+  // "Book 3 • The Empyrean" and "The Empyrean" are the same saga.
+  const slug = slugify(cleanSeriesName(seriesName).name);
   return slug ? `series-${slug}` : undefined;
 };
 
@@ -1479,8 +1498,9 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       const inferredSeries = !input.seriesName
         ? inferSeriesData(input.title, authorName)
         : null;
-      const seriesName = input.seriesName ?? inferredSeries?.seriesName;
-      const seriesNumber = input.seriesNumber ?? inferredSeries?.seriesOrder;
+      const seriesName = cleanSeriesName(input.seriesName ?? inferredSeries?.seriesName).name || undefined;
+      const seriesNumber =
+        input.seriesNumber ?? cleanSeriesName(input.seriesName).number ?? inferredSeries?.seriesOrder;
 
       const book: Book = {
         id: `b-${slugify(input.title || "captured-book")}-${uniqueSuffix()}`,
@@ -1562,7 +1582,12 @@ export function BooklizProvider({ children }: PropsWithChildren) {
           const allOthersRead = seriesBooks.every(
             (b) => b.id === bookId || b.userStatus.status === "read"
           );
-          if (allOthersRead && seriesBooks.length > 1) {
+          // Finishing every book you happen to own is not finishing the saga:
+          // only celebrate when every known position is read (sagaProgress).
+          const afterRead = seriesBooks.map((b) =>
+            b.id === bookId ? { ...b, userStatus: { ...b.userStatus, status: "read" as const } } : b
+          );
+          if (allOthersRead && seriesBooks.length > 1 && buildSagaProgress(afterRead).complete) {
             const saga = series.find((s) => s.id === targetBook.seriesId);
             setSeriesJustCompleted({
               seriesId: targetBook.seriesId,
@@ -1667,9 +1692,9 @@ export function BooklizProvider({ children }: PropsWithChildren) {
             isbn: input.isbn.trim(), // "" = unknown — never fabricate
             format: input.format,
             coverImageUri: input.coverImageUri?.trim() || undefined,
-            seriesName: input.seriesName?.trim() || undefined,
+            seriesName: cleanSeriesName(input.seriesName).name || undefined,
             seriesId: buildSeriesId(input.seriesName),
-            seriesNumber: input.seriesNumber,
+            seriesNumber: input.seriesNumber ?? cleanSeriesName(input.seriesName).number,
             isBestseller: input.isBestseller,
             isSequel: input.seriesNumber !== undefined ? input.seriesNumber > 1 : input.isSequel,
             tags: input.tags,
