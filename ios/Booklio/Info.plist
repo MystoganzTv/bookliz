@@ -58,13 +58,11 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Bookliz uses the camera to photograph book covers and scan ISBN barcodes.</string>
+	<string>Bookliz uses the camera to scan the ISBN barcode on a book.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Allow Bookliz to access your Face ID biometric data.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Allow Bookliz to access your microphone.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Bookliz uses your photo library to import pictures of physical books.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

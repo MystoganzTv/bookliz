@@ -17,7 +17,6 @@ import ExpoCrypto
 import ExpoFileSystem
 import ExpoFont
 import ExpoHaptics
-import ExpoImagePicker
 import ExpoKeepAwake
 import ExpoLinearGradient
 import ExpoLinking
@@ -47,7 +46,6 @@ public class ExpoModulesProvider: ModulesProvider {
       FontLoaderModule.self,
       FontUtilsModule.self,
       HapticsModule.self,
-      ImagePickerModule.self,
       KeepAwakeModule.self,
       LinearGradientModule.self,
       ExpoLinkingModule.self,
@@ -82,7 +80,6 @@ public class ExpoModulesProvider: ModulesProvider {
       FontLoaderModule.self,
       FontUtilsModule.self,
       HapticsModule.self,
-      ImagePickerModule.self,
       KeepAwakeModule.self,
       LinearGradientModule.self,
       ExpoLinkingModule.self,
