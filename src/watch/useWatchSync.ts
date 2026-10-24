@@ -81,7 +81,7 @@ export function useWatchSync(
     const commandSub = onWatchCommand((cmd) => {
       if (!depsRef.current.onReadingCommand?.(cmd)) runWatchCommand(engine, cmd, getPlayerPrefs());
       // Most commands change main state and re-send on their own; this covers the rest (sync, bookmark).
-      setTimeout(send, 250);
+      setTimeout(() => sendRef.current(), 250);
     });
     const statusSub = onWatchStatus((status) => {
       if (status.reachable) send();

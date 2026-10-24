@@ -17,7 +17,8 @@ struct NowPlayingView: View {
         VStack(spacing: 1) {
           Text(now.chapterTitle(index))
             .font(.headline)
-            .lineLimit(2)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
             .multilineTextAlignment(.center)
           Text(index == nil ? now.author : now.title)
             .font(.caption2)
@@ -119,11 +120,11 @@ struct NowPlayingView: View {
           ProgressView()
         } else {
           Image(systemName: playing ? "pause.fill" : "play.fill")
-            .font(.system(size: 26, weight: .bold))
+            .font(.system(size: 24, weight: .bold))
             .foregroundStyle(.black)
         }
       }
-      .frame(width: 58, height: 58)
+      .frame(width: 52, height: 52)
     }
     .buttonStyle(.plain)
     .accessibilityLabel(playing ? tr("Pause", "Pausa") : tr("Play", "Reproducir"))

@@ -341,7 +341,12 @@ export class AudiobookEngine {
     this.trackListen(bookId, s.playing, sec, now);
     this.checkChapterSleep(sec);
 
-    if (!s.playing || now - this.lastPositionSave > SAVE_POSITION_EVERY_MS) this.savePosition(bookId, sec, false);
+    // While playing: every few seconds. While paused: only if the position actually moved — saving
+    // on every 1 s poll rewrote the library to disk each second and kept bumping lastPlayedAt,
+    // which smart rewind reads as "when it last played".
+    if (s.playing ? now - this.lastPositionSave > SAVE_POSITION_EVERY_MS : Math.abs(sec - audiobook.positionSec) > 0.05) {
+      this.savePosition(bookId, sec, false);
+    }
 
     // Listening on at the new spot: after a while the jump was clearly meant.
     const sinceLast = this.lastObserveAt ? Math.min(2000, now - this.lastObserveAt) : 0;
@@ -484,8 +489,8 @@ export class AudiobookEngine {
     // Coming back to a book: it last played at lastPlayedAt (saved every few seconds while playing).
     const lastPlayed = audiobook.lastPlayedAt ? Date.parse(audiobook.lastPlayedAt) : NaN;
     this.pausedAt = Number.isFinite(lastPlayed) ? lastPlayed : null;
-    if (autoplay && wanted > 0) {
-      wanted = Math.max(0, wanted - this.rewindFor(Date.now()));
+    if (autoplay) {
+      if (wanted > 0) wanted = Math.max(0, wanted - this.rewindFor(Date.now()));
       this.pausedAt = null;
     }
     const from = playablePosition(audiobook.tracks, wanted) ?? 0;
@@ -511,10 +516,12 @@ export class AudiobookEngine {
     this.pausedAt = null;
     if (back > 0) {
       const player = this.player;
-      void this.seekTo(Math.max(0, this.position - back), { remember: false }).then(() => {
-        player.play();
-        this.observe();
-      });
+      void this.seekTo(Math.max(0, this.position - back), { remember: false })
+        .catch(() => {})
+        .then(() => {
+          player.play();
+          this.observe();
+        });
       return;
     }
     this.player.play();
@@ -522,7 +529,9 @@ export class AudiobookEngine {
   }
 
   pause() {
-    this.pausedAt = Date.now();
+    // Already paused (sleep timer firing late, a second "pause" from the watch or a shortcut):
+    // keep the original moment, or smart rewind would shrink.
+    if (this.pausedAt === null) this.pausedAt = Date.now();
     this.player?.pause();
     this.observe();
     const bookId = this.loadedBookId;

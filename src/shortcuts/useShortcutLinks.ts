@@ -61,27 +61,36 @@ function perform(engine: AudiobookEngine, action: ShortcutAction, navigation: Na
   }
 }
 
-function whenReady(engine: AudiobookEngine, run: () => void) {
-  if (engine.getMain().ready) return run();
+/** Runs once the engine has loaded; returns a cancel for unmount. */
+function whenReady(engine: AudiobookEngine, run: () => void): () => void {
+  if (engine.getMain().ready) {
+    run();
+    return () => {};
+  }
   const off = engine.subscribe("main", () => {
     if (!engine.getMain().ready) return;
     off();
     run();
   });
+  return () => {
+    off();
+  };
 }
 
 export function useShortcutLinks(navigation: NavRef) {
   const { engine } = useAudiobookPlayer();
   useEffect(() => {
     let alive = true;
+    const cancels: Array<() => void> = [];
     const handle = (url: string | null) => {
       const action = parseShortcutUrl(url);
-      if (action && alive) whenReady(engine, () => perform(engine, action, navigation));
+      if (action && alive) cancels.push(whenReady(engine, () => perform(engine, action, navigation)));
     };
     void Linking.getInitialURL().then(handle).catch(() => {});
     const sub = Linking.addEventListener("url", ({ url }) => handle(url));
     return () => {
       alive = false;
+      cancels.forEach((cancel) => cancel());
       sub.remove();
     };
   }, [engine, navigation]);

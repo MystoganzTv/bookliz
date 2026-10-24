@@ -23,10 +23,11 @@ public class NowPlayingModule: Module {
     }
 
     /// For "keep the screen on only while charging" in the player.
-    Function("isCharging") { () -> Bool in
-      // UIDevice is main-thread API; sync Functions run on the JS thread.
-      Thread.isMainThread ? NowPlayingModule.readCharging() : DispatchQueue.main.sync { NowPlayingModule.readCharging() }
-    }
+    // UIDevice is main-thread API. Async on the main queue — a DispatchQueue.main.sync from the
+    // JS thread can deadlock when the main thread is waiting on the JS runtime.
+    AsyncFunction("isCharging") { () -> Bool in
+      NowPlayingModule.readCharging()
+    }.runOnQueue(.main)
   }
 
   static func readCharging() -> Bool {

@@ -16,9 +16,14 @@ export function usePlayerKeepAwake(mode: KeepAwake) {
 
   useEffect(() => {
     if (mode !== "charging") return;
-    setCharging(isDeviceCharging());
-    const id = setInterval(() => setCharging(isDeviceCharging()), 30_000);
-    return () => clearInterval(id);
+    let alive = true;
+    const check = () => void isDeviceCharging().then((value) => alive && setCharging(value));
+    check();
+    const id = setInterval(check, 30_000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
   }, [mode]);
 
   const on = mode === "always" || (mode === "charging" && charging);

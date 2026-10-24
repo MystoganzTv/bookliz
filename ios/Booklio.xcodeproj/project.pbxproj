@@ -225,10 +225,10 @@
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
+				4C73F05217327D05AD19493A /* Embed Watch Content */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				C0981F54B2FBE7E8A43D2615 /* [CP] Embed Pods Frameworks */,
 				13BAE950E24D16C46ED9B12B /* [CP] Copy Pods Resources */,
-				4C73F05217327D05AD19493A /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
