@@ -123,6 +123,12 @@ export interface ReadingSession {
   id: string;
   bookId: string;
   date: string;
+  /**
+   * Local wall-clock time the session began, "HH:MM". Absent = unknown: every
+   * session logged before start times existed, and past-day sessions the reader gave no time.
+   * Feeds the time-of-day achievements (utils/sessionTime) — unknown never counts.
+   */
+  startTime?: string;
   startPage: number;
   endPage: number;
   pagesRead: number;

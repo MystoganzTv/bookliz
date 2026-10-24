@@ -23,7 +23,7 @@ export function FloatingTimer() {
   const { t } = useI18n();
   const c = useColors();
   const styles = useMemo(() => createStyles(c), [c]);
-  const { isRunning, bookId, elapsedMs, stop, reset } = useReadingTimer();
+  const { isRunning, bookId, elapsedMs, startedAt, stop, reset } = useReadingTimer();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
 
@@ -35,6 +35,7 @@ export function FloatingTimer() {
     navigation.navigate("AddReadingSession", {
       bookId,
       prefillMinutes: minutes,
+      prefillStartedAt: startedAt ?? undefined,
     });
   };
 

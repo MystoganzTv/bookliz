@@ -72,7 +72,7 @@ export function BookDetailScreen() {
   } = useBookliz();
   const dialog = useDialog();
 
-  const { isRunning, bookId: timerBookId, start: startTimer, stop: stopTimer } = useReadingTimer();
+  const { isRunning, bookId: timerBookId, startedAt: timerStartedAt, start: startTimer, stop: stopTimer } = useReadingTimer();
   const book = getBook(route.params.bookId);
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
   const [statusSheetOpen, setStatusSheetOpen] = useState(false);
@@ -281,7 +281,7 @@ export function BookDetailScreen() {
               hapticLight();
               if (isRunning && timerBookId === book.id) {
                 const minutes = stopTimer();
-                navigation.navigate("AddReadingSession", { bookId: book.id, prefillMinutes: minutes });
+                navigation.navigate("AddReadingSession", { bookId: book.id, prefillMinutes: minutes, prefillStartedAt: timerStartedAt ?? undefined });
               } else {
                 startTimer(book.id);
               }

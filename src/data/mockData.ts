@@ -693,7 +693,9 @@ export const userProfile: UserProfile = {
     { id: "ach-scifi", title: "Sci-Fi Traveler", description: "Read 5 science fiction books.", flavour: "Far futures, strange planets, familiar questions.", unlocked: false, progress: 0, goal: 5, category: "genre", tier: "bronze", icon: "🪐" },
     { id: "ach-romance", title: "Romance Reader", description: "Read 5 romance books.", flavour: "You keep a soft shelf in the library.", unlocked: false, progress: 0, goal: 5, category: "genre", tier: "bronze", icon: "❤️📖" },
     { id: "ach-mystery", title: "Mystery Hunter", description: "Read 5 mystery books.", flavour: "You follow the clues all the way down.", unlocked: false, progress: 0, goal: 5, category: "genre", tier: "bronze", icon: "🔎" },
-    { id: "ach-around-world", title: "Around The World", description: "Read authors from 5 countries.", flavour: "Your reading map is getting wider.", unlocked: false, progress: 0, goal: 5, category: "genre", tier: "silver", icon: "🌎" },
+    // "Around The World" (ach-around-world, read authors from 5 countries) is
+    // out until authors carry a country: with no data its progress could only
+    // ever be 0. Its icon stays in utils/achievementIcons for when it returns.
     { id: "ach-genre-5", title: "Genre Explorer", description: "Read 5 different genres.", flavour: "No single shelf can contain your taste.", unlocked: false, progress: 0, goal: 5, category: "genre", tier: "silver", icon: "🌈" },
     { id: "ach-first-review", title: "First Review Written", description: "Write your first review.", flavour: "A thought became part of the record.", unlocked: false, progress: 0, goal: 1, category: "social", tier: "bronze", icon: "⭐✍️" },
     { id: "ach-quote-collector", title: "Quote Collector", description: "Save 10 quotes.", flavour: "Some lines deserve a second home.", unlocked: false, progress: 0, goal: 10, category: "social", tier: "silver", icon: "❝" },

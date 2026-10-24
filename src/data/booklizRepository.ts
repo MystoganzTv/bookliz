@@ -1071,6 +1071,7 @@ type ReadingSessionRow = {
   id: string;
   book_id: string;
   date: string;
+  start_time?: string | null;
   start_page: number;
   end_page: number;
   pages_read: number;
@@ -1213,6 +1214,9 @@ function mapReadingSessionToRow(userId: string, session: ReadingSession) {
     id: session.id,
     book_id: session.bookId,
     date: session.date,
+    // Only sent when known. A row without the key leaves the column alone, so
+    // sessions from before the field existed never write a null over anything.
+    ...(session.startTime ? { start_time: session.startTime } : {}),
     start_page: session.startPage,
     end_page: session.endPage,
     pages_read: session.pagesRead,
@@ -1233,6 +1237,7 @@ function mapSessionRowToReadingSession(row: ReadingSessionRow): ReadingSession {
     id: row.id,
     bookId: row.book_id,
     date: row.date,
+    startTime: row.start_time ?? undefined,
     startPage: row.start_page,
     endPage: row.end_page,
     pagesRead: row.pages_read,

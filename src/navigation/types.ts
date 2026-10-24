@@ -6,7 +6,7 @@ export type RootStackParamList = {
   AppTabs: undefined;
   BookDetail: { bookId: string };
   ReadingLog: { bookId?: string };
-  AddReadingSession: { bookId?: string; sessionId?: string; prefillMinutes?: number };
+  AddReadingSession: { bookId?: string; sessionId?: string; prefillMinutes?: number; prefillStartedAt?: number };
   BookIntake:
     | {
         autoRun?: boolean;

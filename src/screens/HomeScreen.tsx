@@ -117,7 +117,7 @@ export function HomeScreen() {
     [tasteProfile]
   );
 
-  const { isRunning, bookId: timerBookId, elapsedMs, start: startTimer, stop: stopTimer } = useReadingTimer();
+  const { isRunning, bookId: timerBookId, elapsedMs, startedAt: timerStartedAt, start: startTimer, stop: stopTimer } = useReadingTimer();
   const continueBook = books.find((b) => b.userStatus.status === "reading") ?? null;
   const timerIsForContinue = isRunning && continueBook && timerBookId === continueBook.id;
   const goalPct = Math.min(100, Math.round((overallStats.booksReadThisYear / userProfile.yearlyGoal) * 100));
@@ -357,7 +357,7 @@ export function HomeScreen() {
                 onPress={() => {
                   if (timerIsForContinue) {
                     const mins = stopTimer();
-                    navigation.navigate("AddReadingSession", { bookId: continueBook.id, prefillMinutes: mins });
+                    navigation.navigate("AddReadingSession", { bookId: continueBook.id, prefillMinutes: mins, prefillStartedAt: timerStartedAt ?? undefined });
                   } else {
                     startTimer(continueBook.id);
                   }

@@ -50,6 +50,8 @@ import { languageCode } from "../utils/languageUtils";
 import { isOnWishlist, shelfFieldsFor, wantsToBuy } from "./shelfRules";
 import { latestSession as latestSessionOf, sessionPlace } from "./sessionProgress";
 import { localDateKey } from "../utils/dateUtils";
+import { timeOfDayProgress } from "../utils/sessionTime";
+import { mergeUnlocks, settleAchievement } from "./achievementRules";
 import { inferSeriesData } from "../utils/knownWorks";
 import { buildSagaProgress, cleanSeriesName } from "../utils/sagaProgress";
 import { computeReadingIdentity, loadStoredIdentity, READING_IDENTITY_KEY, ReadingIdentity, storeIdentity } from "../utils/readingIdentity";
@@ -372,7 +374,9 @@ const enrichProfileAchievements = (
   const hasParkLocation = Array.from(uniqueLocations).some((location) =>
     ["park", "outside", "garden", "beach", "parque", "jardín", "jardin", "playa"].some((token) => location.includes(token))
   );
-  const { currentStreak, longestStreak } = calculateStreaks(sessions);
+  const { longestStreak } = calculateStreaks(sessions);
+  // Sessions without a start time (everything logged before start times existed) count for none of these.
+  const timeOfDay = timeOfDayProgress(sessions);
   const longestSingleDayMinutes = Object.values(
     sessions.reduce<Record<string, number>>((acc, session) => {
       acc[session.date] = (acc[session.date] ?? 0) + session.minutesRead;
@@ -400,14 +404,15 @@ const enrichProfileAchievements = (
     "ach-scifi": scifiCount,
     "ach-romance": romanceCount,
     "ach-mystery": mysteryCount,
-    "ach-around-world": 0,
     "ach-genre-5": distinctGenresRead.size,
     "ach-first-review": reviews.length,
     "ach-quote-collector": quoteCount,
     "ach-deep-thinker": noteCount,
     "ach-goal-hit": booksReadThisYear,
     "ach-epic-saga-master": completedSeriesCount,
-    "ach-daily": currentStreak,
+    // "Read 7 days in a row" — ever, not right now. The current streak made the
+    // bar fall back to 1 the morning after a missed day.
+    "ach-daily": longestStreak,
     "ach-streak-30": longestStreak,
     "ach-marathon": longestSingleDayMinutes,
     "ach-cozy-reader": sessions.some((session) => {
@@ -415,16 +420,16 @@ const enrichProfileAchievements = (
       const location = normalizeLocation(session.location);
       return mood.includes("cozy") || mood.includes("rain") || location.includes("bed") || location.includes("sofa") || location.includes("cama") || location.includes("sofá");
     }) ? 1 : 0,
-    "ach-midnight": 0,
-    "ach-night-reading": 0,
-    "ach-early-bird": 0,
+    "ach-midnight": timeOfDay.afterMidnightSessions,
+    "ach-night-reading": timeOfDay.nightSessions,
+    "ach-early-bird": timeOfDay.morningSessions,
     "ach-speed-55": averagePagesPerHour,
     "ach-collector": books.length,
     "ach-book-hunter": wishlistCount,
     "ach-audiobook": audiobookCount,
     "ach-digital": digitalCount,
     "ach-big-book": bigBookCount,
-    "ach-night-owl": 0,
+    "ach-night-owl": timeOfDay.lateNights,
     "ach-whale-reader": whaleCount,
     "ach-library-builder": books.length,
     "ach-legend-reader": completedReadInstances,
@@ -438,20 +443,15 @@ const enrichProfileAchievements = (
   };
 
   const achievementMap = new Map(
-    [...profile.achievements, rereadAchievement].map((achievement) => [achievement.id, achievement])
+    // Stored entry last so it wins: the constant used to overwrite the saved
+    // "Old Favorite", unlock included.
+    [rereadAchievement, ...profile.achievements].map((achievement) => [achievement.id, achievement])
   );
 
   const achievements = Array.from(achievementMap.values()).map((achievement) => {
     const progress = progressById[achievement.id] ?? achievement.progress ?? 0;
     const goal = achievement.id === "ach-goal-hit" ? Math.max(1, profile.yearlyGoal) : achievement.goal;
-    const unlocked = progress >= goal;
-    return {
-      ...achievement,
-      goal,
-      progress,
-      unlocked,
-      unlockedAt: unlocked ? achievement.unlockedAt ?? today : undefined
-    };
+    return settleAchievement(achievement, progress, goal, today);
   });
 
   return {
@@ -850,6 +850,18 @@ export function BooklizProvider({ children }: PropsWithChildren) {
     () => enrichProfileAchievements(profile, books, readingSessions, reviews),
     [books, profile, readingSessions, reviews]
   );
+
+  // Earned achievements are kept (data/achievementRules). The persisted
+  // snapshot already stores the resolved list, but the in-memory profile did
+  // not, so deleting the session that earned one re-locked it until relaunch.
+  // Not before hydration or onboarding: the demo library must not earn anything.
+  useEffect(() => {
+    if (!hydrated || !onboardingComplete) return;
+    setProfile((current) => {
+      const merged = mergeUnlocks(current.achievements, resolvedProfile.achievements);
+      return merged ? { ...current, achievements: merged } : current;
+    });
+  }, [hydrated, onboardingComplete, profile.achievements, resolvedProfile.achievements]);
 
   // Track the latest persisted state in a ref so the AppState effect (which
   // only depends on `hydrated`) can access fresh data without re-subscribing.
@@ -1839,7 +1851,10 @@ export function BooklizProvider({ children }: PropsWithChildren) {
         name: trimmedName,
         avatarInitials: initials,
         favoriteGenres: genres.length ? genres : prev.favoriteGenres,
-        readingLevel: ""   // Always start with auto-computed title; no custom override for new accounts
+        readingLevel: "",  // Always start with auto-computed title; no custom override for new accounts
+        // Unlocks are one-way now, so anything the demo library earned would
+        // otherwise follow the reader into their real one.
+        achievements: userProfile.achievements
       }));
       await AsyncStorage.setItem(ONBOARDING_KEY, "true");
       setOnboardingComplete(true);
