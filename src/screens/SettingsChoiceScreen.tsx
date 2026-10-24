@@ -10,11 +10,13 @@ import { SettingsChoiceGroup } from "../components/settings/SettingsList";
 import { AppLocale } from "../i18n/translations";
 import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
+import { ThemePreference, useTheme } from "../theme/ThemeContext";
 
 export function SettingsChoiceScreen() {
   const { params } = useRoute<RouteProp<RootStackParamList, "SettingsChoice">>();
   const navigation = useNavigation();
   const { t, locale, setLocale } = useI18n();
+  const { preference, setPreference } = useTheme();
 
   const title = t(`settings.choice.${params.setting}`);
   useLayoutEffect(() => {
@@ -32,6 +34,18 @@ export function SettingsChoiceScreen() {
           selected={locale}
           onSelect={setLocale}
           footer={t("settings.languageBody")}
+        />
+      ) : null}
+      {params.setting === "theme" ? (
+        <SettingsChoiceGroup<ThemePreference>
+          options={[
+            { value: "system", label: t("settings.theme.system") },
+            { value: "light", label: t("settings.theme.light") },
+            { value: "dark", label: t("settings.theme.dark") },
+          ]}
+          selected={preference}
+          onSelect={setPreference}
+          footer={t("settings.theme.footer")}
         />
       ) : null}
     </Screen>

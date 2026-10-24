@@ -30,7 +30,7 @@ import {
 } from "../utils/notificationService";
 
 export function SettingsScreen() {
-  const { colors: c, isDark, toggleTheme } = useTheme();
+  const { colors: c, preference: themePreference } = useTheme();
   const { locale, t } = useI18n();
   const {
     resetApp,
@@ -127,7 +127,11 @@ export function SettingsScreen() {
 
       {/* ── Appearance ───────────────────────────────────────────────────── */}
       <SettingsGroup header={t("settings.appearanceTitle")}>
-        <SettingsToggleRow title={t("settings.darkMode")} value={isDark} onValueChange={toggleTheme} />
+        <SettingsRow
+          title={t("settings.choice.theme")}
+          value={t(`settings.theme.${themePreference}`)}
+          onPress={() => navigation.navigate("SettingsChoice", { setting: "theme" })}
+        />
         <SettingsRow
           title={t("settings.languageTitle")}
           value={locale === "es" ? t("common.spanish") : t("common.english")}

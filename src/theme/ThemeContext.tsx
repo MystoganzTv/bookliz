@@ -5,54 +5,85 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
+import { Appearance, useColorScheme } from "react-native";
 import { AppColors, darkColors, lightColors } from "./theme";
 
 const STORAGE_KEY = "@bookliz/theme";
 
+/** What the screen is painted in right now. */
 type ThemeMode = "light" | "dark";
+/**
+ * What the reader chose. "system" follows the iPhone (Control Center, the
+ * sunset schedule); it is the default for new installs. Installs that saved
+ * "light" or "dark" before this option existed keep their choice.
+ */
+export type ThemePreference = "system" | "light" | "dark";
+
+export const isThemePreference = (value: unknown): value is ThemePreference =>
+  value === "system" || value === "light" || value === "dark";
 
 type ThemeContextValue = {
-  mode:        ThemeMode;
-  isDark:      boolean;
-  colors:      AppColors;
-  toggleTheme: () => void;
+  mode:          ThemeMode;
+  isDark:        boolean;
+  colors:        AppColors;
+  preference:    ThemePreference;
+  setPreference: (preference: ThemePreference) => void;
+  /** Flips between explicit light and dark (leaves "system"). */
+  toggleTheme:   () => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue>({
-  mode:        "light",
-  isDark:      false,
-  colors:      lightColors,
-  toggleTheme: () => {},
+  mode:          "light",
+  isDark:        false,
+  colors:        lightColors,
+  preference:    "system",
+  setPreference: () => {},
+  toggleTheme:   () => {},
 });
 
 export function ThemeProvider({ children }: PropsWithChildren) {
-  const [mode, setMode] = useState<ThemeMode>("light");
+  const [preference, setPreferenceState] = useState<ThemePreference>("system");
+  const systemScheme = useColorScheme();
 
   // Hydrate persisted preference
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
-      if (saved === "dark" || saved === "light") setMode(saved);
+      if (isThemePreference(saved)) setPreferenceState(saved);
     }).catch(() => {});
   }, []);
 
-  const toggleTheme = useCallback(() => {
-    setMode((prev) => {
-      const next = prev === "light" ? "dark" : "light";
-      AsyncStorage.setItem(STORAGE_KEY, next).catch(() => {});
-      return next;
-    });
+  // Native UI (keyboard, alerts, date pickers, Switch) follows the same choice:
+  // an explicit light/dark overrides the window's style; "system" hands it back.
+  // After an override useColorScheme() reports the overridden scheme, which is
+  // why `mode` below can simply read it.
+  useEffect(() => {
+    try {
+      Appearance.setColorScheme(preference === "system" ? null : preference);
+    } catch {
+      // Web / platforms without the native module: `mode` still resolves below.
+    }
+  }, [preference]);
+
+  const setPreference = useCallback((next: ThemePreference) => {
+    setPreferenceState(next);
+    AsyncStorage.setItem(STORAGE_KEY, next).catch(() => {});
   }, []);
 
-  const isDark  = mode === "dark";
-  const colors  = isDark ? darkColors : lightColors;
+  const mode: ThemeMode = preference === "system" ? (systemScheme === "dark" ? "dark" : "light") : preference;
 
-  return (
-    <ThemeContext.Provider value={{ mode, isDark, colors, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  const toggleTheme = useCallback(() => {
+    setPreference(mode === "dark" ? "light" : "dark");
+  }, [mode, setPreference]);
+
+  const value = useMemo<ThemeContextValue>(() => {
+    const isDark = mode === "dark";
+    return { mode, isDark, colors: isDark ? darkColors : lightColors, preference, setPreference, toggleTheme };
+  }, [mode, preference, setPreference, toggleTheme]);
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {
