@@ -14,6 +14,7 @@ import { Achievement } from "../types/models";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useTheme } from "../theme/ThemeContext";
 import { getAchievementIconSource } from "../utils/achievementIcons";
+import { sameFavorite } from "../utils/favorites";
 
 const TIER_COLOR: Record<Achievement["tier"], string> = {
   bronze: "#CD7F32",
@@ -299,31 +300,60 @@ export function ProfileScreen() {
         </>
       ) : null}
 
+      {/* Favourites: always shown, each one opens what it names, "Edit" opens the editor. */}
+      <SectionHeader
+        title={t("profile.favoriteGenres")}
+        actionLabel={t("profile.editFavorites")}
+        onAction={() => navigation.navigate("EditProfile")}
+      />
       {userProfile.favoriteGenres.length > 0 ? (
-        <>
-          <SectionHeader title={t("profile.favoriteGenres")} />
-          <View style={styles.tagWrap}>
-            {userProfile.favoriteGenres.map((genre) => (
-              <View key={genre} style={[styles.tagPill, styles.tagPillGenre]}>
-                <Text style={[styles.tagText, styles.tagTextGenre]}>{genre}</Text>
-              </View>
-            ))}
-          </View>
-        </>
-      ) : null}
+        <View style={styles.tagWrap}>
+          {userProfile.favoriteGenres.map((genre) => (
+            <Pressable
+              key={genre}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.tagPill, styles.tagPillGenre, pressed && { opacity: 0.6 }]}
+              onPress={() => navigation.navigate("GenreBrowse", { genre })}
+            >
+              <Text style={[styles.tagText, styles.tagTextGenre]}>{genre}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : (
+        <Pressable accessibilityRole="button" style={styles.favoritesEmpty} onPress={() => navigation.navigate("EditProfile")}>
+          <Ionicons name="add-circle-outline" size={18} color={c.tealDark} />
+          <Text style={styles.favoritesEmptyText}>{t("profile.noFavoriteGenres")}</Text>
+        </Pressable>
+      )}
 
+      <SectionHeader
+        title={t("profile.favoriteAuthors")}
+        actionLabel={t("profile.editFavorites")}
+        onAction={() => navigation.navigate("EditProfile")}
+      />
       {userProfile.favoriteAuthors.length > 0 ? (
-        <>
-          <SectionHeader title={t("profile.favoriteAuthors")} />
-          <View style={styles.tagWrap}>
-            {userProfile.favoriteAuthors.map((author) => (
-              <View key={author} style={[styles.tagPill, styles.tagPillAuthor]}>
+        <View style={styles.tagWrap}>
+          {userProfile.favoriteAuthors.map((author) => {
+            // An author on the shelf opens with their books; one who is not yet opens by name from the catalogue.
+            const onShelf = books.map((b) => getAuthor(b.authorId)).find((a) => a && sameFavorite(a.name, author));
+            return (
+              <Pressable
+                key={author}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.tagPill, styles.tagPillAuthor, pressed && { opacity: 0.6 }]}
+                onPress={() => navigation.navigate("AuthorBooks", { authorId: onShelf?.id, authorName: onShelf?.name ?? author })}
+              >
                 <Text style={[styles.tagText, styles.tagTextAuthor]}>{author}</Text>
-              </View>
-            ))}
-          </View>
-        </>
-      ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : (
+        <Pressable accessibilityRole="button" style={styles.favoritesEmpty} onPress={() => navigation.navigate("EditProfile")}>
+          <Ionicons name="add-circle-outline" size={18} color={c.tealDark} />
+          <Text style={styles.favoritesEmptyText}>{t("profile.noFavoriteAuthors")}</Text>
+        </Pressable>
+      )}
 
         </View>
       </View>
@@ -883,6 +913,18 @@ function createStyles(c: AppColors) {
       borderRadius: radii.pill,
       height: "100%"
     },
+    favoritesEmpty: {
+      alignItems: "center",
+      borderColor: c.border,
+      borderRadius: radii.md,
+      borderStyle: "dashed",
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: spacing.sm,
+      marginBottom: spacing.md,
+      padding: spacing.md
+    },
+    favoritesEmptyText: { color: c.muted, flex: 1, fontFamily: fonts.body, fontSize: 13, fontWeight: "700" },
     tagWrap: {
       flexDirection: "row",
       flexWrap: "wrap",

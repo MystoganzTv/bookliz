@@ -67,6 +67,8 @@ export interface EngineHost {
   authorName(book: Book): string;
   addSession(input: NewReadingSessionInput): void;
   setDurationMinutes(bookId: string, minutes: number): void;
+  /** The next book of the same saga whose audio is here, for autoplay. */
+  nextInSeries?(bookId: string): string | null;
 }
 
 export interface EngineMainState {
@@ -370,6 +372,12 @@ export class AudiobookEngine {
     this.finishListen();
     this.setMain({ isPlaying: false, sleepTimer: null });
     this.savePosition(audiobook.bookId, audiobook.totalSec, true);
+
+    // Settings > Player controls > Autoplay: on to the next book of the saga.
+    if (getPlayerPrefs().autoplayNext) {
+      const next = this.host.nextInSeries?.(audiobook.bookId) ?? null;
+      if (next && this.library[next]) void this.open(next, true);
+    }
   }
 
   /** Persist a position. `commit` also refreshes React state — skipped on the 5 s ticks so screens do not re-render while you listen. */

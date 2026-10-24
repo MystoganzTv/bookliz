@@ -1,5 +1,6 @@
 import ExpoModulesCore
 import MediaPlayer
+import UIKit
 
 /// expo-audio hard-codes the lock-screen skip buttons to 10 s
 /// (MediaController.swift: `preferredIntervals = [10.0]`). Its handlers seek by
@@ -20,5 +21,17 @@ public class NowPlayingModule: Module {
         center.skipForwardCommand.preferredIntervals = [NSNumber(value: forward)]
       }
     }
+
+    /// For "keep the screen on only while charging" in the player.
+    Function("isCharging") { () -> Bool in
+      // UIDevice is main-thread API; sync Functions run on the JS thread.
+      Thread.isMainThread ? NowPlayingModule.readCharging() : DispatchQueue.main.sync { NowPlayingModule.readCharging() }
+    }
+  }
+
+  static func readCharging() -> Bool {
+    let device = UIDevice.current
+    device.isBatteryMonitoringEnabled = true
+    return device.batteryState == .charging || device.batteryState == .full
   }
 }

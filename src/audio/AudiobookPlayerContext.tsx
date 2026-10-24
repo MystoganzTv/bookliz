@@ -7,12 +7,13 @@
  * second — the book detail screen must not redraw at 2 Hz because you are
  * listening.
  */
-import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { AppState } from "react-native";
 import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
 import { useWatchSync } from "../watch/useWatchSync";
 import { applyAudioBackupPreference } from "./audioBackup";
+import { nextInSeries } from "./nextInSeries";
 import { AudiobookEngine, type EngineHost, type EngineMainState } from "./audiobookEngine";
 
 const EngineContext = createContext<AudiobookEngine | null>(null);
@@ -20,6 +21,7 @@ const EngineContext = createContext<AudiobookEngine | null>(null);
 export function AudiobookPlayerProvider({ children }: PropsWithChildren) {
   const bookliz = useBookliz();
   const { locale } = useI18n();
+  const engineRef = useRef<AudiobookEngine | null>(null);
   const host: EngineHost = {
     getBook: bookliz.getBook,
     authorName: (book) => bookliz.getAuthor(book.authorId)?.name ?? "",
@@ -27,8 +29,14 @@ export function AudiobookPlayerProvider({ children }: PropsWithChildren) {
       bookliz.addReadingSession(input);
     },
     setDurationMinutes: bookliz.updateBookDuration,
+    nextInSeries: (bookId) => {
+      const current = bookliz.getBook(bookId);
+      if (!current) return null;
+      return nextInSeries(current, bookliz.books, (id) => Boolean(engineRef.current?.library[id]))?.id ?? null;
+    },
   };
   const [engine] = useState(() => new AudiobookEngine(host));
+  engineRef.current = engine;
   // Native callbacks fire long after this render; they must reach today's data.
   engine.host = host;
 

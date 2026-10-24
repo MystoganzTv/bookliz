@@ -2,7 +2,7 @@
 import { requireOptionalNativeModule } from "expo";
 import { Platform } from "react-native";
 
-type NowPlayingNative = { setSkipIntervals(backward: number, forward: number): void };
+type NowPlayingNative = { setSkipIntervals(backward: number, forward: number): void; isCharging(): boolean };
 
 const native: NowPlayingNative | null =
   Platform.OS === "ios" ? requireOptionalNativeModule<NowPlayingNative>("NowPlaying") : null;
@@ -12,5 +12,14 @@ export function setLockScreenSkipIntervals(backward: number, forward: number) {
     native?.setSkipIntervals(backward, forward);
   } catch {
     // Cosmetic: the in-app buttons work regardless.
+  }
+}
+
+/** Plugged in (charging or full). False where unknown. */
+export function isDeviceCharging(): boolean {
+  try {
+    return native?.isCharging() ?? false;
+  } catch {
+    return false;
   }
 }

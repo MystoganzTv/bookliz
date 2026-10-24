@@ -42,6 +42,7 @@ import {
   formatBytes,
 } from "../audio/audiobookModel";
 import { usePlayerPrefs } from "../audio/playerPrefs";
+import { usePlayerKeepAwake } from "../audio/usePlayerKeepAwake";
 import { useAttachAudio } from "../audio/useAttachAudio";
 import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
@@ -70,6 +71,7 @@ export function AudioPlayerScreen() {
   const { engine } = player;
   const livePosition = useAudiobookPosition();
   const prefs = usePlayerPrefs();
+  usePlayerKeepAwake(prefs.keepAwake);
   const [scrub, setScrub] = useState<number | null>(null);
   const [sheet, setSheet] = useState<SheetName>(null);
   const [listTab, setListTab] = useState<"chapters" | "bookmarks">("chapters");

@@ -7,6 +7,14 @@ type TranslationTree = {
 export const translations: Record<AppLocale, TranslationTree> = {
   en: {
     playerSettings: {
+      autoplay: "Continue the saga",
+      autoplayFooter: "When an audiobook ends, the next one of the same saga starts — if its audio is on this iPhone.",
+      keepAwakeFooter: "Only while the player screen is open. Sound keeps playing with the screen off either way.",
+      keepAwake: {
+        off: "Normal",
+        always: "Screen always on",
+        charging: "On only while charging",
+      },
       title: "Player controls",
       seconds: "{n} seconds",
       skipHeader: "Skip buttons",
@@ -124,6 +132,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
         theme: "Theme",
         skipBack: "Skip back",
         skipForward: "Skip forward",
+        keepAwake: "Auto-Lock",
       },
       theme: {
         system: "System",
@@ -1194,6 +1203,14 @@ export const translations: Record<AppLocale, TranslationTree> = {
   },
   es: {
     playerSettings: {
+      autoplay: "Seguir con la saga",
+      autoplayFooter: "Al terminar un audiolibro empieza el siguiente de la misma saga, si su audio está en el iPhone.",
+      keepAwakeFooter: "Solo mientras la pantalla del reproductor está abierta. El sonido sigue con la pantalla apagada en cualquier caso.",
+      keepAwake: {
+        off: "Normal",
+        always: "Pantalla siempre encendida",
+        charging: "Encendida solo cargando",
+      },
       title: "Controles del reproductor",
       seconds: "{n} segundos",
       skipHeader: "Botones de salto",
@@ -1306,6 +1323,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
         theme: "Tema",
         skipBack: "Retroceder",
         skipForward: "Avanzar",
+        keepAwake: "Bloqueo automático",
       },
       theme: {
         system: "Sistema",

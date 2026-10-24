@@ -11,7 +11,7 @@ import { AppLocale } from "../i18n/translations";
 import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
 import { ThemePreference, useTheme } from "../theme/ThemeContext";
-import { SKIP_CHOICES, updatePlayerPrefs, usePlayerPrefs } from "../audio/playerPrefs";
+import { KeepAwake, SKIP_CHOICES, updatePlayerPrefs, usePlayerPrefs } from "../audio/playerPrefs";
 
 export function SettingsChoiceScreen() {
   const { params } = useRoute<RouteProp<RootStackParamList, "SettingsChoice">>();
@@ -56,6 +56,18 @@ export function SettingsChoiceScreen() {
           selected={params.setting === "skipBack" ? playerPrefs.skipBackSec : playerPrefs.skipForwardSec}
           onSelect={(n) => updatePlayerPrefs(params.setting === "skipBack" ? { skipBackSec: n } : { skipForwardSec: n })}
           footer={t("playerSettings.skipFooter")}
+        />
+      ) : null}
+      {params.setting === "keepAwake" ? (
+        <SettingsChoiceGroup<KeepAwake>
+          options={[
+            { value: "off", label: t("playerSettings.keepAwake.off") },
+            { value: "always", label: t("playerSettings.keepAwake.always") },
+            { value: "charging", label: t("playerSettings.keepAwake.charging") },
+          ]}
+          selected={playerPrefs.keepAwake}
+          onSelect={(keepAwake) => updatePlayerPrefs({ keepAwake })}
+          footer={t("playerSettings.keepAwakeFooter")}
         />
       ) : null}
     </Screen>

@@ -15,6 +15,7 @@ import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 import { loadIncludeAudioInBackup, setIncludeAudioInBackup } from "../audio/audioBackup";
 import { audioFolderSize } from "../audio/audioFiles";
 import { formatBytes } from "../audio/audiobookModel";
+import { updatePlayerPrefs, usePlayerPrefs } from "../audio/playerPrefs";
 import { isFileBackupAvailable } from "../../modules/file-backup";
 import { onWatchStatus, watchStatus, WatchStatus } from "../../modules/watch-bridge";
 import { useDialog } from "../components/DialogProvider";
@@ -51,6 +52,7 @@ export function SettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const dialog = useDialog();
   const audioPlayer = useAudiobookPlayer();
+  const playerPrefs = usePlayerPrefs();
   const styles = useMemo(() => createStyles(c), [c]);
 
   const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>({ enabled: false, hour: 20, minute: 0 });
@@ -177,6 +179,18 @@ export function SettingsScreen() {
       {/* ── Playback ─────────────────────────────────────────────────────── */}
       <SettingsGroup header={t("settings.playbackHeader")}>
         <SettingsRow title={t("playerSettings.rowTitle")} onPress={() => navigation.navigate("PlayerSettings")} />
+        <SettingsRow
+          title={t("settings.choice.keepAwake")}
+          value={t(`playerSettings.keepAwake.${playerPrefs.keepAwake}`)}
+          onPress={() => navigation.navigate("SettingsChoice", { setting: "keepAwake" })}
+        />
+      </SettingsGroup>
+      <SettingsGroup footer={t("playerSettings.autoplayFooter")}>
+        <SettingsToggleRow
+          title={t("playerSettings.autoplay")}
+          value={playerPrefs.autoplayNext}
+          onValueChange={(autoplayNext) => updatePlayerPrefs({ autoplayNext })}
+        />
       </SettingsGroup>
 
       {watch.paired ? (
