@@ -16,6 +16,7 @@ import { loadIncludeAudioInBackup, setIncludeAudioInBackup } from "../audio/audi
 import { audioFolderSize } from "../audio/audioFiles";
 import { formatBytes } from "../audio/audiobookModel";
 import { isFileBackupAvailable } from "../../modules/file-backup";
+import { onWatchStatus, watchStatus, WatchStatus } from "../../modules/watch-bridge";
 import { useDialog } from "../components/DialogProvider";
 import { GoogleConnectionCard } from "../components/GoogleConnectionCard";
 import { Screen } from "../components/Screen";
@@ -123,6 +124,13 @@ export function SettingsScreen() {
     }
   }, [dialog, discardConflictBackup, t]);
 
+  // ── Apple Watch (only shown when one is paired) ───────────────────────────
+  const [watch, setWatch] = useState<WatchStatus>(() => watchStatus());
+  useEffect(() => {
+    const sub = onWatchStatus(setWatch);
+    return () => sub.remove();
+  }, []);
+
   const versionLine = appVersionLine();
 
   return (
@@ -170,6 +178,18 @@ export function SettingsScreen() {
       <SettingsGroup header={t("settings.playbackHeader")}>
         <SettingsRow title={t("playerSettings.rowTitle")} onPress={() => navigation.navigate("PlayerSettings")} />
       </SettingsGroup>
+
+      {watch.paired ? (
+        <SettingsGroup
+          header={t("settings.watch.header")}
+          footer={watch.installed ? t("settings.watch.footerInstalled") : t("settings.watch.footerMissing")}
+        >
+          <SettingsRow
+            title={t("settings.watch.row")}
+            value={watch.installed ? t("settings.watch.installed") : t("settings.watch.notInstalled")}
+          />
+        </SettingsGroup>
+      ) : null}
 
       {/* ── Reminders ────────────────────────────────────────────────────── */}
       <SettingsGroup

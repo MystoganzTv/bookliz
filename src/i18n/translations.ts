@@ -101,6 +101,14 @@ export const translations: Record<AppLocale, TranslationTree> = {
       addBook: "Add a book",
     },
     settings: {
+      watch: {
+        header: "Apple Watch",
+        row: "Bookliz on the watch",
+        installed: "Installed",
+        notInstalled: "Not installed",
+        footerInstalled: "From the watch you control the audiobook playing on your iPhone: skips, chapters, speed, sleep timer and bookmarks.",
+        footerMissing: "Install it from the Watch app on your iPhone: My Watch › Bookliz › Install.",
+      },
       playbackHeader: "Playback",
       audioBackup: {
         header: "iCloud Backup",
@@ -1275,6 +1283,14 @@ export const translations: Record<AppLocale, TranslationTree> = {
       addBook: "Añadir libro",
     },
     settings: {
+      watch: {
+        header: "Apple Watch",
+        row: "Bookliz en el reloj",
+        installed: "Instalada",
+        notInstalled: "No instalada",
+        footerInstalled: "Desde el reloj controlas el audiolibro que suena en el iPhone: saltos, capítulos, velocidad, temporizador y marcadores.",
+        footerMissing: "Instálala desde la app Watch del iPhone: Mi reloj › Bookliz › Instalar.",
+      },
       playbackHeader: "Reproducción",
       audioBackup: {
         header: "Copia de iCloud",

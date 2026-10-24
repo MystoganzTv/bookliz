@@ -7,29 +7,78 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0128AD8F81D0F8EF7946CA70 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89E247A5C763CAF0211CD69E /* RootView.swift */; };
 		056CB4202637971E687A195E /* libPods-Booklio.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A6C18469A65C6FB76945CBB7 /* libPods-Booklio.a */; };
 		057628BCD826EFBA6993CEB4 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D6ED187AA31088A8D0BD3B3F /* PrivacyInfo.xcprivacy */; };
+		09FB95E7F1FA06C53246BD3C /* SleepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B88044213F35C6E1A8B1CF56 /* SleepView.swift */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		1630528CCC930EE6680ECCCC /* BooklizWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37B573700F3B9C260957487 /* BooklizWatchApp.swift */; };
+		211BA6AE0FD21557F7A22E25 /* SpeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA84E292AD3158FBA25BA5F2 /* SpeedView.swift */; };
+		3C5B421CED08F52352AD6E9C /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C53946777CD013AE0FD591A0 /* LibraryView.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
+		5FA7DD5A00C9DEAA4A43CB3A /* BooklizWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 86F325945D28235446226AA0 /* BooklizWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		78AEB8FA9742DE9757872413 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3DF094659FD89923C41B3AE /* ExpoModulesProvider.swift */; };
+		933609482341893C0AFC69EB /* PhoneLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A9355474CBD6CB471DD6ADB /* PhoneLink.swift */; };
+		997E1FBBF288A9A50786C07A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6CC206C253334A4E9FF2B5ED /* Assets.xcassets */; };
+		9AA84F00ED6C21FD798B3A1F /* WatchState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F699B98B7C2C96168062294 /* WatchState.swift */; };
+		9F3D36889F12F3A279165F13 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = B49FAC87F4A6A0E34E15EBF6 /* L10n.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		F196DF7DC0EE19E9E7405AFD /* NowPlayingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1EADB57D33E8DFC4BFFFFF /* NowPlayingView.swift */; };
+		F8ABCA94997067B1BC47AB55 /* ChaptersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE4203D7653498D028D2E878 /* ChaptersView.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		3BCDAB727400CA33DB10DAD3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BF41E257C37B3F52C45DFA32;
+			remoteInfo = BooklizWatch;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4C73F05217327D05AD19493A /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				5FA7DD5A00C9DEAA4A43CB3A /* BooklizWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		13B07F961A680F5B00A75B9A /* Booklio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Booklio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Booklio/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Booklio/Info.plist; sourceTree = "<group>"; };
+		4A9355474CBD6CB471DD6ADB /* PhoneLink.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PhoneLink.swift; sourceTree = "<group>"; };
+		4F699B98B7C2C96168062294 /* WatchState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchState.swift; sourceTree = "<group>"; };
+		6CC206C253334A4E9FF2B5ED /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		812CB56B3E965DDC0FE5C49C /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		86F325945D28235446226AA0 /* BooklizWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BooklizWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		89E247A5C763CAF0211CD69E /* RootView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		8A1EADB57D33E8DFC4BFFFFF /* NowPlayingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NowPlayingView.swift; sourceTree = "<group>"; };
 		A6C18469A65C6FB76945CBB7 /* libPods-Booklio.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Booklio.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = Booklio/SplashScreen.storyboard; sourceTree = "<group>"; };
 		AA5307A4309C93CF1B7D7336 /* Pods-Booklio.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Booklio.release.xcconfig"; path = "Target Support Files/Pods-Booklio/Pods-Booklio.release.xcconfig"; sourceTree = "<group>"; };
 		AD7AD68384B5E082181D3C76 /* Pods-Booklio.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Booklio.debug.xcconfig"; path = "Target Support Files/Pods-Booklio/Pods-Booklio.debug.xcconfig"; sourceTree = "<group>"; };
+		B37B573700F3B9C260957487 /* BooklizWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BooklizWatchApp.swift; sourceTree = "<group>"; };
+		B49FAC87F4A6A0E34E15EBF6 /* L10n.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
+		B88044213F35C6E1A8B1CF56 /* SleepView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SleepView.swift; sourceTree = "<group>"; };
+		BA84E292AD3158FBA25BA5F2 /* SpeedView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeedView.swift; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		C53946777CD013AE0FD591A0 /* LibraryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		D6ED187AA31088A8D0BD3B3F /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = Booklio/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		E3DF094659FD89923C41B3AE /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Booklio/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Booklio/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Booklio-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Booklio-Bridging-Header.h"; path = "Booklio/Booklio-Bridging-Header.h"; sourceTree = "<group>"; };
+		FE4203D7653498D028D2E878 /* ChaptersView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChaptersView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -38,6 +87,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				056CB4202637971E687A195E /* libPods-Booklio.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B1F43B95B3B7822BC6B0317A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -83,6 +139,26 @@
 			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
+		7156FFB6F8611E548C00386D /* BooklizWatch */ = {
+			isa = PBXGroup;
+			children = (
+				B37B573700F3B9C260957487 /* BooklizWatchApp.swift */,
+				FE4203D7653498D028D2E878 /* ChaptersView.swift */,
+				B49FAC87F4A6A0E34E15EBF6 /* L10n.swift */,
+				C53946777CD013AE0FD591A0 /* LibraryView.swift */,
+				8A1EADB57D33E8DFC4BFFFFF /* NowPlayingView.swift */,
+				4A9355474CBD6CB471DD6ADB /* PhoneLink.swift */,
+				89E247A5C763CAF0211CD69E /* RootView.swift */,
+				B88044213F35C6E1A8B1CF56 /* SleepView.swift */,
+				BA84E292AD3158FBA25BA5F2 /* SpeedView.swift */,
+				4F699B98B7C2C96168062294 /* WatchState.swift */,
+				6CC206C253334A4E9FF2B5ED /* Assets.xcassets */,
+				812CB56B3E965DDC0FE5C49C /* Info.plist */,
+			);
+			name = BooklizWatch;
+			path = BooklizWatch;
+			sourceTree = "<group>";
+		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
 			isa = PBXGroup;
 			children = (
@@ -99,6 +175,7 @@
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				3C100DE179EF2A46D8D84F50 /* ExpoModulesProviders */,
 				B849DB3A13D1F58D2106FA25 /* Pods */,
+				7156FFB6F8611E548C00386D /* BooklizWatch */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -109,6 +186,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* Booklio.app */,
+				86F325945D28235446226AA0 /* BooklizWatch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -147,14 +225,34 @@
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				C0981F54B2FBE7E8A43D2615 /* [CP] Embed Pods Frameworks */,
 				13BAE950E24D16C46ED9B12B /* [CP] Copy Pods Resources */,
+				4C73F05217327D05AD19493A /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F0F3371EFA6AE1283FBFB6FE /* PBXTargetDependency */,
+			);
+			name = Booklio;
+			productName = Booklio;
+			productReference = 13B07F961A680F5B00A75B9A /* Booklio.app */;
+			productType = "com.apple.product-type.application";
+		};
+		BF41E257C37B3F52C45DFA32 /* BooklizWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7CB613E618C5B2D1E1CB01C5 /* Build configuration list for PBXNativeTarget "BooklizWatch" */;
+			buildPhases = (
+				A53B3CB425FA469D0F7ACEAA /* Sources */,
+				B1F43B95B3B7822BC6B0317A /* Frameworks */,
+				F32567DE06570EB35AB890ED /* Resources */,
+				E330B802A48B48F83D4B9880 /* Sync version with iPhone app */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = Booklio;
-			productName = Booklio;
-			productReference = 13B07F961A680F5B00A75B9A /* Booklio.app */;
+			name = BooklizWatch;
+			productName = BooklizWatch;
+			productReference = 86F325945D28235446226AA0 /* BooklizWatch.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -168,6 +266,11 @@
 					13B07F861A680F5B00A75B9A = {
 						DevelopmentTeam = V6F97AK8AD;
 						LastSwiftMigration = 1250;
+						ProvisioningStyle = Automatic;
+					};
+					BF41E257C37B3F52C45DFA32 = {
+						CreatedOnToolsVersion = 26.0;
+						DevelopmentTeam = V6F97AK8AD;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -186,6 +289,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* Booklio */,
+				BF41E257C37B3F52C45DFA32 /* BooklizWatch */,
 			);
 		};
 /* End PBXProject section */
@@ -199,6 +303,14 @@
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
 				057628BCD826EFBA6993CEB4 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F32567DE06570EB35AB890ED /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				997E1FBBF288A9A50786C07A /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -314,6 +426,25 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Booklio/Pods-Booklio-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		E330B802A48B48F83D4B9880 /* Sync version with iPhone app */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Booklio/Info.plist",
+			);
+			name = "Sync version with iPhone app";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nPHONE_PLIST=\"${SRCROOT}/Booklio/Info.plist\"\nWATCH_PLIST=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\nVERSION=$(/usr/libexec/PlistBuddy -c \"Print :CFBundleShortVersionString\" \"$PHONE_PLIST\")\nBUILD=$(/usr/libexec/PlistBuddy -c \"Print :CFBundleVersion\" \"$PHONE_PLIST\")\n/usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString $VERSION\" \"$WATCH_PLIST\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $BUILD\" \"$WATCH_PLIST\"\necho \"Watch app version $VERSION ($BUILD)\"\n";
+		};
 		FC2175D05585EFDCD02D6315 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -350,7 +481,33 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A53B3CB425FA469D0F7ACEAA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1630528CCC930EE6680ECCCC /* BooklizWatchApp.swift in Sources */,
+				F8ABCA94997067B1BC47AB55 /* ChaptersView.swift in Sources */,
+				9F3D36889F12F3A279165F13 /* L10n.swift in Sources */,
+				3C5B421CED08F52352AD6E9C /* LibraryView.swift in Sources */,
+				F196DF7DC0EE19E9E7405AFD /* NowPlayingView.swift in Sources */,
+				933609482341893C0AFC69EB /* PhoneLink.swift in Sources */,
+				0128AD8F81D0F8EF7946CA70 /* RootView.swift in Sources */,
+				09FB95E7F1FA06C53246BD3C /* SleepView.swift in Sources */,
+				211BA6AE0FD21557F7A22E25 /* SpeedView.swift in Sources */,
+				9AA84F00ED6C21FD798B3A1F /* WatchState.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		F0F3371EFA6AE1283FBFB6FE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = BooklizWatch;
+			target = BF41E257C37B3F52C45DFA32 /* BooklizWatch */;
+			targetProxy = 3BCDAB727400CA33DB10DAD3 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
@@ -422,6 +579,69 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+		31C02C947772E32A63FDA4E3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V6F97AK8AD;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BooklizWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Bookliz;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.mystodev.booklio;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mystodev.booklio.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		6F90F72C3D92732269AEA039 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V6F97AK8AD;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BooklizWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Bookliz;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.mystodev.booklio;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mystodev.booklio.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
 			};
 			name = Release;
 		};
@@ -557,6 +777,15 @@
 			buildConfigurations = (
 				13B07F941A680F5B00A75B9A /* Debug */,
 				13B07F951A680F5B00A75B9A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7CB613E618C5B2D1E1CB01C5 /* Build configuration list for PBXNativeTarget "BooklizWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6F90F72C3D92732269AEA039 /* Release */,
+				31C02C947772E32A63FDA4E3 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
