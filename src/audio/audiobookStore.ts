@@ -7,12 +7,13 @@
  * Keys use the `booklio:` prefix like every other key (decision 2026-09-12).
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Audiobook } from "./audiobookModel";
+import type { AudioInboxItem, Audiobook } from "./audiobookModel";
 import type { PendingListen } from "./listeningSession";
 
 const LIBRARY_KEY = "booklio:v2:audiobooks";
 const PENDING_KEY = "booklio:v2:audioPendingListen";
 const ACTIVE_KEY = "booklio:v2:audioActiveBook";
+const INBOX_KEY = "booklio:v2:audioInbox";
 
 export type AudioLibrary = Record<string, Audiobook>;
 
@@ -55,3 +56,16 @@ export const savePendingListen = (pending: PendingListen | null) => writeJson(PE
 
 export const loadActiveAudioBook = () => readJson<string>(ACTIVE_KEY);
 export const saveActiveAudioBook = (bookId: string | null) => writeJson(ACTIVE_KEY, bookId);
+
+/** Same contract as loadAudioLibrary: throws on a read failure so nothing on disk is cleaned up blindly. */
+export async function loadAudioInbox(): Promise<AudioInboxItem[]> {
+  const raw = await AsyncStorage.getItem(INBOX_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as AudioInboxItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+export const saveAudioInbox = (inbox: AudioInboxItem[]) => writeJson(INBOX_KEY, inbox);

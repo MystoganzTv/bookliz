@@ -27,6 +27,9 @@ import {
   previousChapterTarget,
   returnPointAfterJump,
   trackStarts,
+  inboxTitle,
+  isAudioFileName,
+  type AudioInboxItem,
   type Audiobook,
 } from "./audiobookModel";
 import {
@@ -39,12 +42,16 @@ import {
   pickAudioFiles,
   strayAudioFolders,
   trackUri,
+  type ImportedAudio,
+  type PickedAudio,
 } from "./audioFiles";
 import {
   loadActiveAudioBook,
+  loadAudioInbox,
   loadAudioLibrary,
   loadPendingListen,
   saveActiveAudioBook,
+  saveAudioInbox,
   saveAudioLibrary,
   savePendingListen,
   type AudioLibrary,
@@ -81,7 +88,12 @@ export interface EngineMainState {
   loadError: string | null;
   sleepTimer: SleepTimer | null;
   importing: { bookId: string; done: number; total: number } | null;
+  /** Audio imported but not attached to any book yet, newest first. */
+  inbox: AudioInboxItem[];
 }
+
+/** `importing.bookId` while files go to the inbox rather than to a book. */
+export const INBOX_IMPORT = "__inbox__";
 
 const STATUS_INTERVAL_MS = 500;
 const POLL_MS = 1000;
@@ -119,6 +131,7 @@ export class AudiobookEngine {
     loadError: null,
     sleepTimer: null,
     importing: null,
+    inbox: [],
   };
   private position = 0;
   private listeners: Record<Channel, Set<() => void>> = { main: new Set(), position: new Set() };
@@ -196,7 +209,22 @@ export class AudiobookEngine {
     } catch {
       stored = null; // unreadable right now — run without cleanup rather than delete anything
     }
+    let storedInbox: AudioInboxItem[] | null = null;
+    try {
+      storedInbox = await loadAudioInbox();
+    } catch {
+      storedInbox = null; // unreadable: keep every folder on disk this launch
+    }
     const [pending, active] = await Promise.all([loadPendingListen(), loadActiveAudioBook()]);
+
+    // Inbox items whose files are all still there.
+    const inbox: AudioInboxItem[] = [];
+    for (const item of storedInbox ?? []) {
+      const kept = item.tracks.filter((t) => !t.removed);
+      if (kept.length > 0 && kept.every((t) => audioFileExists(item.folder, t.file))) inbox.push(item);
+      else deleteAudioFolder(item.folder);
+    }
+    if (storedInbox && inbox.length !== storedInbox.length) void saveAudioInbox(inbox);
 
     // Keep only books that still exist, with files still on disk.
     const library: AudioLibrary = {};
@@ -207,7 +235,11 @@ export class AudiobookEngine {
         if (this.host.getBook(bookId) && intact) library[bookId] = audiobook;
         else deleteAudioFolder(audiobook.folder);
       }
-      for (const stray of strayAudioFolders(new Set(Object.values(library).map((a) => a.folder)))) deleteAudioFolder(stray);
+      // Only when both indexes were readable: a folder the inbox points at is not a stray.
+      if (storedInbox) {
+        const known = new Set([...Object.values(library).map((a) => a.folder), ...inbox.map((i) => i.folder)]);
+        for (const stray of strayAudioFolders(known)) deleteAudioFolder(stray);
+      }
       if (Object.keys(library).length !== Object.keys(stored).length) void saveAudioLibrary(library);
     }
 
@@ -217,7 +249,7 @@ export class AudiobookEngine {
 
     const activeBookId = active && library[active] ? active : null;
     this.position = activeBookId ? library[activeBookId].positionSec : 0;
-    this.setMain({ ready: true, library, activeBookId });
+    this.setMain({ ready: true, library, activeBookId, inbox });
 
     this.poll = setInterval(() => this.observe(), POLL_MS);
   }
@@ -729,25 +761,7 @@ export class AudiobookEngine {
     this.setMain({ importing: { bookId, done: 0, total: picked.length } });
     try {
       const imported = await importAudioFiles(picked, (done, total) => this.setMain({ importing: { bookId, done, total } }));
-      const previous = this.library[bookId];
-      if (previous) {
-        if (this.main.activeBookId === bookId) this.close();
-        deleteAudioFolder(previous.folder);
-      }
-      const book = this.host.getBook(bookId);
-      const entry: Audiobook = {
-        bookId,
-        folder: imported.folder,
-        tracks: imported.tracks,
-        chapters: imported.chapters,
-        totalSec: imported.totalSec,
-        positionSec: initialPosition(imported.totalSec, book?.userStatus.progressPercent ?? 0, book?.userStatus.status === "read"),
-        speed: previous?.speed ?? 1,
-        addedAt: new Date().toISOString(),
-      };
-      this.commitLibrary({ ...this.library, [bookId]: entry });
-      // The file is the edition in the reader's ears: its length is the book's length.
-      this.host.setDurationMinutes(bookId, imported.totalSec / 60);
+      this.installAudio(bookId, imported);
       return true;
     } catch (error) {
       if (error instanceof AudioImportError) throw error;
@@ -755,6 +769,118 @@ export class AudiobookEngine {
     } finally {
       this.setMain({ importing: null });
     }
+  }
+
+  /** Make imported audio this book's audio, replacing what it had. */
+  private installAudio(bookId: string, imported: ImportedAudio) {
+    const previous = this.library[bookId];
+    if (previous) {
+      if (this.main.activeBookId === bookId) this.close();
+      deleteAudioFolder(previous.folder);
+    }
+    const book = this.host.getBook(bookId);
+    const entry: Audiobook = {
+      bookId,
+      folder: imported.folder,
+      tracks: imported.tracks,
+      chapters: imported.chapters,
+      totalSec: imported.totalSec,
+      positionSec: initialPosition(imported.totalSec, book?.userStatus.progressPercent ?? 0, book?.userStatus.status === "read"),
+      speed: previous?.speed ?? 1,
+      addedAt: new Date().toISOString(),
+    };
+    this.commitLibrary({ ...this.library, [bookId]: entry });
+    // The file is the edition in the reader's ears: its length is the book's length.
+    this.host.setDurationMinutes(bookId, imported.totalSec / 60);
+  }
+
+  // ── Inbox (audio without a book yet) ───────────────────────────────────────
+
+  private commitInbox(next: AudioInboxItem[]) {
+    this.setMain({ inbox: next });
+    void saveAudioInbox(next);
+  }
+
+  /** Pick files into the inbox. Null when the reader backs out; throws AudioImportError. */
+  async pickIntoInbox(): Promise<AudioInboxItem | null> {
+    if (this.main.importing) return null;
+    const picked = await pickAudioFiles();
+    if (!picked) return null;
+    return this.importIntoInbox(picked);
+  }
+
+  /** Import already-local files (a picker copy, or what iOS handed over) as one inbox item. */
+  async importIntoInbox(picked: readonly PickedAudio[]): Promise<AudioInboxItem> {
+    // One import at a time: files that arrive mid-import wait their turn.
+    await waitFor(() => !this.main.importing, 10 * 60_000);
+    this.setMain({ importing: { bookId: INBOX_IMPORT, done: 0, total: picked.length } });
+    try {
+      const imported = await importAudioFiles(picked, (done, total) =>
+        this.setMain({ importing: { bookId: INBOX_IMPORT, done, total } })
+      );
+      const item: AudioInboxItem = {
+        id: `inbox-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+        folder: imported.folder,
+        title: inboxTitle(picked.filter((p) => isAudioFileName(p.name)).map((p) => p.name)),
+        tracks: imported.tracks,
+        chapters: imported.chapters,
+        totalSec: imported.totalSec,
+        addedAt: new Date().toISOString(),
+      };
+      this.commitInbox([item, ...this.main.inbox]);
+      return item;
+    } catch (error) {
+      if (error instanceof AudioImportError) throw error;
+      throw new AudioImportError("unreadable");
+    } finally {
+      this.setMain({ importing: null });
+    }
+  }
+
+  /** Give an inbox item to a book (replacing that book's audio, if any). */
+  assignInboxItem(itemId: string, bookId: string): boolean {
+    const item = this.main.inbox.find((i) => i.id === itemId);
+    if (!item || !this.host.getBook(bookId)) return false;
+    this.installAudio(bookId, item);
+    this.commitInbox(this.main.inbox.filter((i) => i.id !== itemId));
+    return true;
+  }
+
+  renameInboxItem(itemId: string, title: string) {
+    const clean = title.trim();
+    if (!clean) return;
+    this.commitInbox(this.main.inbox.map((i) => (i.id === itemId ? { ...i, title: clean } : i)));
+  }
+
+  removeInboxItem(itemId: string) {
+    const item = this.main.inbox.find((i) => i.id === itemId);
+    if (!item) return;
+    deleteAudioFolder(item.folder);
+    this.commitInbox(this.main.inbox.filter((i) => i.id !== itemId));
+  }
+
+  /** Take a book's audio off it and back into the inbox. Position and bookmarks go; the files stay. */
+  detachToInbox(bookId: string): AudioInboxItem | null {
+    const audiobook = this.library[bookId];
+    if (!audiobook) return null;
+    if (this.main.activeBookId === bookId) this.close();
+    const book = this.host.getBook(bookId);
+    // All tracks, deleted-after-listening ones included: they hold the timeline together.
+    const tracks = audiobook.tracks;
+    if (!tracks.some((t) => !t.removed)) return null;
+    const item: AudioInboxItem = {
+      id: `inbox-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      folder: audiobook.folder,
+      title: book?.title ?? inboxTitle(tracks.filter((t) => !t.removed).map((t) => t.file)),
+      tracks,
+      chapters: audiobook.chapters,
+      totalSec: audiobook.totalSec,
+      addedAt: new Date().toISOString(),
+    };
+    const { [bookId]: _gone, ...rest } = this.library;
+    this.commitLibrary(rest);
+    this.commitInbox([item, ...this.main.inbox]);
+    return item;
   }
 
   removeAudio(bookId: string) {
@@ -766,9 +892,12 @@ export class AudiobookEngine {
     this.commitLibrary(rest);
   }
 
+  /** Clear library / delete account: every book's audio AND the inbox. */
   removeAllAudio() {
     if (this.main.activeBookId) this.close();
     for (const audiobook of Object.values(this.library)) deleteAudioFolder(audiobook.folder);
+    for (const item of this.main.inbox) deleteAudioFolder(item.folder);
     this.commitLibrary({});
+    this.commitInbox([]);
   }
 }

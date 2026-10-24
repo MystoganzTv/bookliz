@@ -87,6 +87,31 @@ export async function pickAudioFiles(): Promise<PickedAudio[] | null> {
   return result.assets.map((asset) => ({ uri: asset.uri, name: asset.name, size: asset.size ?? 0 }));
 }
 
+/**
+ * Files handed to Bookliz by iOS ("Open in Bookliz", AirDrop, the Files share
+ * sheet). They arrive as file:// URLs in Documents/Inbox, a copy the app owns,
+ * so importAudioFiles can move them like a picker copy.
+ */
+export function pickedFromFileUris(uris: readonly string[]): PickedAudio[] {
+  const out: PickedAudio[] = [];
+  for (const uri of uris) {
+    try {
+      const file = new File(uri);
+      if (!file.exists) continue;
+      let name = file.name;
+      try {
+        name = decodeURIComponent(name);
+      } catch {
+        // keep the raw name
+      }
+      out.push({ uri: file.uri, name, size: file.size ?? 0 });
+    } catch {
+      // Not a readable file URL: skip it, the rest still import.
+    }
+  }
+  return out;
+}
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** The length AVPlayer reports once the file is ready. 0 = could not open it. */

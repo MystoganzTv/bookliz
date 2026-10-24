@@ -107,6 +107,44 @@ export function titleFromFileName(name: string): string {
   return stripped || base;
 }
 
+/**
+ * Audio imported but not yet attached to a book — BookPlayer's way in: files
+ * first, book later. Same shape as an audiobook's audio, plus a title guessed
+ * from the file names to show and to search with.
+ */
+export interface AudioInboxItem {
+  id: string;
+  folder: string;
+  title: string;
+  tracks: AudioTrack[];
+  chapters: AudioChapter[];
+  totalSec: number;
+  addedAt: string;
+}
+
+/**
+ * A title for a group of files: one file → its name; several → what their
+ * names share ("Dune - 01.mp3", "Dune - 02.mp3" → "Dune"), else the first.
+ */
+export function inboxTitle(fileNames: readonly string[]): string {
+  const titles = fileNames.map(titleFromFileName).filter(Boolean);
+  if (!titles.length) return "";
+  if (titles.length === 1) return titles[0];
+  let prefix = titles[0];
+  for (const t of titles.slice(1)) {
+    let i = 0;
+    while (i < prefix.length && i < t.length && prefix[i].toLowerCase() === t[i].toLowerCase()) i++;
+    prefix = prefix.slice(0, i);
+  }
+  // Cut back to a word boundary and drop trailing separators / numbering ("Dune - Part 0" → "Dune").
+  const cleaned = prefix
+    .replace(/(?:^|[\s\-–—_.:,(\[]+)(?:part|parte|cap(?:[ií]tulo)?|chapter|ch|disc|disco|cd|track|pista)\.?\s*\d*\s*$/i, "")
+    .replace(/\s*\d+\s*$/, "")
+    .replace(/[\s\-–—_.:,(\[]+$/, "")
+    .trim();
+  return cleaned.length >= 3 ? cleaned : titles[0];
+}
+
 /** A name safe to write into the app's Documents folder. */
 export function safeFileName(index: number, name: string): string {
   const ext = extensionOf(name);
