@@ -5,15 +5,28 @@ struct RootView: View {
 
   var body: some View {
     NavigationStack {
-      if let state = link.state {
-        if let now = state.now {
-          NowPlayingView(state: state, now: now)
-        } else {
-          LibraryView(state: state, isRoot: true)
-        }
-      } else {
-        WaitingView(reachable: link.reachable)
+      // Two pages, turned with the Digital Crown: listening, then reading.
+      TabView {
+        audioPage
+        ReadingView(reading: link.state?.reading)
+          .containerBackground(Color.bookliz.gradient, for: .tabView)
       }
+      .tabViewStyle(.verticalPage)
+    }
+  }
+
+  @ViewBuilder
+  private var audioPage: some View {
+    if let state = link.state {
+      if let now = state.now {
+        NowPlayingView(state: state, now: now)
+      } else {
+        LibraryView(state: state, isRoot: true)
+          .containerBackground(Color.bookliz.opacity(0.35).gradient, for: .tabView)
+      }
+    } else {
+      WaitingView(reachable: link.reachable)
+        .containerBackground(Color.bookliz.opacity(0.35).gradient, for: .tabView)
     }
   }
 }

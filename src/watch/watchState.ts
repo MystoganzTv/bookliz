@@ -12,7 +12,8 @@ import type { AudioLibrary } from "../audio/audiobookStore";
 import { PLAYBACK_SPEEDS, type Audiobook } from "../audio/audiobookModel";
 import type { SleepTimer } from "../audio/audiobookEngine";
 import type { PlayerPrefs } from "../audio/playerPrefs";
-import type { Book } from "../types/models";
+import type { Book, ReadingSession } from "../types/models";
+import { localDateKey } from "../utils/dateUtils";
 
 export const WATCH_STATE_VERSION = 1;
 /** Matches the phone's sleep sheet. */
@@ -48,6 +49,13 @@ export interface WatchLibraryItem {
   totalSec: number;
 }
 
+/** The reading side (books on paper or e-reader): today, the timer, what is being read. */
+export interface WatchReading {
+  today: { minutes: number; streak: number; booksThisYear: number; yearlyGoal: number };
+  timer: { bookId: string; title: string; startedAt: number } | null;
+  books: Array<{ bookId: string; title: string; author: string; coverUrl: string | null }>;
+}
+
 export interface WatchState {
   v: number;
   locale: "en" | "es";
@@ -58,6 +66,7 @@ export interface WatchState {
   sleepMinutes: number[];
   now: WatchNowPlaying | null;
   library: WatchLibraryItem[];
+  reading: WatchReading | null;
 }
 
 export interface WatchStateInput {
@@ -73,6 +82,7 @@ export interface WatchStateInput {
   speedFor: (audiobook: Audiobook) => number;
   getBook: (bookId: string) => Book | undefined;
   authorName: (book: Book) => string;
+  reading?: WatchReading | null;
 }
 
 const trim = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
@@ -131,6 +141,44 @@ export function buildWatchState(input: WatchStateInput): WatchState {
     sleepMinutes: [...WATCH_SLEEP_MINUTES],
     now,
     library: items,
+    reading: input.reading ?? null,
+  };
+}
+
+export interface WatchReadingInput {
+  now: Date;
+  books: readonly Book[];
+  sessions: readonly ReadingSession[];
+  streak: number;
+  booksThisYear: number;
+  yearlyGoal: number;
+  timer: { bookId: string | null; startedAt: number | null; isRunning: boolean };
+  authorName: (book: Book) => string;
+}
+
+const MAX_READING_BOOKS = 12;
+
+export function buildWatchReading(input: WatchReadingInput): WatchReading {
+  const today = localDateKey(input.now);
+  const minutes = input.sessions
+    .filter((s) => s.date === today)
+    .reduce((sum, s) => sum + Math.max(0, s.minutesRead || 0), 0);
+  const timerBook = input.timer.isRunning && input.timer.bookId ? input.books.find((b) => b.id === input.timer.bookId) : undefined;
+  return {
+    today: {
+      minutes: Math.round(minutes),
+      streak: Math.max(0, input.streak),
+      booksThisYear: Math.max(0, input.booksThisYear),
+      yearlyGoal: Math.max(0, input.yearlyGoal),
+    },
+    timer:
+      timerBook && input.timer.startedAt !== null
+        ? { bookId: timerBook.id, title: trim(timerBook.title, 120), startedAt: input.timer.startedAt }
+        : null,
+    books: input.books
+      .filter((b) => b.userStatus?.status === "reading")
+      .slice(0, MAX_READING_BOOKS)
+      .map((b) => ({ bookId: b.id, title: trim(b.title, 120), author: trim(input.authorName(b), 80), coverUrl: remoteCover(b.coverImageUri) })),
   };
 }
 

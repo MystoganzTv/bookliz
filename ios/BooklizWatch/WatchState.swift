@@ -15,6 +15,37 @@ struct WatchState: Decodable, Equatable {
   let sleepMinutes: [Int]
   let now: NowPlaying?
   let library: [LibraryItem]
+  /// Absent from phones older than the reading page.
+  let reading: Reading?
+}
+
+/// Books on paper / e-reader: today, the reading timer, what is being read.
+struct Reading: Decodable, Equatable {
+  struct Today: Decodable, Equatable {
+    let minutes: Int
+    let streak: Int
+    let booksThisYear: Int
+    let yearlyGoal: Int
+  }
+
+  struct RunningTimer: Decodable, Equatable {
+    let bookId: String
+    let title: String
+    /// Milliseconds since 1970.
+    let startedAt: Double
+  }
+
+  struct ReadingBook: Decodable, Equatable, Identifiable {
+    let bookId: String
+    let title: String
+    let author: String
+    let coverUrl: String?
+    var id: String { bookId }
+  }
+
+  let today: Today
+  let timer: RunningTimer?
+  let books: [ReadingBook]
 }
 
 struct NowPlaying: Decodable, Equatable {

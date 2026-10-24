@@ -163,3 +163,42 @@ describe("runWatchCommand", () => {
     expect(e.jumpToChapter.mock.calls).toEqual([[2]]);
   });
 });
+
+import { buildWatchReading } from "../watchState";
+
+describe("buildWatchReading", () => {
+  const now = new Date(2026, 9, 24, 21, 0, 0); // local time, so "today" is the 24th
+  const reading = (id: string, status: string) =>
+    ({ id, title: id, authorId: "a", coverImageUri: undefined, userStatus: { status } } as unknown as Book);
+  const session = (date: string, minutesRead: number) => ({ date, minutesRead } as never);
+
+  it("adds up today's minutes in local time, and lists only books being read", () => {
+    const r = buildWatchReading({
+      now,
+      books: [reading("a", "reading"), reading("b", "read"), reading("c", "reading")],
+      sessions: [session("2026-10-24", 20), session("2026-10-24", 15.4), session("2026-10-23", 60)],
+      streak: 5,
+      booksThisYear: 12,
+      yearlyGoal: 36,
+      timer: { bookId: null, startedAt: null, isRunning: false },
+      authorName: () => "X",
+    });
+    expect(r.today).toEqual({ minutes: 35, streak: 5, booksThisYear: 12, yearlyGoal: 36 });
+    expect(r.books.map((b) => b.bookId)).toEqual(["a", "c"]);
+    expect(r.timer).toBeNull();
+  });
+
+  it("describes a running timer with its start time (the watch counts the seconds)", () => {
+    const r = buildWatchReading({
+      now,
+      books: [reading("a", "reading")],
+      sessions: [],
+      streak: 0,
+      booksThisYear: 0,
+      yearlyGoal: 0,
+      timer: { bookId: "a", startedAt: 123, isRunning: true },
+      authorName: () => "",
+    });
+    expect(r.timer).toEqual({ bookId: "a", title: "a", startedAt: 123 });
+  });
+});

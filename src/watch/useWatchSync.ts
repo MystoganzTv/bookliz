@@ -12,7 +12,8 @@ import type { AudiobookEngine } from "../audio/audiobookEngine";
 import type { Book } from "../types/models";
 import { isWatchBridgeAvailable, onWatchCommand, onWatchStatus, pushWatchState } from "../../modules/watch-bridge";
 import { runWatchCommand } from "./watchCommands";
-import { buildWatchState } from "./watchState";
+import { buildWatchState, type WatchReading } from "./watchState";
+import type { WatchCommand } from "../../modules/watch-bridge";
 
 const RESYNC_EVERY_MS = 30_000;
 /** A position this far from where the watch's clock would be is a jump: tell it now. */
@@ -20,7 +21,15 @@ const JUMP_SEC = 2;
 
 export function useWatchSync(
   engine: AudiobookEngine,
-  deps: { locale: "en" | "es"; getBook: (id: string) => Book | undefined; authorName: (book: Book) => string }
+  deps: {
+    locale: "en" | "es";
+    getBook: (id: string) => Book | undefined;
+    authorName: (book: Book) => string;
+    /** Today, the reading timer and the books being read — absent until the bridge mounts it. */
+    reading?: WatchReading | null;
+    /** Reading-timer commands need navigation, so the caller runs them. Returns true if handled. */
+    onReadingCommand?: (cmd: WatchCommand) => boolean;
+  }
 ) {
   // Callbacks fire from native events long after this render; they read today's data.
   const depsRef = useRef(deps);
@@ -35,7 +44,7 @@ export function useWatchSync(
     const send = () => {
       const main = engine.getMain();
       if (!main.ready) return;
-      const { locale, getBook, authorName } = depsRef.current;
+      const { locale, getBook, authorName, reading } = depsRef.current;
       const now = Date.now();
       const state = buildWatchState({
         locale,
@@ -50,6 +59,7 @@ export function useWatchSync(
         speedFor: (a) => engine.speedFor(a),
         getBook,
         authorName,
+        reading,
       });
       last = { at: now, pos: state.now?.positionSec ?? 0, playing: state.now?.isPlaying ?? false, speed: state.now?.speed ?? 1 };
       pushWatchState(JSON.stringify(state));
@@ -69,7 +79,7 @@ export function useWatchSync(
       subscribePlayerPrefs(send),
     ];
     const commandSub = onWatchCommand((cmd) => {
-      runWatchCommand(engine, cmd, getPlayerPrefs());
+      if (!depsRef.current.onReadingCommand?.(cmd)) runWatchCommand(engine, cmd, getPlayerPrefs());
       // Most commands change main state and re-send on their own; this covers the rest (sync, bookmark).
       setTimeout(send, 250);
     });
@@ -89,5 +99,5 @@ export function useWatchSync(
   // The watch speaks the app's language, not the watch's: re-send when it changes.
   useEffect(() => {
     sendRef.current();
-  }, [deps.locale]);
+  }, [deps.locale, deps.reading]);
 }

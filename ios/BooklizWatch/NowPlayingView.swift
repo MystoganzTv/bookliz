@@ -58,7 +58,7 @@ struct NowPlayingView: View {
         }
       }
     }
-    .containerBackground(for: .navigation) {
+    .containerBackground(for: .tabView) {
       CoverBackground(url: now.coverUrl)
     }
     .toolbar {

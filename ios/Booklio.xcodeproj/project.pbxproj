@@ -13,6 +13,7 @@
 		09FB95E7F1FA06C53246BD3C /* SleepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B88044213F35C6E1A8B1CF56 /* SleepView.swift */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		1630528CCC930EE6680ECCCC /* BooklizWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37B573700F3B9C260957487 /* BooklizWatchApp.swift */; };
+		1808E05970C7FA081DA381B3 /* ReadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A26A14A86AC63B6206823E33 /* ReadingView.swift */; };
 		211BA6AE0FD21557F7A22E25 /* SpeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA84E292AD3158FBA25BA5F2 /* SpeedView.swift */; };
 		3C5B421CED08F52352AD6E9C /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C53946777CD013AE0FD591A0 /* LibraryView.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
@@ -63,6 +64,7 @@
 		86F325945D28235446226AA0 /* BooklizWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BooklizWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		89E247A5C763CAF0211CD69E /* RootView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		8A1EADB57D33E8DFC4BFFFFF /* NowPlayingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NowPlayingView.swift; sourceTree = "<group>"; };
+		A26A14A86AC63B6206823E33 /* ReadingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReadingView.swift; sourceTree = "<group>"; };
 		A6C18469A65C6FB76945CBB7 /* libPods-Booklio.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Booklio.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = Booklio/SplashScreen.storyboard; sourceTree = "<group>"; };
 		AA5307A4309C93CF1B7D7336 /* Pods-Booklio.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Booklio.release.xcconfig"; path = "Target Support Files/Pods-Booklio/Pods-Booklio.release.xcconfig"; sourceTree = "<group>"; };
@@ -154,6 +156,7 @@
 				4F699B98B7C2C96168062294 /* WatchState.swift */,
 				6CC206C253334A4E9FF2B5ED /* Assets.xcassets */,
 				812CB56B3E965DDC0FE5C49C /* Info.plist */,
+				A26A14A86AC63B6206823E33 /* ReadingView.swift */,
 			);
 			name = BooklizWatch;
 			path = BooklizWatch;
@@ -495,6 +498,7 @@
 				09FB95E7F1FA06C53246BD3C /* SleepView.swift in Sources */,
 				211BA6AE0FD21557F7A22E25 /* SpeedView.swift in Sources */,
 				9AA84F00ED6C21FD798B3A1F /* WatchState.swift in Sources */,
+				1808E05970C7FA081DA381B3 /* ReadingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

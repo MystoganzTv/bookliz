@@ -42,6 +42,7 @@ import { SeriesCompletionModal } from "../components/SeriesCompletionModal";
 import { FloatingTimer } from "../components/FloatingTimer";
 import { MiniPlayer } from "../components/MiniPlayer";
 import { useShortcutLinks } from "../shortcuts/useShortcutLinks";
+import { WatchSyncBridge } from "../watch/WatchSyncBridge";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator<MainTabParamList>();
@@ -201,6 +202,7 @@ export function AppNavigator() {
       {onboardingComplete ? <SeriesCompletionModal /> : null}
       {/* Reading timer — floats above tab bar across all screens */}
       <FloatingTimer />
+      <WatchSyncBridge navigation={navigationRef} />
       {/* Audiobook playing — above the tab bar, and above the timer when both run */}
       {onboardingComplete ? <MiniPlayer routeName={routeName} /> : null}
     </NavigationContainer>
