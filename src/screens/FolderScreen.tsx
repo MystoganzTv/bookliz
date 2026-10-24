@@ -8,7 +8,7 @@ import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useLayoutEffect, useMemo, useState } from "react";
 import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { BookCover } from "../components/BookCover";
+import { MiniCover } from "../components/MiniCover";
 import { CreateListSheet } from "../components/CreateListSheet";
 import { useDialog } from "../components/DialogProvider";
 import { FolderPickerSheet } from "../components/FolderPickerSheet";
@@ -149,7 +149,7 @@ export function FolderScreen() {
               setSheet("moveBook");
             }}
           >
-            <BookCover book={book} size="sm" style={styles.cover} hideProgress />
+            <MiniCover book={book} />
             <View style={styles.bookCopy}>
               <Text style={styles.bookTitle} numberOfLines={2}>{book.title}</Text>
               <Text style={styles.bookAuthor} numberOfLines={1}>{getAuthor(book.authorId)?.name ?? ""}</Text>
@@ -316,7 +316,7 @@ function AddBooksSheet({ open, folderId, folderName, onClose }: { open: boolean;
 function createStyles(c: AppColors) {
   return StyleSheet.create({
     headerButtons: { alignItems: "center", flexDirection: "row", gap: spacing.md },
-    listContent: { paddingBottom: 120, paddingTop: spacing.sm },
+    listContent: { paddingBottom: 120, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
     breadcrumb: { color: c.muted, fontFamily: fonts.body, fontSize: 13, marginBottom: spacing.sm, paddingHorizontal: spacing.xs },
     block: {
       backgroundColor: c.surface,
@@ -337,7 +337,6 @@ function createStyles(c: AppColors) {
     addBtn: { alignItems: "center", flexDirection: "row", gap: 4, minHeight: 36, paddingHorizontal: 6 },
     addBtnText: { color: c.tealDark, fontFamily: fonts.body, fontSize: 14, fontWeight: "800" },
     bookRow: { alignItems: "center", borderRadius: radii.sm, flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.xs, paddingVertical: 8 },
-    cover: { height: 66, width: 44 },
     bookCopy: { flex: 1 },
     bookTitle: { color: c.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: "800" },
     bookAuthor: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 13, marginTop: 2 },

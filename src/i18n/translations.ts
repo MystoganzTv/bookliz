@@ -39,6 +39,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       hoursMinutes: "{h} h {m} min",
     },
     folders: {
+      createBtn: "Create folder",
       title: "Folders",
       new: "New folder",
       newSub: "New subfolder",
@@ -1330,6 +1331,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       hoursMinutes: "{h} h {m} min",
     },
     folders: {
+      createBtn: "Crear carpeta",
       title: "Carpetas",
       new: "Nueva carpeta",
       newSub: "Nueva subcarpeta",

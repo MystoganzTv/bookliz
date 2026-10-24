@@ -89,7 +89,7 @@ export function CreateListSheet({ open, initialName = "", initialEmoji = "📚",
             onPress={handleSave}
             disabled={!canSave}
           >
-            <Text style={styles.saveBtnText}>{mode === "rename" ? t("lists.renameBtn") : t("lists.createBtn")}</Text>
+            <Text style={styles.saveBtnText}>{mode === "rename" ? t("lists.renameBtn") : kind === "folder" ? t("folders.createBtn") : t("lists.createBtn")}</Text>
           </Pressable>
 
           {mode === "rename" && onDelete ? (

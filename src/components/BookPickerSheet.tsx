@@ -11,7 +11,7 @@ import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
 import { AppColors, fonts, radii, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
-import { BookCover } from "./BookCover";
+import { MiniCover } from "./MiniCover";
 
 const norm = (s: string) =>
   s
@@ -92,7 +92,7 @@ export function BookPickerSheet({ open, title, initialQuery = "", onPick, onClos
                 onClose();
               }}
             >
-              <BookCover book={book} size="sm" style={styles.cover} hideProgress />
+              <MiniCover book={book} />
               <View style={styles.copy}>
                 <Text style={styles.bookTitle} numberOfLines={2}>{book.title}</Text>
                 <Text style={styles.author} numberOfLines={1}>{author}</Text>
@@ -130,7 +130,6 @@ function createStyles(c: AppColors) {
       paddingVertical: 10,
     },
     row: { alignItems: "center", borderRadius: radii.sm, flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.xs, paddingVertical: 8 },
-    cover: { height: 66, width: 44 },
     copy: { flex: 1 },
     bookTitle: { color: c.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: "800" },
     author: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 13, marginTop: 2 },
