@@ -9,7 +9,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Application from "expo-application";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Image, Platform, Share, StyleSheet, Text, View } from "react-native";
+import { Image, Linking, Platform, Share, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 import { loadIncludeAudioInBackup, setIncludeAudioInBackup } from "../audio/audioBackup";
@@ -25,6 +25,7 @@ import { SettingsGroup, SettingsRow, SettingsToggleRow } from "../components/set
 import { useBookliz } from "../data/BooklizContext";
 import { findContradictedLanguages } from "../data/languageRepair";
 import { SHORTCUT_LINKS } from "../shortcuts/shortcutLinks";
+import { buildDebugInfo, SUPPORT_EMAIL } from "../support/debugInfo";
 import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
 import { useTheme } from "../theme/ThemeContext";
@@ -42,6 +43,7 @@ export function SettingsScreen() {
   const {
     resetApp,
     clearLibrary,
+    repositoryStatus,
     userProfile,
     books,
     readingSessions,
@@ -135,6 +137,30 @@ export function SettingsScreen() {
   }, []);
 
   const versionLine = appVersionLine();
+
+  const debugText = () =>
+    buildDebugInfo({
+      versionLine,
+      locale,
+      theme: themePreference,
+      books: books.length,
+      sessions: readingSessions.length,
+      audiobooks: audioFolders.length,
+      audioBytes,
+      sync: repositoryStatus,
+      prefs: playerPrefs,
+      watch,
+      audioInBackup,
+      now: new Date(),
+    });
+
+  const emailSupport = () => {
+    const subject = encodeURIComponent(`Bookliz — ${versionLine || "support"}`);
+    const body = encodeURIComponent(`\n\n\n${debugText()}`);
+    Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`).catch(() =>
+      dialog.alert(t("support.noMailTitle"), t("support.noMailBody", { email: SUPPORT_EMAIL }))
+    );
+  };
 
   return (
     <Screen>
@@ -332,6 +358,17 @@ export function SettingsScreen() {
           />
         </SettingsGroup>
       ) : null}
+
+      {/* ── Support ──────────────────────────────────────────────────────── */}
+      <SettingsGroup header={t("support.header")} footer={t("support.footer")}>
+        <SettingsRow title={t("support.email")} subtitle={SUPPORT_EMAIL} chevron={false} onPress={emailSupport} />
+        <SettingsRow
+          title={t("support.debug")}
+          chevron={false}
+          onPress={() => { void Share.share({ message: debugText() }).catch(() => {}); }}
+        />
+        <SettingsRow title={t("credits.title")} onPress={() => navigation.navigate("Credits")} />
+      </SettingsGroup>
 
       {/* ── Legal ────────────────────────────────────────────────────────── */}
       <SettingsGroup header={t("settings.legalTitle")}>

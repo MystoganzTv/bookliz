@@ -6,6 +6,23 @@ type TranslationTree = {
 
 export const translations: Record<AppLocale, TranslationTree> = {
   en: {
+    credits: {
+      title: "Credits and licences",
+      dataHeader: "Book data",
+      dataFooter: "Titles, covers, synopses and editions come from these catalogues. Bookliz never invents what they don't have.",
+      openLibrary: "Internet Archive's open book catalogue",
+      googleBooks: "Book search and editions",
+      codeHeader: "Open source",
+      codeFooter: "Bookliz is built on these projects. Thank you to everyone who maintains them.",
+    },
+    support: {
+      header: "Support",
+      footer: "Debug information is counts and settings only — no titles, notes or e-mail address. You see all of it before sending.",
+      email: "Send us an email",
+      debug: "Share debug information",
+      noMailTitle: "No mail app",
+      noMailBody: "Write to {email} from any mail app.",
+    },
     shortcuts: {
       header: "Shortcuts",
       footer: "In the Shortcuts app, add an “Open URL” action with one of these links (tap to share or copy it). Bookliz opens and does it — handy with Siri, Back Tap or an NFC tag by the bed.",
@@ -1221,6 +1238,23 @@ export const translations: Record<AppLocale, TranslationTree> = {
     },
   },
   es: {
+    credits: {
+      title: "Créditos y licencias",
+      dataHeader: "Datos de libros",
+      dataFooter: "Títulos, portadas, sinopsis y ediciones vienen de estos catálogos. Bookliz nunca inventa lo que no tienen.",
+      openLibrary: "El catálogo abierto de libros del Internet Archive",
+      googleBooks: "Búsqueda de libros y ediciones",
+      codeHeader: "Código abierto",
+      codeFooter: "Bookliz está hecho sobre estos proyectos. Gracias a quienes los mantienen.",
+    },
+    support: {
+      header: "Soporte",
+      footer: "La información de depuración son recuentos y ajustes: ni títulos, ni notas, ni tu correo. La ves entera antes de enviarla.",
+      email: "Envíanos un correo",
+      debug: "Compartir información de depuración",
+      noMailTitle: "No hay app de correo",
+      noMailBody: "Escribe a {email} desde cualquier app de correo.",
+    },
     shortcuts: {
       header: "Atajos",
       footer: "En la app Atajos, añade la acción «Abrir URL» con uno de estos enlaces (tócalo para compartirlo o copiarlo). Bookliz se abre y lo hace: útil con Siri, Toque posterior o una etiqueta NFC junto a la cama.",

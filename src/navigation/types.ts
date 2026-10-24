@@ -41,6 +41,8 @@ export type RootStackParamList = {
   PlayerSettings: undefined;
   /** Settings > Storage > Manage files. */
   ManageAudio: undefined;
+  /** Settings > Credits and licences. */
+  Credits: undefined;
   EditBook: { bookId: string };
   Achievements: undefined;
   WriteReview: { bookId: string };
