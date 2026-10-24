@@ -1,0 +1,7 @@
+{
+  "name": "now-playing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lock-screen / Control Center / Apple Watch Now Playing tweaks expo-audio does not expose (skip intervals).",
+  "main": "index.ts"
+}

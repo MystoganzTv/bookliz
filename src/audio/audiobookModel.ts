@@ -61,8 +61,6 @@ export interface Audiobook {
 
 /** iOS caps AVPlayer at 2×. */
 export const PLAYBACK_SPEEDS = [0.75, 1, 1.25, 1.5, 1.75, 2] as const;
-export const SKIP_BACK_SEC = 30;
-export const SKIP_FORWARD_SEC = 30;
 /** Inside this many seconds of a chapter, "previous" goes to the chapter before rather than restarting this one. */
 const RESTART_WINDOW_SEC = 3;
 

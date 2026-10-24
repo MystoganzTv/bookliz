@@ -126,3 +126,46 @@ describe("small helpers", () => {
     expect(initialPosition(1000, 100, false)).toBe(0);
   });
 });
+
+import {
+  isRemovedAt,
+  listenedTrackIndexes,
+  nextPlayableTrack,
+  playablePosition,
+  returnPointAfterJump,
+} from "../audiobookModel";
+
+describe("deleted listened files", () => {
+  const parts: AudioTrack[] = [
+    { file: "1.mp3", title: "1", durationSec: 100, removed: true },
+    { file: "2.mp3", title: "2", durationSec: 100, removed: true },
+    { file: "3.mp3", title: "3", durationSec: 100 },
+    { file: "4.mp3", title: "4", durationSec: 100 },
+  ];
+  it("keeps the timeline but skips what is gone", () => {
+    expect(isRemovedAt(parts, 150)).toBe(true);
+    expect(isRemovedAt(parts, 250)).toBe(false);
+    expect(playablePosition(parts, 150)).toBe(200);
+    expect(playablePosition(parts, 250)).toBe(250);
+    expect(nextPlayableTrack(parts, 0)).toBe(2);
+    expect(nextPlayableTrack(parts, 3)).toBe(-1);
+  });
+  it("only offers files entirely behind the listener, never in a one-file book", () => {
+    const fresh = parts.map((t) => ({ ...t, removed: false }));
+    expect(listenedTrackIndexes(fresh, 250)).toEqual([0, 1]);
+    expect(listenedTrackIndexes(fresh, 199)).toEqual([0]);
+    expect(listenedTrackIndexes(parts, 350)).toEqual([2]);
+    expect(listenedTrackIndexes([fresh[0]], 90)).toEqual([]);
+  });
+});
+
+describe("return point", () => {
+  it("remembers where you were before a big jump, and only the first one", () => {
+    expect(returnPointAfterJump(undefined, 1000, 1030)).toBeUndefined(); // +30 is not a jump
+    expect(returnPointAfterJump(undefined, 1000, 5000)).toBe(1000);
+    expect(returnPointAfterJump(1000, 5000, 9000)).toBe(1000);
+  });
+  it("clears once you are back", () => {
+    expect(returnPointAfterJump(1000, 5000, 1010)).toBeUndefined();
+  });
+});

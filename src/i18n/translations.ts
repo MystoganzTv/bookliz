@@ -6,6 +6,28 @@ type TranslationTree = {
 
 export const translations: Record<AppLocale, TranslationTree> = {
   en: {
+    playerSettings: {
+      title: "Player controls",
+      seconds: "{n} seconds",
+      skipHeader: "Skip buttons",
+      skipBack: "Skip back",
+      skipForward: "Skip forward",
+      skipFooter: "Also used by the lock screen, Control Center, headphones and Apple Watch.",
+      smartRewind: "Smart rewind",
+      smartRewindFooter: "When you resume, Bookliz steps back a few seconds — more the longer it was paused (up to 30 s), so you pick the thread up again.",
+      scopeHeader: "Progress bar",
+      scopeChapter: "Current chapter",
+      scopeBook: "Whole book",
+      scopeFooter: "Books without chapters always show the whole book.",
+      timeHeader: "Time on the right",
+      timeRemaining: "Time left",
+      timeTotal: "Total length",
+      speedHeader: "Speed",
+      globalSpeed: "Same speed for every book",
+      globalSpeedOn: "Every book plays at {speed}. Changing the speed in the player changes it for all of them.",
+      globalSpeedOff: "Each book remembers its own speed.",
+      rowTitle: "Player controls",
+    },
     nav: {
       tabs: {
         home: "Home",
@@ -79,6 +101,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       addBook: "Add a book",
     },
     settings: {
+      playbackHeader: "Playback",
       audioBackup: {
         header: "iCloud Backup",
         toggle: "Include audio files",
@@ -91,6 +114,8 @@ export const translations: Record<AppLocale, TranslationTree> = {
       choice: {
         language: "Language",
         theme: "Theme",
+        skipBack: "Skip back",
+        skipForward: "Skip forward",
       },
       theme: {
         system: "System",
@@ -1160,6 +1185,28 @@ export const translations: Record<AppLocale, TranslationTree> = {
     },
   },
   es: {
+    playerSettings: {
+      title: "Controles del reproductor",
+      seconds: "{n} segundos",
+      skipHeader: "Botones de salto",
+      skipBack: "Retroceder",
+      skipForward: "Avanzar",
+      skipFooter: "También los usan la pantalla de bloqueo, el Centro de control, los auriculares y el Apple Watch.",
+      smartRewind: "Rebobinado inteligente",
+      smartRewindFooter: "Al reanudar, Bookliz retrocede unos segundos —más cuanto más tiempo estuvo en pausa, hasta 30 s— para que retomes el hilo.",
+      scopeHeader: "Barra de progreso",
+      scopeChapter: "Capítulo actual",
+      scopeBook: "Libro entero",
+      scopeFooter: "Los libros sin capítulos siempre muestran el libro entero.",
+      timeHeader: "Tiempo a la derecha",
+      timeRemaining: "Tiempo restante",
+      timeTotal: "Duración total",
+      speedHeader: "Velocidad",
+      globalSpeed: "Misma velocidad en todos los libros",
+      globalSpeedOn: "Todos los libros suenan a {speed}. Cambiar la velocidad en el reproductor la cambia para todos.",
+      globalSpeedOff: "Cada libro recuerda su propia velocidad.",
+      rowTitle: "Controles del reproductor",
+    },
     nav: {
       tabs: {
         home: "Inicio",
@@ -1228,6 +1275,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       addBook: "Añadir libro",
     },
     settings: {
+      playbackHeader: "Reproducción",
       audioBackup: {
         header: "Copia de iCloud",
         toggle: "Incluir archivos de audio",
@@ -1240,6 +1288,8 @@ export const translations: Record<AppLocale, TranslationTree> = {
       choice: {
         language: "Idioma",
         theme: "Tema",
+        skipBack: "Retroceder",
+        skipForward: "Avanzar",
       },
       theme: {
         system: "Sistema",

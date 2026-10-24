@@ -36,7 +36,9 @@ export type RootStackParamList = {
   EditProfile: undefined;
   Settings: undefined;
   /** A multi-choice setting on its own screen (BookPlayer-style). */
-  SettingsChoice: { setting: "language" | "theme" };
+  SettingsChoice: { setting: "language" | "theme" | "skipBack" | "skipForward" };
+  /** Settings > Player controls. */
+  PlayerSettings: undefined;
   EditBook: { bookId: string };
   Achievements: undefined;
   WriteReview: { bookId: string };

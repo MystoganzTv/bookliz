@@ -166,6 +166,11 @@ export function SettingsScreen() {
         />
       </SettingsGroup>
 
+      {/* ── Playback ─────────────────────────────────────────────────────── */}
+      <SettingsGroup header={t("settings.playbackHeader")}>
+        <SettingsRow title={t("playerSettings.rowTitle")} onPress={() => navigation.navigate("PlayerSettings")} />
+      </SettingsGroup>
+
       {/* ── Reminders ────────────────────────────────────────────────────── */}
       <SettingsGroup
         header={t("notifications.settingsTitle")}

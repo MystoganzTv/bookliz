@@ -40,9 +40,8 @@ import {
   formatSpeed,
   PLAYBACK_SPEEDS,
   formatBytes,
-  SKIP_BACK_SEC,
-  SKIP_FORWARD_SEC,
 } from "../audio/audiobookModel";
+import { usePlayerPrefs } from "../audio/playerPrefs";
 import { useAttachAudio } from "../audio/useAttachAudio";
 import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
@@ -70,6 +69,7 @@ export function AudioPlayerScreen() {
   const player = useAudiobookPlayer();
   const { engine } = player;
   const livePosition = useAudiobookPosition();
+  const prefs = usePlayerPrefs();
   const [scrub, setScrub] = useState<number | null>(null);
   const [sheet, setSheet] = useState<SheetName>(null);
   const [listTab, setListTab] = useState<"chapters" | "bookmarks">("chapters");
@@ -123,8 +123,10 @@ export function AudioPlayerScreen() {
   const bookmarks = audiobook.bookmarks ?? [];
   const chapterIndex = chapterIndexAt(chapters, sec);
   const chapter = chapterIndex >= 0 ? chapters[chapterIndex] : null;
-  const rangeStart = chapter ? chapter.startSec : 0;
-  const rangeEnd = chapter ? chapter.endSec : total;
+  // Settings > Player controls: the scrubber spans the chapter (default) or the whole book.
+  const byChapter = prefs.progressScope === "chapter" && chapter !== null;
+  const rangeStart = byChapter && chapter ? chapter.startSec : 0;
+  const rangeEnd = byChapter && chapter ? chapter.endSec : total;
   const heading = chapter ? chapter.title || t("player.chapterN", { n: chapterIndex + 1 }) : book.title;
   const subheading = chapter ? [book.title, author].filter(Boolean).join(" · ") : author;
   const pct = Math.min(100, Math.floor((sec / Math.max(1, total)) * 100));
@@ -279,13 +281,15 @@ export function AudioPlayerScreen() {
         <View style={styles.times}>
           <Text style={[styles.time, styles.timeLeft]}>{formatClock(sec - rangeStart)}</Text>
           <Text style={[styles.time, styles.timeMid]}>{t("player.percent", { pct })}</Text>
-          <Text style={[styles.time, styles.timeRight]}>-{formatClock(rangeEnd - sec)}</Text>
+          <Text style={[styles.time, styles.timeRight]}>
+            {prefs.timeDisplay === "remaining" ? `-${formatClock(rangeEnd - sec)}` : formatClock(rangeEnd - rangeStart)}
+          </Text>
         </View>
       </View>
 
       {/* ── −30 · play · +30 ─────────────────────────────────────────────── */}
       <View style={styles.transport}>
-        <SkipButton label={t("player.skipBack", { n: SKIP_BACK_SEC })} text={`-${SKIP_BACK_SEC}`} back onPress={() => void engine.skip(-SKIP_BACK_SEC)} />
+        <SkipButton label={t("player.skipBack", { n: prefs.skipBackSec })} text={`-${prefs.skipBackSec}`} back onPress={() => void engine.skip(-prefs.skipBackSec)} />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={playing ? t("player.pause") : t("player.play")}
@@ -299,7 +303,7 @@ export function AudioPlayerScreen() {
             <Ionicons name={playing ? "pause" : "play"} size={88} color={P.teal} style={playing ? undefined : styles.playNudge} />
           )}
         </Pressable>
-        <SkipButton label={t("player.skipForward", { n: SKIP_FORWARD_SEC })} text={`+${SKIP_FORWARD_SEC}`} onPress={() => void engine.skip(SKIP_FORWARD_SEC)} />
+        <SkipButton label={t("player.skipForward", { n: prefs.skipForwardSec })} text={`+${prefs.skipForwardSec}`} onPress={() => void engine.skip(prefs.skipForwardSec)} />
       </View>
 
       {isActive && player.loadError ? (
@@ -344,7 +348,7 @@ export function AudioPlayerScreen() {
       {/* ── Round controls ───────────────────────────────────────────────── */}
       <View style={styles.dock}>
         <RoundButton label={t("player.speed")} onPress={() => setSheet("speed")}>
-          <Text style={styles.speedText}>{formatSpeed(audiobook.speed)}</Text>
+          <Text style={styles.speedText}>{formatSpeed(engine.speedFor(audiobook))}</Text>
         </RoundButton>
         <RoundButton label={t("player.sleep")} active={Boolean(timer)} onPress={() => setSheet("sleep")}>
           {sleepCountdown ? (
@@ -442,7 +446,7 @@ export function AudioPlayerScreen() {
           <SheetRow
             key={speed}
             label={formatSpeed(speed)}
-            selected={Math.abs(speed - audiobook.speed) < 0.01}
+            selected={Math.abs(speed - engine.speedFor(audiobook)) < 0.01}
             onPress={() => {
               setSheet(null);
               engine.setSpeed(speed);

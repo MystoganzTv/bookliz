@@ -13,19 +13,27 @@
  * second and only the scrubber and mini-player listen to it.
  */
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer, type AudioStatus } from "expo-audio";
+import { setLockScreenSkipIntervals } from "../../modules/now-playing";
 import type { Book, NewReadingSessionInput } from "../types/models";
+import { getPlayerPrefs, loadPlayerPrefs, smartRewindSec, subscribePlayerPrefs, updatePlayerPrefs } from "./playerPrefs";
 import {
   chapterIndexAt,
   initialPosition,
+  listenedTrackIndexes,
   locate,
   nextChapterTarget,
+  nextPlayableTrack,
+  playablePosition,
   previousChapterTarget,
+  returnPointAfterJump,
   trackStarts,
   type Audiobook,
 } from "./audiobookModel";
 import {
   AudioImportError,
   audioFileExists,
+  audioFileSize,
+  deleteAudioFile,
   deleteAudioFolder,
   importAudioFiles,
   pickAudioFiles,
@@ -80,6 +88,8 @@ const SAVE_PENDING_EVERY_MS = 10_000;
 const LOAD_TIMEOUT_MS = 15_000;
 /** A book this close to its end opens again from the top. */
 const RESTART_AT_END_SEC = 2;
+/** Listening this long at the new spot after a jump means the jump was meant: forget the way back. */
+const RETURN_FORGET_AFTER_MS = 2 * 60_000;
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -122,6 +132,11 @@ export class AudiobookEngine {
   private poll: ReturnType<typeof setInterval> | null = null;
   private started = false;
   private lockScreenFor: string | null = null;
+  /** Playback time since the last big jump, toward forgetting the return point. */
+  private listenedSinceJumpMs = 0;
+  private lastObserveAt = 0;
+  /** When playback last stopped — drives smart rewind. Null while playing. */
+  private pausedAt: number | null = null;
 
   constructor(host: EngineHost) {
     this.host = host;
@@ -165,6 +180,8 @@ export class AudiobookEngine {
   async start() {
     if (this.started) return;
     this.started = true;
+    await loadPlayerPrefs();
+    subscribePlayerPrefs(() => this.onPrefsChanged());
     try {
       await setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true, interruptionMode: "doNotMix" });
     } catch {
@@ -183,7 +200,8 @@ export class AudiobookEngine {
     const library: AudioLibrary = {};
     if (stored) {
       for (const [bookId, audiobook] of Object.entries(stored)) {
-        const intact = audiobook.tracks.length > 0 && audiobook.tracks.every((t) => audioFileExists(audiobook.folder, t.file));
+        const kept = audiobook.tracks.filter((t) => !t.removed);
+      const intact = kept.length > 0 && kept.every((t) => audioFileExists(audiobook.folder, t.file));
         if (this.host.getBook(bookId) && intact) library[bookId] = audiobook;
         else deleteAudioFolder(audiobook.folder);
       }
@@ -247,7 +265,7 @@ export class AudiobookEngine {
       }
       if (localSec > 0.5) await player.seekTo(Math.min(localSec, track.durationSec - 0.5), 500, 500);
       // A new item starts at 1× with the default pitch algorithm.
-      player.setPlaybackRate(audiobook.speed);
+      player.setPlaybackRate(this.speedFor(audiobook));
       this.setPosition(trackStarts(audiobook.tracks)[index] + localSec);
       this.applyLockScreen(audiobook);
     } finally {
@@ -271,7 +289,12 @@ export class AudiobookEngine {
     };
     try {
       if (this.lockScreenFor === audiobook.bookId) player.updateLockScreenMetadata(metadata);
-      else player.setActiveForLockScreen(true, metadata, { showSeekForward: true, showSeekBackward: true });
+      else {
+        player.setActiveForLockScreen(true, metadata, { showSeekForward: true, showSeekBackward: true });
+        // expo-audio (re)arms the remote commands with 10 s each time; put ours back after it.
+        this.syncLockScreenIntervals();
+        setTimeout(() => this.syncLockScreenIntervals(), 500);
+      }
       this.lockScreenFor = audiobook.bookId;
     } catch {
       // Lock-screen controls are a nicety; playback does not depend on them.
@@ -305,16 +328,38 @@ export class AudiobookEngine {
 
     const sec = clamp(trackStarts(audiobook.tracks)[this.trackIndex] + (s.currentTime || 0), 0, audiobook.totalSec);
     this.setPosition(sec);
-    if (this.main.isPlaying !== s.playing) this.setMain({ isPlaying: s.playing });
+    if (this.main.isPlaying !== s.playing) {
+      // Resumed from outside the app (lock screen, AirPods, watch): same smart rewind.
+      const back = s.playing ? this.rewindFor(now) : 0;
+      this.pausedAt = s.playing ? null : now;
+      // State first: seekTo reads isPlaying to decide whether a new file keeps playing.
+      this.setMain({ isPlaying: s.playing });
+      if (back > 0) void this.seekTo(Math.max(0, sec - back), { remember: false });
+    }
     this.trackListen(bookId, s.playing, sec, now);
     this.checkChapterSleep(sec);
 
     if (!s.playing || now - this.lastPositionSave > SAVE_POSITION_EVERY_MS) this.savePosition(bookId, sec, false);
+
+    // Listening on at the new spot: after a while the jump was clearly meant.
+    const sinceLast = this.lastObserveAt ? Math.min(2000, now - this.lastObserveAt) : 0;
+    this.lastObserveAt = now;
+    if (s.playing && audiobook.returnSec !== undefined) {
+      this.listenedSinceJumpMs += sinceLast;
+      if (this.listenedSinceJumpMs > RETURN_FORGET_AFTER_MS) this.setReturnPoint(bookId, undefined);
+    }
+  }
+
+  private setReturnPoint(bookId: string, sec: number | undefined) {
+    const current = this.library[bookId];
+    if (!current || current.returnSec === sec) return;
+    const { returnSec: _drop, ...rest } = current;
+    this.commitLibrary({ ...this.library, [bookId]: sec === undefined ? rest : { ...rest, returnSec: sec } });
   }
 
   private async onTrackEnd(audiobook: Audiobook) {
-    const next = this.trackIndex + 1;
-    if (next < audiobook.tracks.length) {
+    const next = nextPlayableTrack(audiobook.tracks, this.trackIndex);
+    if (next >= 0) {
       await this.loadTrack(audiobook, next, 0, true);
       return;
     }
@@ -427,7 +472,15 @@ export class AudiobookEngine {
       this.setMain({ activeBookId: bookId, sleepTimer: null });
       void saveActiveAudioBook(bookId);
     }
-    const from = audiobook.positionSec >= audiobook.totalSec - RESTART_AT_END_SEC ? 0 : audiobook.positionSec;
+    let wanted = audiobook.positionSec >= audiobook.totalSec - RESTART_AT_END_SEC ? 0 : audiobook.positionSec;
+    // Coming back to a book: it last played at lastPlayedAt (saved every few seconds while playing).
+    const lastPlayed = audiobook.lastPlayedAt ? Date.parse(audiobook.lastPlayedAt) : NaN;
+    this.pausedAt = Number.isFinite(lastPlayed) ? lastPlayed : null;
+    if (autoplay && wanted > 0) {
+      wanted = Math.max(0, wanted - this.rewindFor(Date.now()));
+      this.pausedAt = null;
+    }
+    const from = playablePosition(audiobook.tracks, wanted) ?? 0;
     const { index, localSec } = locate(audiobook.tracks, from);
     this.setPosition(from);
     await this.loadTrack(audiobook, index, localSec, autoplay);
@@ -443,7 +496,17 @@ export class AudiobookEngine {
       return;
     }
     if (this.position >= audiobook.totalSec - RESTART_AT_END_SEC) {
-      void this.seekTo(0).then(() => this.play());
+      void this.seekTo(0, { remember: false }).then(() => this.play());
+      return;
+    }
+    const back = this.rewindFor(Date.now());
+    this.pausedAt = null;
+    if (back > 0) {
+      const player = this.player;
+      void this.seekTo(Math.max(0, this.position - back), { remember: false }).then(() => {
+        player.play();
+        this.observe();
+      });
       return;
     }
     this.player.play();
@@ -451,6 +514,7 @@ export class AudiobookEngine {
   }
 
   pause() {
+    this.pausedAt = Date.now();
     this.player?.pause();
     this.observe();
     const bookId = this.loadedBookId;
@@ -462,11 +526,23 @@ export class AudiobookEngine {
     else this.play();
   }
 
-  async seekTo(sec: number) {
+  /**
+   * Move to a book position. `remember` (default) keeps the way back after a
+   * big jump — see returnPointAfterJump.
+   */
+  async seekTo(sec: number, { remember = true }: { remember?: boolean } = {}) {
     const bookId = this.main.activeBookId;
     const audiobook = bookId ? this.library[bookId] : undefined;
     if (!audiobook || !bookId) return;
-    const target = clamp(sec, 0, audiobook.totalSec);
+    // A deleted (already listened) file cannot play: land on the next one still here.
+    const target = playablePosition(audiobook.tracks, clamp(sec, 0, audiobook.totalSec)) ?? this.position;
+    if (remember) {
+      const next = returnPointAfterJump(audiobook.returnSec, this.position, target);
+      if (next !== audiobook.returnSec) {
+        this.listenedSinceJumpMs = 0;
+        this.setReturnPoint(bookId, next);
+      }
+    }
     const { index, localSec } = locate(audiobook.tracks, target);
     const wasPlaying = this.main.isPlaying;
     if (this.loadedBookId !== bookId || index !== this.trackIndex || !this.player) {
@@ -508,8 +584,73 @@ export class AudiobookEngine {
     const bookId = this.main.activeBookId;
     const audiobook = bookId ? this.library[bookId] : undefined;
     if (!audiobook || !bookId) return;
-    this.commitLibrary({ ...this.library, [bookId]: { ...audiobook, speed } });
+    if (getPlayerPrefs().globalSpeed) updatePlayerPrefs({ speed });
+    else this.commitLibrary({ ...this.library, [bookId]: { ...audiobook, speed } });
     if (this.loadedBookId === bookId) this.player?.setPlaybackRate(speed);
+  }
+
+  /** Go back to where the listener was before their last big jump. */
+  returnToLastSpot() {
+    const bookId = this.main.activeBookId;
+    const target = bookId ? this.library[bookId]?.returnSec : undefined;
+    if (!bookId || target === undefined) return;
+    this.setReturnPoint(bookId, undefined);
+    void this.seekTo(target, { remember: false });
+  }
+
+  dismissReturnPoint() {
+    if (this.main.activeBookId) this.setReturnPoint(this.main.activeBookId, undefined);
+  }
+
+  /** Files already listened to that can go, and how much space they take. */
+  listenedFiles(bookId: string): { count: number; bytes: number } {
+    const audiobook = this.library[bookId];
+    if (!audiobook) return { count: 0, bytes: 0 };
+    const sec = this.main.activeBookId === bookId ? this.position : audiobook.positionSec;
+    const indexes = listenedTrackIndexes(audiobook.tracks, sec);
+    return {
+      count: indexes.length,
+      bytes: indexes.reduce((sum, i) => sum + audioFileSize(audiobook.folder, audiobook.tracks[i].file), 0),
+    };
+  }
+
+  /** Delete the files behind the listener. Progress, sessions and the timeline stay as they are. */
+  removeListenedFiles(bookId: string): number {
+    const audiobook = this.library[bookId];
+    if (!audiobook) return 0;
+    const sec = this.main.activeBookId === bookId ? this.position : audiobook.positionSec;
+    const indexes = new Set(listenedTrackIndexes(audiobook.tracks, sec));
+    if (!indexes.size) return 0;
+    for (const i of indexes) deleteAudioFile(audiobook.folder, audiobook.tracks[i].file);
+    const tracks = audiobook.tracks.map((t, i) => (indexes.has(i) ? { ...t, removed: true } : t));
+    const next: Audiobook = { ...audiobook, tracks };
+    // A way back into audio that no longer exists is no way back.
+    if (next.returnSec !== undefined && playablePosition(tracks, next.returnSec) !== next.returnSec) delete next.returnSec;
+    this.commitLibrary({ ...this.library, [bookId]: next });
+    return indexes.size;
+  }
+
+  /** Bookmark where the listener is now. Returns the bookmarked second, or null with no book loaded. */
+  addBookmark(): number | null {
+    const bookId = this.main.activeBookId;
+    const audiobook = bookId ? this.library[bookId] : undefined;
+    if (!audiobook || !bookId) return null;
+    const sec = Math.floor(this.position);
+    const bookmarks = [...(audiobook.bookmarks ?? [])];
+    // Two taps in the same few seconds are one bookmark.
+    if (!bookmarks.some((b) => Math.abs(b.sec - sec) < 3)) {
+      bookmarks.push({ id: `bm-${Date.now().toString(36)}`, sec, createdAt: new Date().toISOString() });
+      bookmarks.sort((a, b) => a.sec - b.sec);
+      this.commitLibrary({ ...this.library, [bookId]: { ...audiobook, bookmarks } });
+    }
+    return sec;
+  }
+
+  removeBookmark(bookId: string, bookmarkId: string) {
+    const audiobook = this.library[bookId];
+    if (!audiobook) return;
+    const bookmarks = (audiobook.bookmarks ?? []).filter((b) => b.id !== bookmarkId);
+    this.commitLibrary({ ...this.library, [bookId]: { ...audiobook, bookmarks } });
   }
 
   /** Stop and put the book away: its listen is logged now, the mini-player goes. */
@@ -527,6 +668,34 @@ export class AudiobookEngine {
     this.loadedBookId = null;
     this.setMain({ activeBookId: null, isPlaying: false, sleepTimer: null, loadError: null });
     void saveActiveAudioBook(null);
+  }
+
+  /** The speed this book plays at: the global one, or its own. */
+  speedFor(audiobook: Audiobook): number {
+    const prefs = getPlayerPrefs();
+    return prefs.globalSpeed ? prefs.speed : audiobook.speed;
+  }
+
+  private rewindFor(now: number): number {
+    if (!getPlayerPrefs().smartRewind || this.pausedAt === null) return 0;
+    return smartRewindSec(now - this.pausedAt);
+  }
+
+  private syncLockScreenIntervals() {
+    const prefs = getPlayerPrefs();
+    setLockScreenSkipIntervals(prefs.skipBackSec, prefs.skipForwardSec);
+  }
+
+  private onPrefsChanged() {
+    this.syncLockScreenIntervals();
+    const audiobook = this.loadedBookId ? this.library[this.loadedBookId] : undefined;
+    if (audiobook) {
+      try {
+        this.player?.setPlaybackRate(this.speedFor(audiobook));
+      } catch {
+        // player released
+      }
+    }
   }
 
   private activeAudiobook(): Audiobook | undefined {

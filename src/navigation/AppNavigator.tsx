@@ -27,6 +27,7 @@ import { LegalScreen } from "../screens/LegalScreen";
 import { WelcomeScreen } from "../screens/WelcomeScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { SettingsChoiceScreen } from "../screens/SettingsChoiceScreen";
+import { PlayerSettingsScreen } from "../screens/PlayerSettingsScreen";
 import { OnboardingWelcomeScreen } from "../screens/onboarding/OnboardingWelcomeScreen";
 import { OnboardingNameScreen } from "../screens/onboarding/OnboardingNameScreen";
 import { OnboardingGenresScreen } from "../screens/onboarding/OnboardingGenresScreen";
@@ -178,6 +179,7 @@ export function AppNavigator() {
         <Stack.Screen component={EditProfileScreen} name="EditProfile" options={{ title: t("nav.stack.editProfile") }} />
         <Stack.Screen component={SettingsScreen} name="Settings" options={{ title: t("nav.stack.settings") }} />
         <Stack.Screen component={SettingsChoiceScreen} name="SettingsChoice" options={{ title: "" }} />
+        <Stack.Screen component={PlayerSettingsScreen} name="PlayerSettings" options={{ title: t("playerSettings.title") }} />
         <Stack.Screen component={EditBookScreen} name="EditBook" options={{ title: t("nav.stack.editBook") }} />
         <Stack.Screen component={AchievementsScreen} name="Achievements" options={{ title: "" }} />
         <Stack.Screen component={WriteReviewScreen} name="WriteReview" options={{ title: t("nav.stack.writeReview") }} />
