@@ -40,6 +40,7 @@ import { WhatsNewModal } from "../components/WhatsNewModal";
 import { SeriesCompletionModal } from "../components/SeriesCompletionModal";
 import { FloatingTimer } from "../components/FloatingTimer";
 import { MiniPlayer } from "../components/MiniPlayer";
+import { useShortcutLinks } from "../shortcuts/useShortcutLinks";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator<MainTabParamList>();
@@ -127,6 +128,7 @@ export function AppNavigator() {
   // The focused screen, leaf-most (a tab, not "AppTabs") — the mini-player shows only on some.
   const [routeName, setRouteName] = useState<string | undefined>();
   const syncRouteName = () => setRouteName(navigationRef.getCurrentRoute()?.name);
+  useShortcutLinks(navigationRef);
 
   const activeTheme = {
     ...DefaultTheme,

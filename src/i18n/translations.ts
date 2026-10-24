@@ -6,6 +6,16 @@ type TranslationTree = {
 
 export const translations: Record<AppLocale, TranslationTree> = {
   en: {
+    shortcuts: {
+      header: "Shortcuts",
+      footer: "In the Shortcuts app, add an “Open URL” action with one of these links (tap to share or copy it). Bookliz opens and does it — handy with Siri, Back Tap or an NFC tag by the bed.",
+      resume: "Resume audiobook",
+      toggle: "Play / pause",
+      back: "Skip back",
+      forward: "Skip forward",
+      sleep: "Sleep in 15 minutes",
+      player: "Open the player",
+    },
     manageAudio: {
       title: "Manage files",
       storageHeader: "Storage",
@@ -1211,6 +1221,16 @@ export const translations: Record<AppLocale, TranslationTree> = {
     },
   },
   es: {
+    shortcuts: {
+      header: "Atajos",
+      footer: "En la app Atajos, añade la acción «Abrir URL» con uno de estos enlaces (tócalo para compartirlo o copiarlo). Bookliz se abre y lo hace: útil con Siri, Toque posterior o una etiqueta NFC junto a la cama.",
+      resume: "Reanudar audiolibro",
+      toggle: "Reproducir / pausar",
+      back: "Retroceder",
+      forward: "Avanzar",
+      sleep: "Dormir en 15 minutos",
+      player: "Abrir el reproductor",
+    },
     manageAudio: {
       title: "Gestionar archivos",
       storageHeader: "Almacenamiento",

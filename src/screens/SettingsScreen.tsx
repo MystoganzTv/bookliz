@@ -9,7 +9,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Application from "expo-application";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Image, Platform, StyleSheet, Text, View } from "react-native";
+import { Image, Platform, Share, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 import { loadIncludeAudioInBackup, setIncludeAudioInBackup } from "../audio/audioBackup";
@@ -24,6 +24,7 @@ import { Screen } from "../components/Screen";
 import { SettingsGroup, SettingsRow, SettingsToggleRow } from "../components/settings/SettingsList";
 import { useBookliz } from "../data/BooklizContext";
 import { findContradictedLanguages } from "../data/languageRepair";
+import { SHORTCUT_LINKS } from "../shortcuts/shortcutLinks";
 import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
 import { useTheme } from "../theme/ThemeContext";
@@ -241,6 +242,20 @@ export function SettingsScreen() {
           disabled={!isFileBackupAvailable}
           onValueChange={(v) => { void handleAudioBackup(v); }}
         />
+      </SettingsGroup>
+
+      {/* ── Shortcuts ────────────────────────────────────────────────────── */}
+      <SettingsGroup header={t("shortcuts.header")} footer={t("shortcuts.footer")}>
+        {SHORTCUT_LINKS.map((link) => (
+          <SettingsRow
+            key={link.id}
+            title={t(`shortcuts.${link.id}`)}
+            subtitle={link.url}
+            chevron={false}
+            accessory={<Ionicons name="share-outline" size={18} color={c.muted} />}
+            onPress={() => { void Share.share({ message: link.url }).catch(() => {}); }}
+          />
+        ))}
       </SettingsGroup>
 
       {/* ── Account ──────────────────────────────────────────────────────── */}
