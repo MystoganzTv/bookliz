@@ -1,18 +1,27 @@
-import { Ionicons } from "@expo/vector-icons";
-import { useDialog } from "../components/DialogProvider";
-import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
+/**
+ * Settings, as a grouped list.
+ *
+ * Every row is one line: what it is and its current value. Anything with more
+ * than two choices opens its own screen (SettingsChoiceScreen); a yes/no is a
+ * Switch on the row. The "why" of a setting is the group footer.
+ */
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as Application from "expo-application";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Image, Pressable, StyleSheet, Switch, Text, View } from "react-native";
-import { RootStackParamList } from "../navigation/types";
+import { Image, Platform, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
+import { useDialog } from "../components/DialogProvider";
 import { GoogleConnectionCard } from "../components/GoogleConnectionCard";
 import { Screen } from "../components/Screen";
+import { SettingsGroup, SettingsRow, SettingsToggleRow } from "../components/settings/SettingsList";
 import { useBookliz } from "../data/BooklizContext";
 import { findContradictedLanguages } from "../data/languageRepair";
 import { useI18n } from "../i18n/LocalizationContext";
+import { RootStackParamList } from "../navigation/types";
 import { useTheme } from "../theme/ThemeContext";
-import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
+import { AppColors, fonts, radii, spacing } from "../theme/theme";
 import {
   formatReminderTime,
   loadNotificationPrefs,
@@ -22,7 +31,7 @@ import {
 
 export function SettingsScreen() {
   const { colors: c, isDark, toggleTheme } = useTheme();
-  const { locale, setLocale, t } = useI18n();
+  const { locale, t } = useI18n();
   const {
     resetApp,
     clearLibrary,
@@ -51,10 +60,7 @@ export function SettingsScreen() {
     if (!permissionGranted) {
       dialog.alert(t("notifications.permissionDenied"), t("notifications.permissionDeniedBody"));
     }
-  }, [notifPrefs.hour, notifPrefs.minute, t]);
-
-  const themeTitle = isDark ? t("settings.themeDarkTitle") : t("settings.themeLightTitle");
-  const themeBody = isDark ? t("settings.themeDarkBody") : t("settings.themeLightBody");
+  }, [dialog, notifPrefs.hour, notifPrefs.minute, t]);
 
   // ── Books the old "default to English" left mislabelled ─────────────────
   // Evidence-based and memoised: only books whose ISBN registration group
@@ -90,15 +96,11 @@ export function SettingsScreen() {
     }
   }, [dialog, discardConflictBackup, t]);
 
+  const versionLine = appVersionLine();
+
   return (
     <Screen>
-      <View style={styles.pageHeader}>
-        <Text style={styles.eyebrow}>{t("settings.eyebrow")}</Text>
-        <Text style={styles.title}>{t("settings.title")}</Text>
-        <Text style={styles.subtitle}>{t("settings.subtitle")}</Text>
-      </View>
-
-      {/* ── Connected identity ─────────────────────────────────────────── */}
+      {/* ── Who is signed in ─────────────────────────────────────────────── */}
       <View style={styles.identityCard}>
         <View style={styles.identityAvatar}>
           {userProfile.avatarUri ? (
@@ -109,148 +111,50 @@ export function SettingsScreen() {
         </View>
         <View style={styles.identityCopy}>
           <Text style={styles.identityName} numberOfLines={1}>
-            {userProfile.name || "Your account"}
+            {userProfile.name || t("settings.identityFallbackName")}
           </Text>
-          {userProfile.email ? (
-            <Text style={styles.identityEmail} numberOfLines={1}>{userProfile.email}</Text>
-          ) : (
-            <Text style={styles.identityEmailMuted}>No account connected</Text>
-          )}
+          <Text style={styles.identityEmail} numberOfLines={1}>
+            {userProfile.email || t("settings.identityNoAccount")}
+          </Text>
         </View>
         {userProfile.email ? (
           <View style={styles.identityBadge}>
             <Ionicons name="checkmark-circle" size={14} color={c.teal} />
-            <Text style={styles.identityBadgeText}>Connected</Text>
+            <Text style={styles.identityBadgeText}>{t("settings.identityConnected")}</Text>
           </View>
         ) : null}
       </View>
 
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionIconWrap}>
-            <Ionicons name={isDark ? "moon" : "sunny-outline"} size={18} color={isDark ? c.gold : c.tealDark} />
-          </View>
-          <View style={styles.sectionCopy}>
-            <Text style={styles.sectionTitle}>{t("settings.appearanceTitle")}</Text>
-            <Text style={styles.sectionBody}>{t("settings.appearanceBody")}</Text>
-          </View>
-        </View>
+      {/* ── Appearance ───────────────────────────────────────────────────── */}
+      <SettingsGroup header={t("settings.appearanceTitle")}>
+        <SettingsToggleRow title={t("settings.darkMode")} value={isDark} onValueChange={toggleTheme} />
+        <SettingsRow
+          title={t("settings.languageTitle")}
+          value={locale === "es" ? t("common.spanish") : t("common.english")}
+          onPress={() => navigation.navigate("SettingsChoice", { setting: "language" })}
+        />
+      </SettingsGroup>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingCopy}>
-            <Text style={styles.settingTitle}>{themeTitle}</Text>
-            <Text style={styles.settingSub}>{themeBody}</Text>
-          </View>
-          <Pressable
-            accessibilityRole="switch"
-            accessibilityState={{ checked: isDark }}
-            onPress={toggleTheme}
-            style={[styles.themeToggle, isDark && styles.themeToggleActive]}
-          >
-            <View style={[styles.themeToggleThumb, isDark && styles.themeToggleThumbActive]}>
-              <Ionicons
-                name={isDark ? "moon" : "sunny-outline"}
-                size={14}
-                color={isDark ? c.tealDark : c.navy}
-              />
-            </View>
-          </Pressable>
-        </View>
-      </View>
+      {/* ── Reminders ────────────────────────────────────────────────────── */}
+      <SettingsGroup
+        header={t("notifications.settingsTitle")}
+        footer={
+          notifPrefs.enabled
+            ? t("notifications.scheduled", { time: formatReminderTime(notifPrefs.hour, notifPrefs.minute) })
+            : t("notifications.enableSub")
+        }
+      >
+        <SettingsToggleRow
+          title={t("notifications.enableLabel")}
+          value={notifPrefs.enabled}
+          onValueChange={(v) => { void handleToggleNotification(v); }}
+        />
+      </SettingsGroup>
 
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionIconWrap}>
-            <Ionicons name="language-outline" size={18} color={c.tealDark} />
-          </View>
-          <View style={styles.sectionCopy}>
-            <Text style={styles.sectionTitle}>{t("settings.languageTitle")}</Text>
-            <Text style={styles.sectionBody}>{t("settings.languageBody")}</Text>
-          </View>
-        </View>
-
-        <View style={styles.languageRow}>
-          <Pressable accessibilityRole="button"
-            style={[styles.languageChip, locale === "en" && styles.languageChipActive]}
-            onPress={() => setLocale("en")}
-          >
-            <Text style={[styles.languageChipText, locale === "en" && styles.languageChipTextActive]}>
-              {t("common.english")}
-            </Text>
-          </Pressable>
-          <Pressable accessibilityRole="button"
-            style={[styles.languageChip, locale === "es" && styles.languageChipActive]}
-            onPress={() => setLocale("es")}
-          >
-            <Text style={[styles.languageChipText, locale === "es" && styles.languageChipTextActive]}>
-              {t("common.spanish")}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Notifications card */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionIconWrap}>
-            <Ionicons name="notifications-outline" size={18} color={c.tealDark} />
-          </View>
-          <View style={styles.sectionCopy}>
-            <Text style={styles.sectionTitle}>{t("notifications.settingsTitle")}</Text>
-            <Text style={styles.sectionBody}>{t("notifications.settingsBody")}</Text>
-          </View>
-        </View>
-
-        <View style={styles.settingRow}>
-          <View style={styles.settingCopy}>
-            <Text style={styles.settingTitle}>{t("notifications.enableLabel")}</Text>
-            <Text style={styles.settingSub}>
-              {notifPrefs.enabled
-                ? t("notifications.scheduled").replace("{time}", formatReminderTime(notifPrefs.hour, notifPrefs.minute))
-                : t("notifications.enableSub")}
-            </Text>
-          </View>
-          <Switch
-            value={notifPrefs.enabled}
-            onValueChange={(v) => { void handleToggleNotification(v); }}
-            trackColor={{ false: c.border, true: c.teal + "80" }}
-            thumbColor={notifPrefs.enabled ? c.tealDark : c.muted}
-          />
-        </View>
-      </View>
-
-      <View style={styles.sectionWrap}>
-        <Text style={styles.sectionEyebrow}>{t("settings.accountTitle")}</Text>
-        <Text style={styles.sectionHint}>{t("settings.accountBody")}</Text>
-      </View>
-      <GoogleConnectionCard variant="settings" />
-
-      {/* ── Legal ─────────────────────────────────────────────────────────── */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionIconWrap}>
-            <Ionicons name="document-text-outline" size={18} color={c.tealDark} />
-          </View>
-          <View style={styles.sectionCopy}>
-            <Text style={styles.sectionTitle}>Legal</Text>
-            <Text style={styles.sectionBody}>Privacy policy and terms of use.</Text>
-          </View>
-        </View>
-
-        <Pressable accessibilityRole="button"
-          style={styles.linkRow}
-          onPress={() => navigation.navigate("Legal", { doc: "privacy" })}
-        >
-          <Text style={styles.linkRowText}>{t("legal.privacyTitle")}</Text>
-          <Ionicons name="chevron-forward" size={14} color={c.muted} />
-        </Pressable>
-        <Pressable accessibilityRole="button"
-          style={styles.linkRow}
-          onPress={() => navigation.navigate("Legal", { doc: "terms" })}
-        >
-          <Text style={styles.linkRowText}>{t("legal.termsTitle")}</Text>
-          <Ionicons name="chevron-forward" size={14} color={c.muted} />
-        </Pressable>
+      {/* ── Account ──────────────────────────────────────────────────────── */}
+      <Text style={styles.looseHeader} accessibilityRole="header">{t("settings.accountTitle")}</Text>
+      <View style={styles.accountWrap}>
+        <GoogleConnectionCard variant="settings" />
       </View>
 
       {/* ── Mislabelled languages ─────────────────────────────────────────
@@ -258,20 +162,10 @@ export function SettingsScreen() {
           the ISBN group proves the stored value is doubtful, not what the
           right answer is. */}
       {languageSuspects.length > 0 ? (
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionIconWrap}>
-              <Ionicons name="language-outline" size={18} color={c.tealDark} />
-            </View>
-            <View style={styles.sectionCopy}>
-              <Text style={styles.sectionTitle}>{t("languageRepair.title")}</Text>
-              <Text style={styles.sectionBody}>{t("languageRepair.body")}</Text>
-            </View>
-          </View>
-
-          <Pressable
-            accessibilityRole="button"
-            style={styles.settingRow}
+        <SettingsGroup header={t("languageRepair.title")} footer={t("languageRepair.body")}>
+          <SettingsRow
+            title={t("languageRepair.action")}
+            subtitle={t("languageRepair.summary", { count: languageSuspects.length })}
             onPress={() =>
               dialog.confirm({
                 title: t("languageRepair.confirmTitle"),
@@ -283,16 +177,8 @@ export function SettingsScreen() {
                 onConfirm: () => clearBookLanguages(languageSuspects.map((s) => s.bookId)),
               })
             }
-          >
-            <View style={styles.settingCopy}>
-              <Text style={styles.settingTitle}>{t("languageRepair.action")}</Text>
-              <Text style={styles.settingSub}>
-                {t("languageRepair.summary", { count: languageSuspects.length })}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={14} color={c.muted} />
-          </Pressable>
-        </View>
+          />
+        </SettingsGroup>
       ) : null}
 
       {/* ── Recovered copy ────────────────────────────────────────────────
@@ -300,20 +186,14 @@ export function SettingsScreen() {
           resolved at snapshot level, so one side is always discarded; this is
           the way back to it. */}
       {conflictBackup ? (
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionIconWrap}>
-              <Ionicons name="archive-outline" size={18} color={c.tealDark} />
-            </View>
-            <View style={styles.sectionCopy}>
-              <Text style={styles.sectionTitle}>{t("backup.title")}</Text>
-              <Text style={styles.sectionBody}>{t("backup.body")}</Text>
-            </View>
-          </View>
-
-          <Pressable
-            accessibilityRole="button"
-            style={styles.settingRow}
+        <SettingsGroup header={t("backup.title")} footer={t("backup.body")}>
+          <SettingsRow
+            title={t("backup.restore")}
+            subtitle={t("backup.summary", {
+              date: backupDate,
+              books: conflictBackup.bookCount,
+              sessions: conflictBackup.sessionCount,
+            })}
             onPress={() =>
               dialog.confirm({
                 title: t("backup.restoreTitle"),
@@ -326,54 +206,40 @@ export function SettingsScreen() {
                 }),
                 confirmLabel: t("backup.restoreConfirm"),
                 destructive: true,
-                onConfirm: () => {
-                  void handleRestoreBackup();
-                },
+                onConfirm: () => { void handleRestoreBackup(); },
               })
             }
-          >
-            <View style={styles.settingCopy}>
-              <Text style={styles.settingTitle}>{t("backup.restore")}</Text>
-              <Text style={styles.settingSub}>
-                {t("backup.summary", {
-                  date: backupDate,
-                  books: conflictBackup.bookCount,
-                  sessions: conflictBackup.sessionCount,
-                })}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={14} color={c.muted} />
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            style={styles.backupDiscardRow}
+          />
+          <SettingsRow
+            title={t("backup.discard")}
+            destructive
             onPress={() =>
               dialog.confirm({
                 title: t("backup.discardTitle"),
                 body: t("backup.discardBody", { date: backupDate }),
                 confirmLabel: t("backup.discardConfirm"),
                 destructive: true,
-                onConfirm: () => {
-                  void handleDiscardBackup();
-                },
+                onConfirm: () => { void handleDiscardBackup(); },
               })
             }
-          >
-            <Ionicons name="close-circle-outline" size={15} color={c.muted} />
-            <Text style={styles.backupDiscardText}>{t("backup.discard")}</Text>
-          </Pressable>
-        </View>
+          />
+        </SettingsGroup>
       ) : null}
 
-      <View style={styles.dangerSection}>
-        <Text style={styles.dangerEyebrow}>{t("settings.dangerEyebrow")}</Text>
-        <Text style={styles.dangerTitle}>{t("settings.dangerTitle")}</Text>
-        <Text style={styles.dangerBody}>{t("settings.dangerBody")}</Text>
+      {/* ── Legal ────────────────────────────────────────────────────────── */}
+      <SettingsGroup header={t("settings.legalTitle")}>
+        <SettingsRow title={t("legal.privacyTitle")} onPress={() => navigation.navigate("Legal", { doc: "privacy" })} />
+        <SettingsRow title={t("legal.termsTitle")} onPress={() => navigation.navigate("Legal", { doc: "terms" })} />
+      </SettingsGroup>
 
-        {/* Clear library — lighter action, keeps account + profile */}
-        <Pressable accessibilityRole="button"
-          style={styles.clearDemoButton}
+      {versionLine ? <Text style={styles.version} selectable>{versionLine}</Text> : null}
+
+      {/* ── Danger zone ──────────────────────────────────────────────────── */}
+      <SettingsGroup header={t("settings.dangerEyebrow")} footer={t("settings.dangerBody")}>
+        <SettingsRow
+          title={t("settings.clearLibrary")}
+          destructive
+          chevron={false}
           onPress={() =>
             dialog.confirm({
               title: t("settings.clearLibraryTitle"),
@@ -383,13 +249,11 @@ export function SettingsScreen() {
               onConfirm: () => { audioPlayer.engine.removeAllAudio(); void clearLibrary(); },
             })
           }
-        >
-          <Ionicons name="trash-outline" size={16} color={c.muted} />
-          <Text style={styles.clearDemoButtonText}>{t("settings.clearLibrary")}</Text>
-        </Pressable>
-
-        <Pressable accessibilityRole="button"
-          style={[styles.dangerButton, { marginTop: spacing.sm }]}
+        />
+        <SettingsRow
+          title={t("settings.dangerButton")}
+          destructive
+          chevron={false}
           onPress={() =>
             dialog.confirm({
               title: t("settings.deletePromptTitle"),
@@ -399,13 +263,23 @@ export function SettingsScreen() {
               onConfirm: () => { audioPlayer.engine.removeAllAudio(); void resetApp(); },
             })
           }
-        >
-          <Ionicons name="trash-outline" size={16} color={c.danger} />
-          <Text style={styles.dangerButtonText}>{t("settings.dangerButton")}</Text>
-        </Pressable>
-      </View>
+        />
+      </SettingsGroup>
     </Screen>
   );
+}
+
+/**
+ * "Bookliz 1.1.2 (14) · iOS 26.6.2" — the line a support email needs first.
+ * Read from the binary (expo-application), not app.json: with EAS remote
+ * versioning the build number in app.json is not the one that shipped.
+ */
+export function appVersionLine(): string {
+  const version = Application.nativeApplicationVersion;
+  if (!version) return "";
+  const build = Application.nativeBuildVersion;
+  const os = Platform.OS === "ios" ? `iOS ${Platform.Version}` : Platform.OS === "android" ? `Android ${Platform.Version}` : "";
+  return [`Bookliz ${version}${build ? ` (${build})` : ""}`, os].filter(Boolean).join(" · ");
 }
 
 /**
@@ -426,19 +300,16 @@ function formatBackupDate(timestamp: string, locale: string) {
 
 function createStyles(c: AppColors) {
   return StyleSheet.create({
-    pageHeader: {
-      marginBottom: spacing.md,
-    },
     identityCard: {
-      ...shadows.card,
       alignItems: "center",
       backgroundColor: c.surface,
       borderColor: c.border,
-      borderRadius: radii.lg,
-      borderWidth: 1,
+      borderRadius: radii.md,
+      borderWidth: StyleSheet.hairlineWidth,
       flexDirection: "row",
       gap: spacing.md,
       marginBottom: spacing.lg,
+      marginTop: spacing.sm,
       padding: spacing.md,
     },
     identityAvatar: {
@@ -466,19 +337,13 @@ function createStyles(c: AppColors) {
     identityName: {
       color: c.ink,
       fontFamily: fonts.body,
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: "800",
     },
     identityEmail: {
       color: c.muted,
       fontFamily: fonts.bodyRegular,
-      fontSize: 12,
-      marginTop: 2,
-    },
-    identityEmailMuted: {
-      color: c.muted,
-      fontFamily: fonts.bodyRegular,
-      fontSize: 12,
+      fontSize: 13,
       marginTop: 2,
     },
     identityBadge: {
@@ -498,262 +363,24 @@ function createStyles(c: AppColors) {
       fontSize: 11,
       fontWeight: "700",
     },
-    backupDiscardRow: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: 6,
-      justifyContent: "center",
-      marginTop: spacing.sm,
-      minHeight: 44,
-      paddingVertical: 10,
-    },
-    backupDiscardText: {
+    looseHeader: {
       color: c.muted,
       fontFamily: fonts.body,
       fontSize: 13,
       fontWeight: "700",
-    },
-    clearDemoButton: {
-      alignItems: "center",
-      backgroundColor: c.surfaceAlt,
-      borderColor: c.border,
-      borderRadius: radii.md,
-      borderWidth: 1,
-      flexDirection: "row",
-      gap: spacing.sm,
-      justifyContent: "center",
-      paddingVertical: 13,
-    },
-    clearDemoButtonText: {
-      color: c.muted,
-      fontFamily: fonts.body,
-      fontSize: 14,
-      fontWeight: "700",
-    },
-    eyebrow: {
-      color: c.tealDark,
-      fontFamily: fonts.body,
-      fontSize: 11,
-      fontWeight: "900",
-      letterSpacing: 1.3,
-      textTransform: "uppercase",
-    },
-    title: {
-      color: c.ink,
-      fontFamily: fonts.display,
-      fontSize: 28,
-      fontWeight: "900",
-      marginTop: 2,
-    },
-    subtitle: {
-      color: c.muted,
-      fontFamily: fonts.bodyRegular,
-      fontSize: 14,
-      lineHeight: 21,
-      marginTop: spacing.xs,
-    },
-    sectionCard: {
-      ...shadows.card,
-      backgroundColor: c.surface,
-      borderColor: c.border,
-      borderRadius: radii.lg,
-      borderWidth: 1,
-      marginBottom: spacing.md,
-      padding: spacing.md,
-    },
-    sectionHeader: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: spacing.sm,
-      marginBottom: spacing.md,
-    },
-    sectionIconWrap: {
-      alignItems: "center",
-      backgroundColor: c.surfaceAlt,
-      borderRadius: radii.pill,
-      height: 38,
-      justifyContent: "center",
-      width: 38,
-    },
-    sectionCopy: {
-      flex: 1,
-    },
-    sectionTitle: {
-      color: c.ink,
-      fontFamily: fonts.display,
-      fontSize: 21,
-      fontWeight: "900",
-    },
-    sectionBody: {
-      color: c.muted,
-      fontFamily: fonts.bodyRegular,
-      fontSize: 13,
-      lineHeight: 19,
-      marginTop: 3,
-    },
-    settingRow: {
-      alignItems: "center",
-      backgroundColor: c.surfaceAlt,
-      borderColor: c.border,
-      borderRadius: radii.md,
-      borderWidth: 1,
-      flexDirection: "row",
-      justifyContent: "space-between",
+      marginBottom: 7,
       paddingHorizontal: spacing.md,
-      paddingVertical: 12,
     },
-    settingCopy: {
-      flex: 1,
-      paddingRight: spacing.md,
+    accountWrap: {
+      marginBottom: spacing.lg,
     },
-    settingTitle: {
-      color: c.ink,
-      fontFamily: fonts.body,
-      fontSize: 14,
-      fontWeight: "900",
-    },
-    settingSub: {
+    version: {
       color: c.muted,
       fontFamily: fonts.bodyRegular,
-      fontSize: 12,
-      lineHeight: 18,
-      marginTop: 4,
-    },
-    themeToggle: {
-      backgroundColor: c.border,
-      borderColor: c.border,
-      borderRadius: radii.pill,
-      borderWidth: 1,
-      height: 40,
-      justifyContent: "center",
-      paddingHorizontal: 4,
-      width: 72,
-    },
-    themeToggleActive: {
-      backgroundColor: c.teal + "28",
-      borderColor: c.teal + "55",
-    },
-    themeToggleThumb: {
-      alignItems: "center",
-      backgroundColor: c.surface,
-      borderRadius: radii.pill,
-      height: 30,
-      justifyContent: "center",
-      transform: [{ translateX: 0 }],
-      width: 30,
-    },
-    themeToggleThumbActive: {
-      backgroundColor: c.surface,
-      transform: [{ translateX: 32 }],
-    },
-    languageRow: {
-      flexDirection: "row",
-      gap: spacing.sm,
-    },
-    languageChip: {
-      backgroundColor: c.surfaceAlt,
-      borderColor: c.border,
-      borderRadius: radii.pill,
-      borderWidth: 1,
+      fontSize: 12.5,
+      marginBottom: spacing.lg,
+      marginTop: -spacing.sm,
       paddingHorizontal: spacing.md,
-      paddingVertical: 10,
-    },
-    languageChipActive: {
-      backgroundColor: c.teal + "18",
-      borderColor: c.teal + "44",
-    },
-    languageChipText: {
-      color: c.ink,
-      fontFamily: fonts.body,
-      fontSize: 13,
-      fontWeight: "800",
-    },
-    languageChipTextActive: {
-      color: c.tealDark,
-    },
-    sectionWrap: {
-      marginBottom: spacing.sm,
-      marginTop: spacing.sm,
-    },
-    sectionEyebrow: {
-      color: c.tealDark,
-      fontFamily: fonts.body,
-      fontSize: 11,
-      fontWeight: "900",
-      letterSpacing: 1.3,
-      textTransform: "uppercase",
-    },
-    sectionHint: {
-      color: c.muted,
-      fontFamily: fonts.bodyRegular,
-      fontSize: 13,
-      lineHeight: 19,
-      marginTop: 6,
-    },
-    dangerSection: {
-      borderTopColor: c.danger + "50",
-      borderTopWidth: 1,
-      marginBottom: spacing.xl,
-      marginTop: spacing.xl,
-      paddingTop: spacing.lg,
-    },
-    dangerEyebrow: {
-      color: c.danger,
-      fontFamily: fonts.body,
-      fontSize: 11,
-      fontWeight: "900",
-      letterSpacing: 1.3,
-      textTransform: "uppercase",
-    },
-    dangerTitle: {
-      color: c.ink,
-      fontFamily: fonts.display,
-      fontSize: 22,
-      fontWeight: "900",
-      marginBottom: spacing.xs,
-      marginTop: 2,
-    },
-    dangerBody: {
-      color: c.muted,
-      fontFamily: fonts.bodyRegular,
-      fontSize: 13,
-      lineHeight: 19,
-      marginBottom: spacing.md,
-    },
-    dangerButton: {
-      alignItems: "center",
-      backgroundColor: c.danger + "14",
-      borderColor: c.danger + "45",
-      borderRadius: radii.md,
-      borderWidth: 1,
-      flexDirection: "row",
-      gap: spacing.sm,
-      justifyContent: "center",
-      paddingVertical: 14,
-    },
-    dangerButtonText: {
-      color: c.danger,
-      fontFamily: fonts.body,
-      fontSize: 14,
-      fontWeight: "900",
-    },
-    linkRow: {
-      alignItems: "center",
-      backgroundColor: c.surfaceAlt,
-      borderColor: c.border,
-      borderRadius: radii.md,
-      borderWidth: 1,
-      flexDirection: "row",
-      justifyContent: "space-between",
-      minHeight: 44,
-      paddingHorizontal: spacing.md,
-      paddingVertical: 12,
-    },
-    linkRowText: {
-      color: c.ink,
-      fontFamily: fonts.body,
-      fontSize: 14,
-      fontWeight: "800",
     },
   });
 }

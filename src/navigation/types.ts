@@ -35,6 +35,8 @@ export type RootStackParamList = {
   SeriesTracker: { seriesId: string };
   EditProfile: undefined;
   Settings: undefined;
+  /** A multi-choice setting on its own screen (BookPlayer-style). */
+  SettingsChoice: { setting: "language" };
   EditBook: { bookId: string };
   Achievements: undefined;
   WriteReview: { bookId: string };
