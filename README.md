@@ -26,6 +26,24 @@ npm test               # jest
 - **Reader profile:** `readingIdentity` computes an on-device taste vector that drives Discover's recommendations. It never leaves the device except as one optional synced row.
 - **i18n:** `LocalizationContext` with EN/ES parity enforced across ~690 keys.
 
+## Native pieces outside node_modules
+
+- **`modules/`** — local Expo modules, autolinked from this folder (run
+  `cd ios && pod install` after adding or changing one):
+  `airplay-button` (route picker), `file-backup` (keeps `Documents/audiobooks`
+  out of the iCloud device backup unless the reader opts in), `now-playing`
+  (lock-screen skip intervals — expo-audio hard-codes 10 s — and "is charging"),
+  `watch-bridge` (WatchConnectivity link to the watch app).
+- **`ios/BooklizWatch/`** — the Apple Watch app (SwiftUI, watchOS 10), target
+  `BooklizWatch`, bundle id `com.mystodev.booklio.watchkitapp` (keeps the
+  `booklio` prefix — see below), embedded in `Booklio.app/Watch`. It is a
+  remote: the phone plays, the watch shows and sends taps. The contract is
+  `src/watch/watchState.ts` ↔ `ios/BooklizWatch/WatchState.swift`; bump
+  `WATCH_STATE_VERSION` and `WatchState.supportedVersion` together. A build
+  phase copies the iPhone app's version and build number into the watch app —
+  App Store Connect rejects them if they differ.
+- **`bookliz://audio/…` links** for the Shortcuts app: `src/shortcuts/shortcutLinks.ts`.
+
 ## Docs
 
 - `AUDIT.md` — technical audit, open issues by severity.
@@ -70,6 +88,8 @@ things without a single reader noticing:
   The only alternative is a brand-new EAS project, which throws away the iOS
   distribution certificate, the provisioning profiles, the App Store Connect
   link and the whole build and submission history.
+- **The watch app's bundle id is `com.mystodev.booklio.watchkitapp`.** A
+  watch app's id must start with its iPhone app's id.
 - **AsyncStorage keys `booklio:v2*`** — see the comment on `LOCAL_SNAPSHOT_KEY`
   in `src/data/booklizRepository.ts`.
 - **Supabase objects `booklio_*`** — see the header of
