@@ -1,0 +1,7 @@
+{
+  "name": "watch-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WatchConnectivity bridge between Bookliz on the iPhone and Bookliz on Apple Watch.",
+  "main": "index.ts"
+}

@@ -10,6 +10,8 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AppState } from "react-native";
 import { useBookliz } from "../data/BooklizContext";
+import { useI18n } from "../i18n/LocalizationContext";
+import { useWatchSync } from "../watch/useWatchSync";
 import { applyAudioBackupPreference } from "./audioBackup";
 import { AudiobookEngine, type EngineHost, type EngineMainState } from "./audiobookEngine";
 
@@ -17,6 +19,7 @@ const EngineContext = createContext<AudiobookEngine | null>(null);
 
 export function AudiobookPlayerProvider({ children }: PropsWithChildren) {
   const bookliz = useBookliz();
+  const { locale } = useI18n();
   const host: EngineHost = {
     getBook: bookliz.getBook,
     authorName: (book) => bookliz.getAuthor(book.authorId)?.name ?? "",
@@ -42,6 +45,8 @@ export function AudiobookPlayerProvider({ children }: PropsWithChildren) {
       engine.stop();
     };
   }, [engine]);
+
+  useWatchSync(engine, { locale, getBook: bookliz.getBook, authorName: host.authorName });
 
   // The book being listened to was deleted: stop, and let go of its files.
   const activeBookId = useSyncExternalStore(
