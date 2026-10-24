@@ -28,14 +28,17 @@ export function SettingsGroup({ header, footer, children }: GroupProps) {
   return (
     <View style={styles.group}>
       {header ? <Text style={styles.header} accessibilityRole="header">{header}</Text> : null}
-      <View style={styles.block}>
-        {rows.map((row, index) => (
-          <Fragment key={row.key ?? index}>
-            {index > 0 ? <View style={styles.separator} /> : null}
-            {row}
-          </Fragment>
-        ))}
-      </View>
+      {/* No rows (an empty "Not assigned"): header and footer only — an empty block reads as a broken line. */}
+      {rows.length > 0 ? (
+        <View style={styles.block}>
+          {rows.map((row, index) => (
+            <Fragment key={row.key ?? index}>
+              {index > 0 ? <View style={styles.separator} /> : null}
+              {row}
+            </Fragment>
+          ))}
+        </View>
+      ) : null}
       {footer ? (
         typeof footer === "string" ? <Text style={styles.footer}>{footer}</Text> : <View style={styles.footerWrap}>{footer}</View>
       ) : null}
