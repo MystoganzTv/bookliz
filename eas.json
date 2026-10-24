@@ -30,7 +30,8 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "6774150174"
+        "ascAppId": "6774150174",
+        "bundleIdentifier": "com.mystodev.booklio"
       }
     }
   }
