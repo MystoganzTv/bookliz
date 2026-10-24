@@ -66,6 +66,18 @@ target 'Booklio' do
       end
     end
 
+    # Xcode 27 refuses targets below its supported range, and several older
+    # pods (and their privacy resource bundles) still declare iOS 9-13. Lift
+    # every pod target to the app's own minimum.
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |build_configuration|
+        current = build_configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
+        if current.nil? || Gem::Version.new(current) < Gem::Version.new('15.1')
+          build_configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
+        end
+      end
+    end
+
     # This is necessary for Xcode 14, because it signs resource bundles by default
     # when building for devices.
     installer.target_installation_results.pod_target_installation_results
