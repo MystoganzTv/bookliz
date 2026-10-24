@@ -25,12 +25,16 @@ const upsertFailures: Record<string, string> = {};
 const upsertLog: Array<[string, string | undefined]> = [];
 /** Records every child-row DELETE. Should stay empty: deletes are tombstones now. */
 const deleteLog: string[] = [];
+/** Tables that do not exist on the server yet (a migration not applied). */
+const missingTables = new Set<string>();
+const MISSING = (table: string) => ({ code: "PGRST205", message: `Could not find the table 'public.${table}' in the schema cache` });
 
 const reset = () => {
   for (const key of Object.keys(tables)) delete tables[key];
   for (const key of Object.keys(upsertFailures)) delete upsertFailures[key];
   upsertLog.length = 0;
   deleteLog.length = 0;
+  missingTables.clear();
   currentUserId = null;
 };
 
@@ -74,6 +78,7 @@ class FakeQuery {
   }
   upsert(payload: Row | Row[], options?: { onConflict?: string }) {
     upsertLog.push([this.table, options?.onConflict]);
+    if (missingTables.has(this.table)) return Promise.resolve({ data: null, error: MISSING(this.table) });
     const failure = upsertFailures[this.table];
     if (failure) return Promise.resolve({ data: null, error: { message: failure } });
     const rows = Array.isArray(payload) ? payload : [payload];
@@ -93,7 +98,8 @@ class FakeQuery {
   private run() {
     return tables[this.table].filter((row) => this.filters.every((f) => f(row)));
   }
-  then<T>(resolve: (value: { data: Row[] | null; error: null }) => T) {
+  then<T>(resolve: (value: { data: Row[] | null; error: any }) => T) {
+    if (missingTables.has(this.table)) return Promise.resolve({ data: null, error: MISSING(this.table) }).then(resolve);
     if (this.op === "update") {
       for (const row of this.run()) Object.assign(row, this.patch);
       return Promise.resolve({ data: null, error: null }).then(resolve);
@@ -457,5 +463,49 @@ describe("account switch on the same device", () => {
 
     const loaded = await repo().load();
     expect(loaded?.books.map((b) => b.title)).toEqual(["Synced", "Offline add"]);
+  });
+});
+
+// ─── Folders ─────────────────────────────────────────────────────────────────
+
+describe("library folders", () => {
+  const withFolder = (): BooklizSnapshot => ({
+    ...snapshotWith(["One", "Two"]),
+    bookFolders: [
+      { id: "f-1", name: "Fantasía", bookIds: ["b-0"], createdAt: "2026-10-24T00:00:00.000Z", updatedAt: "2026-10-24T00:00:00.000Z" },
+      { id: "f-2", name: "Sub", parentId: "f-1", bookIds: ["b-1"], createdAt: "2026-10-24T00:00:00.000Z", updatedAt: "2026-10-24T00:00:00.000Z" }
+    ]
+  });
+
+  it("round-trips through the cloud to a fresh device", async () => {
+    currentUserId = "A";
+    await repo().save(withFolder());
+    expect(tables.booklio_folders).toHaveLength(2);
+    expect(tables.booklio_folders.find((r) => r.id === "f-2")?.parent_id).toBe("f-1");
+
+    await AsyncStorage.clear();
+    const loaded = await repo().load();
+    const folders = loaded?.bookFolders ?? [];
+    expect(folders.map((f) => f.name).sort()).toEqual(["Fantasía", "Sub"]);
+    expect(folders.find((f) => f.id === "f-2")).toMatchObject({ parentId: "f-1", bookIds: ["b-1"] });
+  });
+
+  it("a server without the folders table still syncs everything else", async () => {
+    currentUserId = "A";
+    missingTables.add("booklio_folders");
+    await expect(repo().save(withFolder())).resolves.not.toThrow();
+    expect(tables.booklio_books).toHaveLength(2);
+    expect(tables.booklio_profiles[0].snapshot_pushed_at).toBeTruthy();
+
+    const loaded = await repo().load();
+    expect(loaded?.books).toHaveLength(2);
+    // Local folders are kept, not wiped by the empty remote side.
+    expect(loaded?.bookFolders?.map((f) => f.id).sort()).toEqual(["f-1", "f-2"]);
+  });
+
+  it("any other folders error still fails the push", async () => {
+    currentUserId = "A";
+    upsertFailures.booklio_folders = "permission denied";
+    await expect(repo().save(withFolder())).rejects.toThrow(/folder sync failed/);
   });
 });

@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Author, Book, ReadingSession, Review, UserList, UserProfile } from "../types/models";
+import { Author, Book, BookFolder, ReadingSession, Review, UserList, UserProfile } from "../types/models";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 import {
@@ -18,6 +18,8 @@ export type PersistedBooklizState = {
   readingSessions: ReadingSession[];
   reviews: Review[];
   userLists: UserList[];
+  /** Library folders. Optional: snapshots written before folders existed have none. */
+  bookFolders?: BookFolder[];
   userProfile: UserProfile;
 };
 
@@ -713,6 +715,7 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     const readingSessions = splitRemoteRows(sessionRows, mapSessionRowToReadingSession);
     const reviews = splitRemoteRows(reviewRows, mapReviewRowToReview);
     const userLists = splitRemoteRows(listRows, mapListRowToUserList);
+    const bookFolders = splitRemoteRows(await this.loadFolderRows(userId), mapFolderRowToFolder);
 
     return normalizeSnapshot({
       version: SNAPSHOT_VERSION,
@@ -723,12 +726,14 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
       readingSessions: readingSessions.items,
       reviews: reviews.items,
       userLists: userLists.items,
+      bookFolders: bookFolders.items,
       records: {
         authors: authors.stamps,
         books: books.stamps,
         readingSessions: readingSessions.stamps,
         reviews: reviews.stamps,
-        userLists: userLists.stamps
+        userLists: userLists.stamps,
+        bookFolders: bookFolders.stamps
       }
     });
   }
@@ -797,6 +802,18 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     await pushCollection("booklio_reading_sessions", "reading session", snapshot.readingSessions, records.readingSessions, mapReadingSessionToRow);
     await pushCollection("booklio_reviews", "review", snapshot.reviews ?? [], records.reviews, mapReviewToRow);
     await pushCollection("booklio_user_lists", "user list", snapshot.userLists ?? [], records.userLists, mapUserListToRow);
+    // Folders came later than the other tables. Until the migration that
+    // creates booklio_folders is applied, a push must not fail the whole sync
+    // (books, sessions…) over them — they stay on the device and go up once
+    // the table exists.
+    if (!this.foldersTableMissing) {
+      try {
+        await pushCollection("booklio_folders", "folder", snapshot.bookFolders ?? [], records.bookFolders, mapFolderToRow);
+      } catch (error) {
+        if (!isMissingTableMessage(error instanceof Error ? error.message : String(error))) throw error;
+        this.foldersTableMissing = true;
+      }
+    }
 
     // Profile — one row per user, written LAST and stamped. The stamp is the
     // "push completed" marker `loadSupabase` looks for: if anything above
@@ -811,6 +828,24 @@ export class LocalFirstBooklizRepository implements BooklizRepository {
     if (profileError) throw new Error(`Supabase profile sync failed: ${profileError.message}`);
 
     return true;
+  }
+
+  /** Set when booklio_folders does not exist on the server yet (migration not applied). */
+  private foldersTableMissing = false;
+
+  /** Folder rows; empty (and remembered) when the table is not there yet. */
+  private async loadFolderRows(userId: string): Promise<FolderRow[]> {
+    if (!supabase) return [];
+    const { data, error } = await supabase.from("booklio_folders").select("*").eq("user_id", userId);
+    if (error) {
+      if (isMissingTableMessage(error.message, (error as { code?: string }).code)) {
+        this.foldersTableMissing = true;
+        return [];
+      }
+      throw new Error(`Supabase load failed: ${error.message}`);
+    }
+    this.foldersTableMissing = false;
+    return (data ?? []) as FolderRow[];
   }
 
   private async getSupabaseUserId() {
@@ -840,6 +875,7 @@ function normalizeSnapshot(snapshot?: Partial<BooklizSnapshot> | PersistedBookli
     readingSessions: snapshot.readingSessions,
     reviews: Array.isArray((snapshot as any).reviews) ? (snapshot as any).reviews : [],
     userLists: Array.isArray((snapshot as any).userLists) ? (snapshot as any).userLists : [],
+    bookFolders: Array.isArray((snapshot as any).bookFolders) ? (snapshot as any).bookFolders : [],
     userProfile: snapshot.userProfile,
     version: "version" in snapshot && typeof snapshot.version === "number" ? snapshot.version : SNAPSHOT_VERSION,
     updatedAt:
@@ -1313,6 +1349,53 @@ function mapListRowToUserList(row: UserListRow): UserList {
     id: row.id,
     name: row.name,
     emoji: row.emoji ?? undefined,
+    bookIds: row.book_ids ?? [],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+/**
+ * "This table does not exist" from PostgREST: PGRST205 (schema cache miss, current
+ * versions) or Postgres 42P01. Anything else is a real failure and must surface.
+ */
+export function isMissingTableMessage(message: string, code?: string): boolean {
+  if (code === "PGRST205" || code === "42P01") return true;
+  return /could not find the table|relation .* does not exist|schema cache/i.test(message);
+}
+
+type FolderRow = {
+  user_id: string;
+  id: string;
+  name: string;
+  emoji?: string | null;
+  parent_id?: string | null;
+  book_ids: string[] | null;
+  created_at: string;
+  updated_at: string;
+  record_updated_at?: string | null;
+  deleted_at?: string | null;
+};
+
+function mapFolderToRow(userId: string, folder: BookFolder): Omit<FolderRow, "record_updated_at" | "deleted_at"> {
+  return {
+    user_id: userId,
+    id: folder.id,
+    name: folder.name,
+    emoji: folder.emoji ?? null,
+    parent_id: folder.parentId ?? null,
+    book_ids: folder.bookIds,
+    created_at: folder.createdAt,
+    updated_at: folder.updatedAt
+  };
+}
+
+function mapFolderRowToFolder(row: FolderRow): BookFolder {
+  return {
+    id: row.id,
+    name: row.name,
+    ...(row.emoji ? { emoji: row.emoji } : {}),
+    ...(row.parent_id ? { parentId: row.parent_id } : {}),
     bookIds: row.book_ids ?? [],
     createdAt: row.created_at,
     updatedAt: row.updated_at

@@ -215,6 +215,21 @@ export interface UserList {
   updatedAt: string;
 }
 
+/**
+ * A folder in the Library. Unlike a list, a book lives in at most ONE folder
+ * (membership is stored on the folder, like lists, so it syncs as one row per
+ * folder). Folders nest through `parentId`; absent = top level.
+ */
+export interface BookFolder {
+  id: string;
+  name: string;
+  emoji?: string;
+  parentId?: string;
+  bookIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface UpdateUserProfileInput {
   name: string;
   avatarInitials: string;

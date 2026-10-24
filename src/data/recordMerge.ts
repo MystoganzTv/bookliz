@@ -37,6 +37,7 @@ export const MERGED_COLLECTIONS = [
   "readingSessions",
   "reviews",
   "userLists",
+  "bookFolders",
 ] as const;
 
 export type MergedCollection = (typeof MERGED_COLLECTIONS)[number];
@@ -49,6 +50,7 @@ export const emptyStamps = (): SnapshotStamps => ({
   readingSessions: {},
   reviews: {},
   userLists: {},
+  bookFolders: {},
 });
 
 /**

@@ -66,7 +66,7 @@ const stamped = (
     userProfile: profile,
   }),
   updatedAt,
-  records: { authors: {}, books: bookStamps, readingSessions: {}, reviews: {}, userLists: {} },
+  records: { authors: {}, books: bookStamps, readingSessions: {}, reviews: {}, userLists: {}, bookFolders: {} },
 });
 
 const REMOTE = "https://api.example.test";

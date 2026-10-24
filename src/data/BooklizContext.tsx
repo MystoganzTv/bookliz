@@ -1,4 +1,11 @@
 import React, { createContext, PropsWithChildren, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createFolder as makeFolder,
+  deleteFolder as deleteFolderIn,
+  moveBook as moveBookIn,
+  moveFolder as moveFolderIn,
+  renameFolder as renameFolderIn,
+} from "./bookFolders";
 import { AppState } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -40,6 +47,7 @@ import {
   UpdateBookInput,
   UpdateUserProfileInput,
   UserList,
+  BookFolder,
   UserProfile
 } from "../types/models";
 import { buildInitials, clearPersistedConnectedAccount, ConnectedAccount, persistConnectedAccount, readPersistedConnectedAccount } from "../utils/googleAuth";
@@ -55,6 +63,7 @@ import { mergeUnlocks, settleAchievement } from "./achievementRules";
 import { inferSeriesData } from "../utils/knownWorks";
 import { buildSagaProgress, cleanSeriesName } from "../utils/sagaProgress";
 import { computeReadingIdentity, loadStoredIdentity, READING_IDENTITY_KEY, ReadingIdentity, storeIdentity } from "../utils/readingIdentity";
+import { cleanFavorites } from "../utils/favorites";
 
 /** Onboarding completion flag — stored separately from the library snapshot. */
 const ONBOARDING_KEY = "@bookliz/onboardingComplete";
@@ -189,6 +198,16 @@ type BooklizContextValue = {
   deleteUserList: (listId: string) => void;
   addBookToList: (listId: string, bookId: string) => void;
   removeBookFromList: (listId: string, bookId: string) => void;
+  /** Library folders (one folder per book; see data/bookFolders.ts). */
+  bookFolders: BookFolder[];
+  createFolder: (name: string, parentId?: string | null, emoji?: string) => BookFolder;
+  renameFolder: (folderId: string, name: string, emoji?: string) => void;
+  /** Its books and subfolders move up one level — never deleted. */
+  deleteFolder: (folderId: string) => void;
+  /** null takes the book out of every folder. */
+  moveBookToFolder: (bookId: string, folderId: string | null) => void;
+  /** Refused (no-op) when it would put a folder inside itself. */
+  moveFolder: (folderId: string, parentId: string | null) => void;
   getBookStats: (bookId: string) => BookStats;
   getSessionsForBook: (bookId: string) => ReadingSession[];
   getRecommendationsForBook: (bookId: string, limit?: number) => Recommendation[];
@@ -562,7 +581,7 @@ const buildAuthorId = (name: string) => `a-${slugify(name)}-${uniqueSuffix()}`;
 
 /** Content-only identity of a snapshot — ignores `updatedAt` on purpose. */
 const snapshotFingerprint = (state: PersistedBooklizState): string =>
-  JSON.stringify([state.authors, state.books, state.readingSessions, state.reviews, state.userLists, state.userProfile]);
+  JSON.stringify([state.authors, state.books, state.readingSessions, state.reviews, state.userLists, state.bookFolders ?? [], state.userProfile]);
 
 /** Queue a single "full sync needed" marker; never stack duplicates. */
 const enqueueFullSyncOnce = async () => {
@@ -842,6 +861,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
   const [profile, setProfile] = useState<UserProfile>(userProfile);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [userLists, setUserLists] = useState<UserList[]>([]);
+  const [bookFolders, setBookFolders] = useState<BookFolder[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [repositoryStatus, setRepositoryStatus] = useState<RepositoryStatus>(repositoryRef.current.getStatus());
@@ -868,11 +888,11 @@ export function BooklizProvider({ children }: PropsWithChildren) {
   // Track the latest persisted state in a ref so the AppState effect (which
   // only depends on `hydrated`) can access fresh data without re-subscribing.
   const latestStateRef = useRef<PersistedBooklizState>({
-    authors, books, readingSessions, reviews, userLists, userProfile: resolvedProfile,
+    authors, books, readingSessions, reviews, userLists, bookFolders, userProfile: resolvedProfile,
   });
   useEffect(() => {
-    latestStateRef.current = { authors, books, readingSessions, reviews, userLists, userProfile: resolvedProfile };
-  }, [authors, books, readingSessions, reviews, userLists, resolvedProfile]);
+    latestStateRef.current = { authors, books, readingSessions, reviews, userLists, bookFolders, userProfile: resolvedProfile };
+  }, [authors, books, readingSessions, reviews, userLists, bookFolders, resolvedProfile]);
 
   // ── Reading identity (Phase 1, BOOKLIZ_PLATFORM_ROADMAP.md) ────────────────
   // Local-first: load the cached identity instantly on mount…
@@ -922,6 +942,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
     setReadingSessions(parsed.readingSessions ?? sessionSeed);
     setReviews(Array.isArray(parsed.reviews) ? parsed.reviews : []);
     setUserLists(Array.isArray(parsed.userLists) ? parsed.userLists : []);
+    setBookFolders(Array.isArray(parsed.bookFolders) ? parsed.bookFolders : []);
 
     if (parsed.userProfile?.id) {
       const persistedAccount = await readPersistedConnectedAccount();
@@ -988,6 +1009,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
     setReadingSessions([]);
     setReviews([]);
     setUserLists([]);
+    setBookFolders([]);
     setProfile(userProfile);
     setReadingIdentity(null);
   };
@@ -1248,7 +1270,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
     pendingRemoteRef.current = true;
     const timer = setTimeout(() => void persistNow.current(true), LOCAL_PERSIST_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [authors, books, hydrated, readingSessions, resolvedProfile, reviews, userLists]);
+  }, [authors, books, bookFolders, hydrated, readingSessions, resolvedProfile, reviews, userLists]);
 
   // Cloud sync — long trailing debounce. Resets on every edit, so an active
   // editing session uploads once when the user pauses rather than per keystroke.
@@ -1256,7 +1278,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
     if (!hydrated) return;
     const timer = setTimeout(() => void persistNow.current(false), REMOTE_SYNC_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [authors, books, hydrated, readingSessions, resolvedProfile, reviews, userLists]);
+  }, [authors, books, bookFolders, hydrated, readingSessions, resolvedProfile, reviews, userLists]);
 
   // Local snapshot beat the cloud's at startup — push it now rather than
   // waiting for the user to happen to edit something. Declared after the
@@ -1759,8 +1781,10 @@ export function BooklizProvider({ children }: PropsWithChildren) {
         authProvider: input.authProvider ?? current.authProvider,
         readingLevel: input.readingLevel?.trim() || current.readingLevel,
         yearlyGoal: input.yearlyGoal > 0 ? input.yearlyGoal : current.yearlyGoal,
-        favoriteAuthors: input.favoriteAuthors.length ? input.favoriteAuthors : current.favoriteAuthors,
-        favoriteGenres: input.favoriteGenres.length ? input.favoriteGenres : current.favoriteGenres
+        // The editor sends the whole list: empty means "none", not "keep the
+        // old ones" — that made it impossible to remove the last favourite.
+        favoriteAuthors: cleanFavorites(input.favoriteAuthors),
+        favoriteGenres: cleanFavorites(input.favoriteGenres)
       }));
     };
 
@@ -1845,6 +1869,28 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       );
     };
 
+    const createFolder = (name: string, parentId?: string | null, emoji?: string): BookFolder => {
+      const folder = makeFolder(name, parentId ?? null, `folder-${uniqueSuffix()}`, emoji);
+      setBookFolders((prev) => [...prev, folder]);
+      return folder;
+    };
+
+    const renameFolder = (folderId: string, name: string, emoji?: string) => {
+      setBookFolders((prev) => renameFolderIn(prev, folderId, name, emoji));
+    };
+
+    const deleteFolder = (folderId: string) => {
+      setBookFolders((prev) => deleteFolderIn(prev, folderId));
+    };
+
+    const moveBookToFolder = (bookId: string, folderId: string | null) => {
+      setBookFolders((prev) => moveBookIn(prev, bookId, folderId));
+    };
+
+    const moveFolder = (folderId: string, parentId: string | null) => {
+      setBookFolders((prev) => moveFolderIn(prev, folderId, parentId));
+    };
+
     const completeOnboarding = async (name: string, genres: string[]) => {
       const trimmedName = name.trim() || "Reader";
       const initials = buildInitials(trimmedName, undefined);
@@ -1854,6 +1900,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       setReadingSessions([]);
       setReviews([]);
       setUserLists([]);
+      setBookFolders([]);
       setProfile((prev) => ({
         ...prev,
         name: trimmedName,
@@ -1880,6 +1927,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       setReadingSessions([]);
       setReviews([]);
       setUserLists([]);
+      setBookFolders([]);
       setProfile(userProfile);
       setOnboardingComplete(false);
       setReadingIdentity(null);
@@ -1929,6 +1977,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
             if (error) {
               console.warn("[Bookliz] booklio_delete_account RPC failed, deleting rows directly", error.message);
               for (const table of [
+                "booklio_folders",
                 "booklio_user_lists",
                 "booklio_reviews",
                 "booklio_reading_sessions",
@@ -1961,6 +2010,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       setReadingSessions([]);
       setReviews([]);
       setUserLists([]);
+      setBookFolders([]);
       // The identity was computed from books that no longer exist.
       setReadingIdentity(null);
       await AsyncStorage.multiRemove([READING_IDENTITY_KEY]);
@@ -1975,6 +2025,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
           readingSessions: [],
           reviews: [],
           userLists: [],
+          bookFolders: [],
           userProfile: latestStateRef.current.userProfile
         })
       );
@@ -2079,6 +2130,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       readingSessions: [...readingSessions].sort((a, b) => b.date.localeCompare(a.date)),
       reviews,
       userLists,
+      bookFolders,
       recommendations: recommendationList,
       series,
       userProfile: resolvedProfile,
@@ -2118,6 +2170,11 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       deleteUserList,
       addBookToList,
       removeBookFromList,
+      createFolder,
+      renameFolder,
+      deleteFolder,
+      moveBookToFolder,
+      moveFolder,
       getBookStats,
       getSessionsForBook,
       getRecommendationsForBook,
@@ -2126,7 +2183,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       clearSeriesCompletion: () => setSeriesJustCompleted(null),
       readingIdentity
     };
-  }, [authors, books, conflictBackup, onboardingComplete, readingSessions, readingIdentity, repositoryStatus, resolvedProfile, reviews, seriesJustCompleted, userLists]);
+  }, [authors, books, conflictBackup, onboardingComplete, readingSessions, readingIdentity, repositoryStatus, resolvedProfile, reviews, seriesJustCompleted, userLists, bookFolders]);
 
   if (!hydrated) return null;
 
