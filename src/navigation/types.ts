@@ -43,6 +43,8 @@ export type RootStackParamList = {
   ManageAudio: undefined;
   /** Settings > Credits and licences. */
   Credits: undefined;
+  /** A Library folder (subfolders + books). */
+  Folder: { folderId: string };
   EditBook: { bookId: string };
   Achievements: undefined;
   WriteReview: { bookId: string };

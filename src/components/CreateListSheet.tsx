@@ -5,7 +5,7 @@ import { useI18n } from "../i18n/LocalizationContext";
 import { AppColors, fonts, radii, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
 
-const EMOJI_PICKS = ["📚", "⭐", "🌙", "🔥", "💎", "🧠", "🌿", "🎯", "✨", "🗺️", "🏔️", "❤️"];
+const EMOJI_PICKS = ["📚", "📁", "⭐", "🌙", "🔥", "💎", "🧠", "🌿", "🎯", "✨", "🗺️", "❤️"];
 
 type Props = {
   open: boolean;
@@ -16,9 +16,11 @@ type Props = {
   /** Shown only in rename mode — lets the user delete the list. */
   onDelete?: () => void;
   onClose: () => void;
+  /** Same sheet for library folders: only the wording changes. */
+  kind?: "list" | "folder";
 };
 
-export function CreateListSheet({ open, initialName = "", initialEmoji = "📚", mode = "create", onSave, onDelete, onClose }: Props) {
+export function CreateListSheet({ open, initialName = "", initialEmoji = "📚", mode = "create", onSave, onDelete, onClose, kind = "list" }: Props) {
   const { t } = useI18n();
   const c = useColors();
   const styles = useMemo(() => createStyles(c), [c]);
@@ -47,7 +49,11 @@ export function CreateListSheet({ open, initialName = "", initialEmoji = "📚",
 
         <View style={styles.sheet}>
           <View style={styles.handle} />
-          <Text style={styles.title}>{mode === "rename" ? t("lists.renameTitle") : t("lists.createTitle")}</Text>
+          <Text style={styles.title}>
+            {kind === "folder"
+              ? mode === "rename" ? t("folders.renameTitle") : t("folders.createTitle")
+              : mode === "rename" ? t("lists.renameTitle") : t("lists.createTitle")}
+          </Text>
 
           {/* Emoji picker */}
           <View style={styles.emojiRow}>
@@ -68,7 +74,7 @@ export function CreateListSheet({ open, initialName = "", initialEmoji = "📚",
             <TextInput
               ref={inputRef}
               style={styles.input}
-              placeholder="List name"
+              placeholder={kind === "folder" ? t("folders.namePlaceholder") : t("listSheet.listName")}
               placeholderTextColor={c.muted}
               value={name}
               onChangeText={setName}
@@ -92,7 +98,7 @@ export function CreateListSheet({ open, initialName = "", initialEmoji = "📚",
               onPress={() => { Keyboard.dismiss(); onDelete(); }}
             >
               <Ionicons name="trash-outline" size={15} color="#D95D47" />
-              <Text style={styles.deleteText}>{t("lists.deleteBtn")}</Text>
+              <Text style={styles.deleteText}>{kind === "folder" ? t("folders.delete") : t("lists.deleteBtn")}</Text>
             </Pressable>
           ) : null}
 

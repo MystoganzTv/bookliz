@@ -26,6 +26,8 @@ import { RecommendationCard } from "../components/RecommendationCard";
 import { wantsToAcquire } from "../data/shelfRules";
 import { BookStatusSheet } from "../components/BookStatusSheet";
 import { BookListSheet } from "../components/BookListSheet";
+import { FolderPickerSheet } from "../components/FolderPickerSheet";
+import { folderOfBook } from "../data/bookFolders";
 import { SessionRow } from "../components/SessionRow";
 import { useDialog } from "../components/DialogProvider";
 import { useBookliz } from "../data/BooklizContext";
@@ -70,8 +72,9 @@ export function BookDetailScreen() {
   const {
     deleteBook, getAuthor, getBook, getBookStats,
     getRecommendationsForBook, updateBookStatus, updateBookSynopsis, getReviewForBook,
-    getSessionsForBook,
+    getSessionsForBook, bookFolders, moveBookToFolder,
   } = useBookliz();
+  const [folderSheetOpen, setFolderSheetOpen] = useState(false);
   const dialog = useDialog();
   const audioPlayer = useAudiobookPlayer();
   const attachAudio = useAttachAudio();
@@ -662,6 +665,14 @@ export function BookDetailScreen() {
         onClose={() => setStatusSheetOpen(false)}
       />
       <BookListSheet open={listSheetOpen} bookId={book.id} onClose={() => setListSheetOpen(false)} />
+      <FolderPickerSheet
+        open={folderSheetOpen}
+        title={t("folders.moveBookTitle", { title: book.title })}
+        currentId={folderOfBook(bookFolders, book.id)?.id ?? null}
+        noneLabel={t("folders.noFolder")}
+        onPick={(target) => moveBookToFolder(book.id, target)}
+        onClose={() => setFolderSheetOpen(false)}
+      />
 
       {/* ── More actions sheet ─────────────────────────────────────────────── */}
       <Modal
@@ -683,6 +694,17 @@ export function BookDetailScreen() {
             ) : null}
             <MoreAction icon="bookmarks-outline" label={t("bookDetail.moreAddToList")} styles={styles} c={c}
               onPress={() => { setMoreSheetOpen(false); setListSheetOpen(true); }} />
+            <MoreAction
+              icon="folder-outline"
+              label={(() => {
+                const current = folderOfBook(bookFolders, book.id);
+                return current ? t("folders.inFolder", { name: current.name }) : t("folders.moveBook");
+              })()}
+              styles={styles}
+              c={c}
+              // The sheet is a Modal: wait for this one to close first (iOS).
+              onPress={() => { setMoreSheetOpen(false); setTimeout(() => setFolderSheetOpen(true), 350); }}
+            />
             {needsAcquiring ? (
               <MoreAction icon="cart-outline" label={t("bookDetail.moreGetOnAmazon")} styles={styles} c={c}
                 onPress={() => { setMoreSheetOpen(false); handleBuy(); }} />

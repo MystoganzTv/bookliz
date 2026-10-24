@@ -30,6 +30,7 @@ import { SettingsChoiceScreen } from "../screens/SettingsChoiceScreen";
 import { PlayerSettingsScreen } from "../screens/PlayerSettingsScreen";
 import { ManageAudioScreen } from "../screens/ManageAudioScreen";
 import { CreditsScreen } from "../screens/CreditsScreen";
+import { FolderScreen } from "../screens/FolderScreen";
 import { OnboardingWelcomeScreen } from "../screens/onboarding/OnboardingWelcomeScreen";
 import { OnboardingNameScreen } from "../screens/onboarding/OnboardingNameScreen";
 import { OnboardingGenresScreen } from "../screens/onboarding/OnboardingGenresScreen";
@@ -187,6 +188,7 @@ export function AppNavigator() {
         <Stack.Screen component={PlayerSettingsScreen} name="PlayerSettings" options={{ title: t("playerSettings.title") }} />
         <Stack.Screen component={ManageAudioScreen} name="ManageAudio" options={{ title: t("manageAudio.title") }} />
         <Stack.Screen component={CreditsScreen} name="Credits" options={{ title: t("credits.title") }} />
+        <Stack.Screen component={FolderScreen} name="Folder" options={{ title: "" }} />
         <Stack.Screen component={EditBookScreen} name="EditBook" options={{ title: t("nav.stack.editBook") }} />
         <Stack.Screen component={AchievementsScreen} name="Achievements" options={{ title: "" }} />
         <Stack.Screen component={WriteReviewScreen} name="WriteReview" options={{ title: t("nav.stack.writeReview") }} />

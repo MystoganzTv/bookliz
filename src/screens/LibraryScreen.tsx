@@ -26,6 +26,8 @@ import { languageCode } from "../utils/languageUtils";
 import { CreateListSheet } from "../components/CreateListSheet";
 import { ScalePressable } from "../components/ScalePressable";
 import { OwnershipConfirmSheet } from "../components/OwnershipConfirmSheet";
+import { FolderPickerSheet } from "../components/FolderPickerSheet";
+import { childFolders, deepBookCount, folderOfBook } from "../data/bookFolders";
 
 type ViewMode = "grid" | "list";
 type LibraryFilter = "all" | "reading" | "read" | "wishlist";
@@ -44,7 +46,11 @@ export function LibraryScreen() {
   const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
   const activeControlTextColor = isDark ? c.ink : "#FFFFFF";
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { books, getAuthor, readingSessions, userLists, createUserList, deleteUserList, renameUserList, deleteBook, updateBookStatus } = useBookliz();
+  const { books, getAuthor, readingSessions, userLists, createUserList, deleteUserList, renameUserList, deleteBook, updateBookStatus, bookFolders, createFolder, moveBookToFolder } = useBookliz();
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [folderSheetBook, setFolderSheetBook] = useState<Book | null>(null);
+  const existingIds = useMemo(() => new Set(books.map((b) => b.id)), [books]);
+  const topFolders = useMemo(() => childFolders(bookFolders, null), [bookFolders]);
   const [filter, setFilter] = useState<LibraryFilter>("all");
   const [advFilters, setAdvFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
@@ -326,6 +332,34 @@ export function LibraryScreen() {
         </ScrollView>
       ) : null}
 
+      {/* ── Folders — top level; a folder opens its own screen ── */}
+      {books.length > 0 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.foldersRail} contentContainerStyle={styles.foldersRailContent}>
+          {topFolders.map((folder) => (
+            <ScalePressable
+              key={folder.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${folder.name}, ${deepBookCount(bookFolders, folder.id, existingIds)}`}
+              style={styles.folderCard}
+              onPress={() => navigation.navigate("Folder", { folderId: folder.id })}
+            >
+              <Text style={styles.folderCardEmoji}>{folder.emoji ?? "📁"}</Text>
+              <Text style={styles.folderCardName} numberOfLines={1}>{folder.name}</Text>
+              <Text style={styles.folderCardCount}>{deepBookCount(bookFolders, folder.id, existingIds)}</Text>
+            </ScalePressable>
+          ))}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("folders.new")}
+            style={[styles.folderCard, styles.folderCardNew]}
+            onPress={() => setCreateFolderOpen(true)}
+          >
+            <Ionicons name="folder-open-outline" size={20} color={c.teal} />
+            <Text style={styles.folderCardNewText} numberOfLines={1}>{t("folders.new")}</Text>
+          </Pressable>
+        </ScrollView>
+      ) : null}
+
       {/* ── Search + controls ── */}
       <View style={styles.searchRow}>
         <TextInput
@@ -440,6 +474,28 @@ export function LibraryScreen() {
         windowSize={7}
       />
 
+      {/* Folders: new top-level folder, and "move to folder" from the book menu */}
+      <CreateListSheet
+        kind="folder"
+        open={createFolderOpen}
+        mode="create"
+        initialEmoji="📁"
+        onSave={(name, emoji) => {
+          const folder = createFolder(name, null, emoji);
+          setCreateFolderOpen(false);
+          navigation.navigate("Folder", { folderId: folder.id });
+        }}
+        onClose={() => setCreateFolderOpen(false)}
+      />
+      <FolderPickerSheet
+        open={Boolean(folderSheetBook)}
+        title={t("folders.moveBookTitle", { title: folderSheetBook?.title ?? "" })}
+        currentId={folderSheetBook ? folderOfBook(bookFolders, folderSheetBook.id)?.id ?? null : null}
+        noneLabel={t("folders.noFolder")}
+        onPick={(target) => folderSheetBook && moveBookToFolder(folderSheetBook.id, target)}
+        onClose={() => setFolderSheetBook(null)}
+      />
+
       {/* Create list sheet */}
       <CreateListSheet
         open={createListOpen}
@@ -528,6 +584,9 @@ export function LibraryScreen() {
         }
         onAddToList={() => {
           if (contextBook) setListSheetBookId(contextBook.book.id);
+        }}
+        onMoveToFolder={() => {
+          if (contextBook) setFolderSheetBook(contextBook.book);
         }}
         onBuy={() => {
           if (!contextBook) return;
@@ -888,6 +947,53 @@ function createStyles(c: AppColors, isDark: boolean) {
     confirmBannerText: { fontFamily: fonts.body, fontSize: 13.5, color: c.ink, lineHeight: 18 },
     confirmBannerCta: { fontFamily: fonts.body, fontSize: 12, color: c.teal, marginTop: 1 },
 
+    foldersRail: {
+      marginBottom: spacing.sm,
+      marginTop: spacing.xs
+    },
+    foldersRailContent: {
+      gap: spacing.sm,
+      paddingRight: spacing.sm
+    },
+    folderCard: {
+      backgroundColor: c.surface,
+      borderColor: c.border,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      justifyContent: "space-between",
+      minHeight: 78,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      width: 116
+    },
+    folderCardEmoji: {
+      fontSize: 20
+    },
+    folderCardName: {
+      color: c.ink,
+      fontFamily: fonts.body,
+      fontSize: 14,
+      fontWeight: "800",
+      marginTop: 4
+    },
+    folderCardCount: {
+      color: c.muted,
+      fontFamily: fonts.bodyRegular,
+      fontSize: 12
+    },
+    folderCardNew: {
+      alignItems: "flex-start",
+      backgroundColor: "transparent",
+      borderStyle: "dashed",
+      gap: 6,
+      justifyContent: "center"
+    },
+    folderCardNewText: {
+      color: c.tealDark,
+      fontFamily: fonts.body,
+      fontSize: 13,
+      fontWeight: "800"
+    },
     listsRail: {
       marginBottom: spacing.sm,
       marginTop: spacing.xs

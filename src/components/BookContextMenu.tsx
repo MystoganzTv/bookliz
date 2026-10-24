@@ -27,6 +27,8 @@ type Props = {
   onLogSession: () => void;
   onOpenSeries: (() => void) | undefined;
   onAddToList: () => void;
+  /** Library folders. Absent where folders make no sense. */
+  onMoveToFolder?: () => void;
   onBuy: () => void;
   onRemove: () => void;
 };
@@ -42,6 +44,7 @@ export function BookContextMenu({
   onLogSession,
   onOpenSeries,
   onAddToList,
+  onMoveToFolder,
   onBuy,
   onRemove,
 }: Props) {
@@ -70,6 +73,7 @@ export function BookContextMenu({
     // Group 3 — organisation
     [
       { key: "list",     label: t("contextMenu.addToList"), icon: "bookmark-outline" },
+      { key: "folder",   label: t("folders.moveBook"),      icon: "folder-outline", hidden: !onMoveToFolder },
       // Hidden once the reader owns a copy — offering to go buy a book that
       // is already on their shelf is the kind of detail that makes an app
       // feel like it is not paying attention.
@@ -92,6 +96,7 @@ export function BookContextMenu({
         case "series":  return onOpenSeries?.();
         case "author":  return onViewAuthor?.();
         case "list":    return onAddToList();
+        case "folder":  return onMoveToFolder?.();
         case "buy":     return onBuy();
         case "remove":  return onRemove();
       }
