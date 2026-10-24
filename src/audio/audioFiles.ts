@@ -64,6 +64,9 @@ const root = () => {
   return dir;
 };
 
+/** Documents/audiobooks/, created if missing — the folder the backup setting applies to. */
+export const audioRootUri = () => root().uri;
+
 export const trackUri = (folder: string, file: string) => new File(Paths.document, ROOT_NAME, folder, file).uri;
 
 export function audioFileExists(folder: string, file: string): boolean {
@@ -172,6 +175,25 @@ export async function importAudioFiles(
   } catch (error) {
     deleteAudioFolder(folderName);
     throw error;
+  }
+}
+
+/** Bytes of one file in a book's folder; 0 when it is gone. */
+export function audioFileSize(folder: string, file: string): number {
+  try {
+    const f = new File(Paths.document, ROOT_NAME, folder, file);
+    return f.exists ? f.size : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function deleteAudioFile(folder: string, file: string): void {
+  try {
+    const f = new File(Paths.document, ROOT_NAME, folder, file);
+    if (f.exists) f.delete();
+  } catch {
+    // Already gone.
   }
 }
 

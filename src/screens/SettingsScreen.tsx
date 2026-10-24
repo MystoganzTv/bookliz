@@ -12,6 +12,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Image, Platform, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
+import { loadIncludeAudioInBackup, setIncludeAudioInBackup } from "../audio/audioBackup";
+import { audioFolderSize } from "../audio/audioFiles";
+import { formatBytes } from "../audio/audiobookModel";
+import { isFileBackupAvailable } from "../../modules/file-backup";
 import { useDialog } from "../components/DialogProvider";
 import { GoogleConnectionCard } from "../components/GoogleConnectionCard";
 import { Screen } from "../components/Screen";
@@ -53,6 +57,29 @@ export function SettingsScreen() {
   useEffect(() => {
     void loadNotificationPrefs().then(setNotifPrefs);
   }, []);
+
+  // ── Audiobooks in the iCloud device backup (off by default) ──────────────
+  const [audioInBackup, setAudioInBackup] = useState(false);
+  useEffect(() => {
+    void loadIncludeAudioInBackup().then(setAudioInBackup);
+  }, []);
+  const handleAudioBackup = useCallback(async (include: boolean) => {
+    setAudioInBackup(include);
+    const applied = await setIncludeAudioInBackup(include);
+    if (applied === false) {
+      setAudioInBackup(!include);
+      void setIncludeAudioInBackup(!include);
+      dialog.alert(t("settings.audioBackup.failedTitle"), t("settings.audioBackup.failedBody"));
+    }
+  }, [dialog, t]);
+  const audioFolders = useMemo(
+    () => Object.values(audioPlayer.library).map((a) => a.folder),
+    [audioPlayer.library]
+  );
+  const audioBytes = useMemo(
+    () => audioFolders.reduce((sum, folder) => sum + audioFolderSize(folder), 0),
+    [audioFolders]
+  );
 
   const handleToggleNotification = useCallback(async (value: boolean) => {
     const { prefs, permissionGranted } = await setReminderEnabled(value, notifPrefs.hour, notifPrefs.minute);
@@ -152,6 +179,22 @@ export function SettingsScreen() {
           title={t("notifications.enableLabel")}
           value={notifPrefs.enabled}
           onValueChange={(v) => { void handleToggleNotification(v); }}
+        />
+      </SettingsGroup>
+
+      {/* ── iCloud backup ───────────────────────────────────────────────── */}
+      <SettingsGroup
+        header={t("settings.audioBackup.header")}
+        footer={[
+          audioInBackup ? t("settings.audioBackup.footerOn") : t("settings.audioBackup.footerOff"),
+          audioBytes > 0 ? t("settings.audioBackup.size", { size: formatBytes(audioBytes) }) : "",
+        ].filter(Boolean).join(" ")}
+      >
+        <SettingsToggleRow
+          title={t("settings.audioBackup.toggle")}
+          value={audioInBackup}
+          disabled={!isFileBackupAvailable}
+          onValueChange={(v) => { void handleAudioBackup(v); }}
         />
       </SettingsGroup>
 

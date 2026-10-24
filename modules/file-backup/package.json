@@ -1,0 +1,7 @@
+{
+  "name": "file-backup",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Marks folders in or out of the iCloud/iTunes device backup (URLResourceValues.isExcludedFromBackup).",
+  "main": "index.ts"
+}

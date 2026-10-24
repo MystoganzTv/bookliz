@@ -14,6 +14,12 @@ export interface AudioTrack {
   file: string;
   title: string;
   durationSec: number;
+  /**
+   * The file was deleted to free space after it was listened to. It keeps its
+   * place on the timeline — positions, percentages and logged progress all
+   * stay exactly what they were — it just cannot be played any more.
+   */
+  removed?: boolean;
 }
 
 export interface AudioChapter {
@@ -21,6 +27,14 @@ export interface AudioChapter {
   title: string;
   startSec: number;
   endSec: number;
+}
+
+/** A moment the listener wants to come back to. */
+export interface AudioBookmark {
+  id: string;
+  /** Seconds into the whole book. */
+  sec: number;
+  createdAt: string;
 }
 
 export interface Audiobook {
@@ -33,13 +47,21 @@ export interface Audiobook {
   /** Where the listener is, in seconds into the whole book. */
   positionSec: number;
   speed: number;
+  /** Absent on books imported before bookmarks existed. */
+  bookmarks?: AudioBookmark[];
+  /**
+   * Where the listener was before a big jump (another chapter, a long drag,
+   * a bookmark) — so an accidental tap never loses their place. Cleared once
+   * they have listened a while at the new spot, or gone back.
+   */
+  returnSec?: number;
   addedAt: string;
   lastPlayedAt?: string;
 }
 
 /** iOS caps AVPlayer at 2×. */
 export const PLAYBACK_SPEEDS = [0.75, 1, 1.25, 1.5, 1.75, 2] as const;
-export const SKIP_BACK_SEC = 15;
+export const SKIP_BACK_SEC = 30;
 export const SKIP_FORWARD_SEC = 30;
 /** Inside this many seconds of a chapter, "previous" goes to the chapter before rather than restarting this one. */
 const RESTART_WINDOW_SEC = 3;
@@ -224,6 +246,12 @@ export function formatClock(seconds: number): string {
 }
 
 /** "1.25×", "2×". */
+/** "1.2 GB" / "340 MB" — never "0 MB" for a file that exists. */
+export function formatBytes(bytes: number): string {
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  return `${Math.max(1, Math.round(bytes / 1024 ** 2))} MB`;
+}
+
 export const formatSpeed = (speed: number) => `${Number(speed.toFixed(2))}×`;
 
 /**
@@ -234,4 +262,65 @@ export function initialPosition(totalSec: number, progressPercent: number, finis
   if (finished || totalSec <= 0) return 0;
   const pct = clamp(progressPercent || 0, 0, 100);
   return pct >= 100 ? 0 : Math.floor((pct / 100) * totalSec);
+}
+
+// ─── Deleted (already listened) files ─────────────────────────────────────────
+
+const isRemovedIndex = (tracks: readonly AudioTrack[], index: number) => Boolean(tracks[index]?.removed);
+
+/** Whether the audio at a book position has been deleted. */
+export function isRemovedAt(tracks: readonly AudioTrack[], positionSec: number): boolean {
+  return tracks.length > 0 && isRemovedIndex(tracks, locate(tracks, positionSec).index);
+}
+
+/**
+ * The nearest position that can actually play: the position itself, or — when
+ * it falls in a deleted file — the start of the next file still on the phone.
+ * Null when nothing from there on is left.
+ */
+export function playablePosition(tracks: readonly AudioTrack[], positionSec: number): number | null {
+  if (!tracks.length) return null;
+  const { index } = locate(tracks, positionSec);
+  if (!isRemovedIndex(tracks, index)) return Math.max(0, positionSec);
+  const starts = trackStarts(tracks);
+  for (let i = index + 1; i < tracks.length; i++) if (!tracks[i].removed) return starts[i];
+  return null;
+}
+
+/** First playable second of the book, or null when every file is gone. */
+export const firstPlayableSec = (tracks: readonly AudioTrack[]) => playablePosition(tracks, 0);
+
+/** Index of the next file after `index` that is still on the phone, or -1. */
+export function nextPlayableTrack(tracks: readonly AudioTrack[], index: number): number {
+  for (let i = index + 1; i < tracks.length; i++) if (!tracks[i].removed) return i;
+  return -1;
+}
+
+/**
+ * Files entirely behind the listener that can be deleted. Never the file in
+ * progress — only the ones before it. A one-file book (an M4B) never has any:
+ * a single file cannot be cut into pieces.
+ */
+export function listenedTrackIndexes(tracks: readonly AudioTrack[], positionSec: number): number[] {
+  if (tracks.length < 2) return [];
+  const { index } = locate(tracks, positionSec);
+  const out: number[] = [];
+  for (let i = 0; i < index; i++) if (!tracks[i].removed) out.push(i);
+  return out;
+}
+
+// ─── "Back to where you were" ─────────────────────────────────────────────────
+
+/** A move shorter than this is fine-tuning (the ±30 buttons), not a jump. */
+export const RETURN_JUMP_SEC = 60;
+
+/**
+ * The return point after moving from `fromSec` to `toSec`. A big jump keeps
+ * the OLDEST unreturned spot — browsing three chapters must still lead back
+ * to where the listener actually was. Arriving back near it clears it.
+ */
+export function returnPointAfterJump(current: number | undefined, fromSec: number, toSec: number): number | undefined {
+  if (current !== undefined && Math.abs(toSec - current) < RETURN_JUMP_SEC) return undefined;
+  if (Math.abs(toSec - fromSec) < RETURN_JUMP_SEC) return current;
+  return current ?? fromSec;
 }

@@ -10,6 +10,7 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AppState } from "react-native";
 import { useBookliz } from "../data/BooklizContext";
+import { applyAudioBackupPreference } from "./audioBackup";
 import { AudiobookEngine, type EngineHost, type EngineMainState } from "./audiobookEngine";
 
 const EngineContext = createContext<AudiobookEngine | null>(null);
@@ -30,6 +31,9 @@ export function AudiobookPlayerProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     void engine.start();
+    // Re-applied every launch: cheap, and it also covers a folder created by an
+    // older build that never set the flag.
+    void applyAudioBackupPreference().catch(() => {});
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active") engine.onForeground();
     });
