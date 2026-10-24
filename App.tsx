@@ -10,6 +10,7 @@ import {
 } from "@expo-google-fonts/nunito";
 import { BooklizProvider } from "./src/data/BooklizContext";
 import { ReadingTimerProvider } from "./src/data/ReadingTimerContext";
+import { AudiobookPlayerProvider } from "./src/audio/AudiobookPlayerContext";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
 import { AppNavigator } from "./src/navigation/AppNavigator";
 import { LocalizationProvider } from "./src/i18n/LocalizationContext";
@@ -48,7 +49,9 @@ export default function App() {
             <DialogProvider>
               <BooklizProvider>
                 <ReadingTimerProvider>
-                  <Root />
+                  <AudiobookPlayerProvider>
+                    <Root />
+                  </AudiobookPlayerProvider>
                 </ReadingTimerProvider>
               </BooklizProvider>
             </DialogProvider>

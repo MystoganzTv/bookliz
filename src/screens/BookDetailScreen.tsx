@@ -38,6 +38,8 @@ import {
   weekRangeLabel,
 } from "../utils/readingWeek";
 import { useReadingTimer } from "../data/ReadingTimerContext";
+import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
+import { useAttachAudio } from "../audio/useAttachAudio";
 import { RootStackParamList } from "../navigation/types";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useTheme } from "../theme/ThemeContext";
@@ -71,6 +73,8 @@ export function BookDetailScreen() {
     getSessionsForBook,
   } = useBookliz();
   const dialog = useDialog();
+  const audioPlayer = useAudiobookPlayer();
+  const attachAudio = useAttachAudio();
 
   const { isRunning, bookId: timerBookId, startedAt: timerStartedAt, start: startTimer, stop: stopTimer } = useReadingTimer();
   const book = getBook(route.params.bookId);
@@ -107,6 +111,13 @@ export function BookDetailScreen() {
   const needsAcquiring = wantsToAcquire(book.userStatus);
   const isOwned = book.userStatus.ownership === "owned";
   const hasSessions = stats.totalSessions > 0;
+  const audiobook = audioPlayer.library[book.id];
+  const isListeningHere = audioPlayer.activeBookId === book.id && audioPlayer.isPlaying;
+  const importingHere = audioPlayer.importing?.bookId === book.id ? audioPlayer.importing : null;
+  const openPlayer = (autoplay = true) => navigation.navigate("AudioPlayer", { bookId: book.id, autoplay });
+  const handleAttachAudio = async () => {
+    if (await attachAudio(book.id)) openPlayer(false);
+  };
 
   // Pages per day for this book, one week at a time. Opens on the week of the
   // last session rather than on today's: a book you finished in March has
@@ -124,6 +135,8 @@ export function BookDetailScreen() {
   const statusLabel = t(statusLabelKey(book.userStatus.status));
 
   const primaryAction = (() => {
+    // With the audio on this phone, listening IS logging: every listen becomes a session.
+    if (audiobook) return { label: isListeningHere ? t("player.listening") : t("player.listen"), icon: "headset" as const, onPress: () => openPlayer() };
     if (isReading) return { label: t("bookDetail.logSession"), icon: "pencil" as const, onPress: () => navigation.navigate("AddReadingSession", { bookId: book.id }) };
     if (isDone)    return { label: t("bookDetail.reRead"), icon: "refresh-outline" as const, onPress: () => setStatusSheetOpen(true) };
     if (isDnf)     return { label: t("bookDetail.tryAgain"), icon: "refresh-outline" as const, onPress: () => setStatusSheetOpen(true) };
@@ -303,6 +316,30 @@ export function BookDetailScreen() {
             <Ionicons name="ellipsis-horizontal" size={20} color={c.ink} />
           </Pressable>
         </View>
+
+        {/* ── LISTEN HERE (audiobook without its file yet) ─────────────────── */}
+        {!audiobook && book.format === "audiobook" ? (
+          <View style={[styles.card, styles.listenCard, { marginTop: spacing.md }]}>
+            <View style={styles.listenIcon}>
+              <Ionicons name="headset" size={20} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.listenTitle}>{t("player.attachTitle")}</Text>
+              <Text style={styles.listenBody}>{t("player.attachBody")}</Text>
+              <Pressable
+                accessibilityRole="button"
+                disabled={Boolean(audioPlayer.importing)}
+                style={[styles.listenButton, audioPlayer.importing && { opacity: 0.6 }]}
+                onPress={() => void handleAttachAudio()}
+              >
+                {importingHere ? <ActivityIndicator size="small" color={c.tealDark} /> : <Ionicons name="add" size={16} color={c.tealDark} />}
+                <Text style={styles.listenButtonText}>
+                  {importingHere ? t("player.importing", { done: importingHere.done, total: importingHere.total }) : t("player.attachButton")}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
 
         {/* ── PROGRESS ─────────────────────────────────────────────────────── */}
         {(isReading || isDone) ? (
@@ -650,6 +687,30 @@ export function BookDetailScreen() {
               <MoreAction icon="cart-outline" label={t("bookDetail.moreGetOnAmazon")} styles={styles} c={c}
                 onPress={() => { setMoreSheetOpen(false); handleBuy(); }} />
             ) : null}
+            {audiobook ? (
+              <MoreAction icon="pencil" label={t("bookDetail.logSession")} styles={styles} c={c}
+                onPress={() => { setMoreSheetOpen(false); navigation.navigate("AddReadingSession", { bookId: book.id }); }} />
+            ) : null}
+            <MoreAction
+              icon={audiobook ? "swap-horizontal" : "headset-outline"}
+              label={audiobook ? t("player.replaceAudio") : t("player.attachButton")}
+              styles={styles}
+              c={c}
+              onPress={() => { setMoreSheetOpen(false); void handleAttachAudio(); }}
+            />
+            {audiobook ? (
+              <MoreAction icon="close-circle-outline" label={t("player.removeAudio")} styles={styles} c={c}
+                onPress={() => {
+                  setMoreSheetOpen(false);
+                  dialog.confirm({
+                    title: t("player.removeConfirmTitle"),
+                    body: t("player.removeConfirmBody"),
+                    confirmLabel: t("player.removeConfirm"),
+                    destructive: true,
+                    onConfirm: () => audioPlayer.engine.removeAudio(book.id),
+                  });
+                }} />
+            ) : null}
             <MoreAction icon="create-outline" label={t("bookDetail.moreEditBook")} styles={styles} c={c}
               onPress={() => { setMoreSheetOpen(false); navigation.navigate("EditBook", { bookId: book.id }); }} />
             <View style={styles.moreDivider} />
@@ -663,6 +724,7 @@ export function BookDetailScreen() {
                   confirmLabel: t("common.delete"),
                   destructive: true,
                   onConfirm: () => {
+                    audioPlayer.engine.removeAudio(book.id);
                     deleteBook(book.id);
                     navigation.goBack();
                   },
@@ -770,6 +832,17 @@ function createStyles(c: AppColors, isDark: boolean) {
       flexDirection: "row", gap: 7, justifyContent: "center", paddingVertical: 10,
     },
     primaryBtnText: { color: "#FFFFFF", fontFamily: fonts.body, fontSize: 14, fontWeight: "900" },
+
+    // Listen-here card
+    listenCard: { alignItems: "flex-start", flexDirection: "row", gap: spacing.sm },
+    listenIcon: { alignItems: "center", backgroundColor: c.teal, borderRadius: 18, height: 36, justifyContent: "center", width: 36 },
+    listenTitle: { color: c.ink, fontFamily: fonts.display, fontSize: 16, fontWeight: "800" },
+    listenBody: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 13, lineHeight: 18, marginTop: 2 },
+    listenButton: {
+      alignItems: "center", alignSelf: "flex-start", backgroundColor: c.teal + "1A", borderRadius: radii.pill,
+      flexDirection: "row", gap: 6, marginTop: spacing.sm, paddingHorizontal: 14, paddingVertical: 8,
+    },
+    listenButtonText: { color: c.tealDark, fontFamily: fonts.body, fontSize: 13, fontWeight: "900" },
     iconBtn: {
       ...shadows.card, alignItems: "center", backgroundColor: c.surface,
       borderColor: c.border, borderRadius: radii.sm, borderWidth: 1,

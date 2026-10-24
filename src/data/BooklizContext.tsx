@@ -173,6 +173,8 @@ type BooklizContextValue = {
   updateBookFormat: (bookId: string, format: Book["format"]) => void;
   /** Set only the page count — for "log session" on a book that never had one. */
   updateBookPages: (bookId: string, pages: number) => void;
+  /** Listening length in minutes — set from the audio file itself when one is attached in the player. */
+  updateBookDuration: (bookId: string, minutes: number) => void;
   updateBookSynopsis: (bookId: string, synopsis: string) => void;
   updateUserProfile: (input: UpdateUserProfileInput) => void;
   getAuthor: (authorId: string) => Author | undefined;
@@ -1579,6 +1581,12 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       setBooks((current) => current.map((b) => (b.id === bookId ? { ...b, pages: safe } : b)));
     };
 
+    const updateBookDuration = (bookId: string, minutes: number) => {
+      const safe = Math.max(0, Math.round(minutes));
+      if (!safe) return;
+      setBooks((current) => current.map((b) => (b.id === bookId && b.durationMinutes !== safe ? { ...b, durationMinutes: safe } : b)));
+    };
+
     const updateBookSynopsis = (bookId: string, synopsis: string) => {
       setBooks((current) => current.map((b) => (b.id === bookId ? { ...b, synopsis } : b)));
     };
@@ -2095,6 +2103,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       clearBookLanguages,
       updateBookFormat,
       updateBookPages,
+      updateBookDuration,
       updateBookSynopsis,
       updateUserProfile,
       getAuthor,

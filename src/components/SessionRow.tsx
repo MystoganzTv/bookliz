@@ -23,6 +23,9 @@ export function SessionRow({ session, bookTitle, onPress }: SessionRowProps) {
     mood && mood !== "—" ? mood : null,
   ].filter(Boolean).join(" · ");
   const pagesText = session.pagesRead === 1 ? t("sessionRow.pagesOne") : t("sessionRow.pagesMany", { count: session.pagesRead });
+  // An audiobook session's units are percent when the book has no page count —
+  // "5 pages · 12 pp/h" would be a number nobody read. Listening says minutes.
+  const isListen = session.format === "audiobook";
 
   return (
     <Pressable accessibilityRole="button" style={({ pressed }) => [styles.row, pressed && onPress ? styles.rowPressed : null]} onPress={onPress}>
@@ -34,7 +37,11 @@ export function SessionRow({ session, bookTitle, onPress }: SessionRowProps) {
       </View>
       <View style={styles.body}>
         <Text numberOfLines={1} style={styles.book}>{bookTitle}</Text>
-        <Text style={styles.meta}>{pagesText} · {t("sessionRow.minutes", { minutes: session.minutesRead })} · {Math.round(session.pagesPerHour)} pp/h</Text>
+        <Text style={styles.meta}>
+          {isListen
+            ? `${t("sessionRow.listened")} · ${t("sessionRow.minutes", { minutes: session.minutesRead })}`
+            : `${pagesText} · ${t("sessionRow.minutes", { minutes: session.minutesRead })} · ${Math.round(session.pagesPerHour)} pp/h`}
+        </Text>
         {contextLine ? <Text numberOfLines={1} style={styles.context}>{contextLine}</Text> : null}
         {session.notes.trim() ? <Text numberOfLines={2} style={styles.notes}>{session.notes.trim()}</Text> : null}
       </View>

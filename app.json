@@ -22,7 +22,10 @@
       "usesAppleSignIn": true,
       "supportsTablet": false,
       "infoPlist": {
-        "NSCameraUsageDescription": "Bookliz uses the camera to scan the ISBN barcode on a book."
+        "NSCameraUsageDescription": "Bookliz uses the camera to scan the ISBN barcode on a book.",
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
@@ -48,7 +51,8 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.167166673441-1m9fio2dlddt0a053ip2o8b6tan85pdb"
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "extra": {
       "googleAuth": {

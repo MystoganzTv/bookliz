@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
-import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
+import { createNavigationContainerRef, NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { fonts } from "../theme/theme";
 import { AddReadingSessionScreen } from "../screens/AddReadingSessionScreen";
+import { AudioPlayerScreen } from "../screens/AudioPlayerScreen";
 import { BookIntakeScreen } from "../screens/BookIntakeScreen";
 import { BookDetailScreen } from "../screens/BookDetailScreen";
 import { HomeScreen } from "../screens/HomeScreen";
@@ -34,9 +36,11 @@ import { MainTabParamList, RootStackParamList } from "./types";
 import { WhatsNewModal } from "../components/WhatsNewModal";
 import { SeriesCompletionModal } from "../components/SeriesCompletionModal";
 import { FloatingTimer } from "../components/FloatingTimer";
+import { MiniPlayer } from "../components/MiniPlayer";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator<MainTabParamList>();
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 function AppTabs() {
   const { colors: c, isDark } = useTheme();
@@ -117,6 +121,9 @@ export function AppNavigator() {
   const { onboardingComplete } = useBookliz();
   const { colors: c } = useTheme();
   const { t } = useI18n();
+  // The focused screen, leaf-most (a tab, not "AppTabs") — the mini-player shows only on some.
+  const [routeName, setRouteName] = useState<string | undefined>();
+  const syncRouteName = () => setRouteName(navigationRef.getCurrentRoute()?.name);
 
   const activeTheme = {
     ...DefaultTheme,
@@ -131,7 +138,7 @@ export function AppNavigator() {
   };
 
   return (
-    <NavigationContainer theme={activeTheme}>
+    <NavigationContainer ref={navigationRef} theme={activeTheme} onReady={syncRouteName} onStateChange={syncRouteName}>
       <Stack.Navigator
         screenOptions={{
           contentStyle: { backgroundColor: c.bg },
@@ -157,6 +164,7 @@ export function AppNavigator() {
         <Stack.Screen component={BookDetailScreen} name="BookDetail" options={{ title: "", headerTransparent: true }} />
         <Stack.Screen component={ReadingLogScreen} name="ReadingLog" options={{ title: "" }} />
         <Stack.Screen component={AddReadingSessionScreen} name="AddReadingSession" options={{ title: "" }} />
+        <Stack.Screen component={AudioPlayerScreen} name="AudioPlayer" options={{ headerShown: false, presentation: "modal" }} />
         <Stack.Screen
           component={BookIntakeScreen}
           name="BookIntake"
@@ -183,6 +191,8 @@ export function AppNavigator() {
       {onboardingComplete ? <SeriesCompletionModal /> : null}
       {/* Reading timer — floats above tab bar across all screens */}
       <FloatingTimer />
+      {/* Audiobook playing — above the tab bar, and above the timer when both run */}
+      {onboardingComplete ? <MiniPlayer routeName={routeName} /> : null}
     </NavigationContainer>
   );
 }

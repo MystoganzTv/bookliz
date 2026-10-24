@@ -6,6 +6,8 @@ export type RootStackParamList = {
   AppTabs: undefined;
   BookDetail: { bookId: string };
   ReadingLog: { bookId?: string };
+  /** The audiobook player. `autoplay` false opens it paused (right after attaching a file). */
+  AudioPlayer: { bookId: string; autoplay?: boolean };
   AddReadingSession: { bookId?: string; sessionId?: string; prefillMinutes?: number; prefillStartedAt?: number };
   BookIntake:
     | {

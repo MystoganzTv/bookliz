@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useDialog } from "../components/DialogProvider";
+import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -35,6 +36,7 @@ export function SettingsScreen() {
   } = useBookliz();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const dialog = useDialog();
+  const audioPlayer = useAudiobookPlayer();
   const styles = useMemo(() => createStyles(c), [c]);
 
   const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>({ enabled: false, hour: 20, minute: 0 });
@@ -378,7 +380,7 @@ export function SettingsScreen() {
               body: t("settings.clearLibraryBody"),
               confirmLabel: t("settings.clearLibraryConfirm"),
               destructive: true,
-              onConfirm: () => { void clearLibrary(); },
+              onConfirm: () => { audioPlayer.engine.removeAllAudio(); void clearLibrary(); },
             })
           }
         >
@@ -394,7 +396,7 @@ export function SettingsScreen() {
               body: t("settings.deletePromptBody"),
               confirmLabel: t("settings.deleteConfirm"),
               destructive: true,
-              onConfirm: () => { void resetApp(); },
+              onConfirm: () => { audioPlayer.engine.removeAllAudio(); void resetApp(); },
             })
           }
         >
