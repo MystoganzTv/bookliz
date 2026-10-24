@@ -78,6 +78,7 @@ import { findEditionsInLanguage } from "../utils/metadataResolver";
 import { buildEditionSwitchPatch } from "../utils/editionSwitch";
 import { groupEditionCandidates } from "../utils/editionMatchValidation";
 import { hapticLight, hapticSuccess } from "../utils/haptics";
+import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 
 type IntakeMode = "menu" | "isbn" | "manual" | "search" | "matches" | "review";
 
@@ -148,6 +149,7 @@ export function BookIntakeScreen() {
   const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<BookIntakeRouteProp>();
+  const { engine: audioEngine } = useAudiobookPlayer();
   const {
     addBook,
     deleteBook,
@@ -352,6 +354,9 @@ export function BookIntakeScreen() {
   const confirmAndOpen = (input: NewBookInput) => {
     const book = addBook(input);
     hapticSuccess(); // book landed in the library
+    // Came from Audio files › "Create a book with this audio": the new book gets it.
+    const inboxItemId = route.params?.attachAudioFrom;
+    if (inboxItemId) audioEngine.assignInboxItem(inboxItemId, book.id);
     const fromMatchId = reviewMatchIdRef.current;
     reviewMatchIdRef.current = null;
     if (!launchedFromDiscover && fromMatchId && matches.length > 0) {

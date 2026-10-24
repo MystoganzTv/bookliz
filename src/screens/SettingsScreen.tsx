@@ -251,8 +251,12 @@ export function SettingsScreen() {
       {/* ── Storage ──────────────────────────────────────────────────────── */}
       <SettingsGroup header={t("manageAudio.storageHeader")}>
         <SettingsRow
-          title={t("manageAudio.title")}
-          value={audioBytes > 0 ? formatBytes(audioBytes) : undefined}
+          title={t("fileManager.title")}
+          value={
+            audioPlayer.inbox.length > 0
+              ? t("fileManager.waiting", { count: audioPlayer.inbox.length })
+              : audioBytes > 0 ? formatBytes(audioBytes) : undefined
+          }
           onPress={() => navigation.navigate("ManageAudio")}
         />
       </SettingsGroup>

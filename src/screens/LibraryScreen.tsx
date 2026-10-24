@@ -28,6 +28,7 @@ import { ScalePressable } from "../components/ScalePressable";
 import { OwnershipConfirmSheet } from "../components/OwnershipConfirmSheet";
 import { FolderPickerSheet } from "../components/FolderPickerSheet";
 import { childFolders, deepBookCount, folderOfBook } from "../data/bookFolders";
+import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 
 type ViewMode = "grid" | "list";
 type LibraryFilter = "all" | "reading" | "read" | "wishlist";
@@ -48,6 +49,8 @@ export function LibraryScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { books, getAuthor, readingSessions, userLists, createUserList, deleteUserList, renameUserList, deleteBook, updateBookStatus, bookFolders, createFolder, moveBookToFolder } = useBookliz();
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const { inbox: audioInbox, library: audioLibrary } = useAudiobookPlayer();
+  const audioCount = Object.keys(audioLibrary).length;
   const [folderSheetBook, setFolderSheetBook] = useState<Book | null>(null);
   const existingIds = useMemo(() => new Set(books.map((b) => b.id)), [books]);
   const topFolders = useMemo(() => childFolders(bookFolders, null), [bookFolders]);
@@ -335,6 +338,19 @@ export function LibraryScreen() {
       {/* ── Folders — top level; a folder opens its own screen ── */}
       {books.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.foldersRail} contentContainerStyle={styles.foldersRailContent}>
+          {/* Audio files: the file manager. Always first, with what is waiting to be assigned. */}
+          <ScalePressable
+            accessibilityRole="button"
+            accessibilityLabel={t("fileManager.title")}
+            style={[styles.folderCard, audioInbox.length > 0 && styles.folderCardAttention]}
+            onPress={() => navigation.navigate("ManageAudio")}
+          >
+            <Ionicons name="headset-outline" size={20} color={c.teal} />
+            <Text style={styles.folderCardName} numberOfLines={1}>{t("fileManager.short")}</Text>
+            <Text style={[styles.folderCardCount, audioInbox.length > 0 && { color: c.tealDark, fontWeight: "800" }]}>
+              {audioInbox.length > 0 ? t("fileManager.waiting", { count: audioInbox.length }) : String(audioCount)}
+            </Text>
+          </ScalePressable>
           {topFolders.map((folder) => (
             <ScalePressable
               key={folder.id}
@@ -980,6 +996,9 @@ function createStyles(c: AppColors, isDark: boolean) {
       color: c.muted,
       fontFamily: fonts.bodyRegular,
       fontSize: 12
+    },
+    folderCardAttention: {
+      borderColor: c.teal
     },
     folderCardNew: {
       alignItems: "flex-start",

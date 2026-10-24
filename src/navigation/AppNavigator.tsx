@@ -44,6 +44,7 @@ import { FloatingTimer } from "../components/FloatingTimer";
 import { MiniPlayer } from "../components/MiniPlayer";
 import { useShortcutLinks } from "../shortcuts/useShortcutLinks";
 import { WatchSyncBridge } from "../watch/WatchSyncBridge";
+import { useIncomingAudio } from "../audio/useIncomingAudio";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator<MainTabParamList>();
@@ -132,6 +133,7 @@ export function AppNavigator() {
   const [routeName, setRouteName] = useState<string | undefined>();
   const syncRouteName = () => setRouteName(navigationRef.getCurrentRoute()?.name);
   useShortcutLinks(navigationRef);
+  useIncomingAudio(navigationRef);
 
   const activeTheme = {
     ...DefaultTheme,
@@ -186,7 +188,7 @@ export function AppNavigator() {
         <Stack.Screen component={SettingsScreen} name="Settings" options={{ title: t("nav.stack.settings") }} />
         <Stack.Screen component={SettingsChoiceScreen} name="SettingsChoice" options={{ title: "" }} />
         <Stack.Screen component={PlayerSettingsScreen} name="PlayerSettings" options={{ title: t("playerSettings.title") }} />
-        <Stack.Screen component={ManageAudioScreen} name="ManageAudio" options={{ title: t("manageAudio.title") }} />
+        <Stack.Screen component={ManageAudioScreen} name="ManageAudio" options={{ title: t("fileManager.title") }} />
         <Stack.Screen component={CreditsScreen} name="Credits" options={{ title: t("credits.title") }} />
         <Stack.Screen component={FolderScreen} name="Folder" options={{ title: "" }} />
         <Stack.Screen component={EditBookScreen} name="EditBook" options={{ title: t("nav.stack.editBook") }} />

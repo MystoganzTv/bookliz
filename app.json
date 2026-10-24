@@ -25,7 +25,44 @@
         "NSCameraUsageDescription": "Bookliz uses the camera to scan the ISBN barcode on a book.",
         "UIBackgroundModes": [
           "audio"
-        ]
+        ],
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "Audiobook",
+            "CFBundleTypeRole": "Viewer",
+            "LSHandlerRank": "Alternate",
+            "LSItemContentTypes": [
+              "public.audio",
+              "public.mp3",
+              "public.mpeg-4-audio",
+              "com.apple.m4a-audio",
+              "com.mystodev.booklio.m4b",
+              "public.aac-audio",
+              "public.aiff-audio",
+              "com.microsoft.waveform-audio",
+              "org.xiph.flac"
+            ]
+          }
+        ],
+        "UTImportedTypeDeclarations": [
+          {
+            "UTTypeIdentifier": "com.mystodev.booklio.m4b",
+            "UTTypeDescription": "MPEG-4 audiobook",
+            "UTTypeConformsTo": [
+              "public.mpeg-4-audio",
+              "public.audio"
+            ],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": [
+                "m4b"
+              ],
+              "public.mime-type": [
+                "audio/x-m4b"
+              ]
+            }
+          }
+        ],
+        "LSSupportsOpeningDocumentsInPlace": false
       }
     },
     "android": {
