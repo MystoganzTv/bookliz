@@ -3,6 +3,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ReadingSession } from "../types/models";
 import { AppColors, fonts, radii, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
+import { useI18n } from "../i18n/LocalizationContext";
+import { sessionPlace } from "../data/sessionProgress";
 
 type SessionRowProps = {
   session: ReadingSession;
@@ -13,22 +15,26 @@ type SessionRowProps = {
 export function SessionRow({ session, bookTitle, onPress }: SessionRowProps) {
   const c = useColors();
   const styles = useMemo(() => createStyles(c), [c]);
+  const { t, locale } = useI18n();
+  const place = sessionPlace(session.location);
+  const mood = session.mood?.trim();
   const contextLine = [
-    session.location !== "—" ? `At ${session.location}` : null,
-    session.mood !== "—" ? session.mood : null,
+    place ? t("sessionRow.at", { place }) : null,
+    mood && mood !== "—" ? mood : null,
   ].filter(Boolean).join(" · ");
+  const pagesText = session.pagesRead === 1 ? t("sessionRow.pagesOne") : t("sessionRow.pagesMany", { count: session.pagesRead });
 
   return (
     <Pressable accessibilityRole="button" style={({ pressed }) => [styles.row, pressed && onPress ? styles.rowPressed : null]} onPress={onPress}>
       <View style={styles.datePill}>
         <Text style={styles.dateMonth}>
-          {new Date(`${session.date}T00:00:00`).toLocaleDateString("en-US", { month: "short" })}
+          {new Date(`${session.date}T00:00:00`).toLocaleDateString(locale, { month: "short" })}
         </Text>
         <Text style={styles.dateDay}>{new Date(`${session.date}T00:00:00`).getDate()}</Text>
       </View>
       <View style={styles.body}>
         <Text numberOfLines={1} style={styles.book}>{bookTitle}</Text>
-        <Text style={styles.meta}>{session.pagesRead} pages · {session.minutesRead} min · {Math.round(session.pagesPerHour)} pp/h</Text>
+        <Text style={styles.meta}>{pagesText} · {t("sessionRow.minutes", { minutes: session.minutesRead })} · {Math.round(session.pagesPerHour)} pp/h</Text>
         {contextLine ? <Text numberOfLines={1} style={styles.context}>{contextLine}</Text> : null}
         {session.notes.trim() ? <Text numberOfLines={2} style={styles.notes}>{session.notes.trim()}</Text> : null}
       </View>

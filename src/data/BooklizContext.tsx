@@ -48,6 +48,7 @@ import { supabase } from "../lib/supabase";
 import { normalizeBookGenres } from "../utils/genres";
 import { languageCode } from "../utils/languageUtils";
 import { isOnWishlist, shelfFieldsFor, wantsToBuy } from "./shelfRules";
+import { latestSession as latestSessionOf, sessionPlace } from "./sessionProgress";
 import { localDateKey } from "../utils/dateUtils";
 import { inferSeriesData } from "../utils/knownWorks";
 import { buildSagaProgress, cleanSeriesName } from "../utils/sagaProgress";
@@ -168,6 +169,8 @@ type BooklizContextValue = {
    */
   clearBookLanguages: (bookIds: readonly string[]) => void;
   updateBookFormat: (bookId: string, format: Book["format"]) => void;
+  /** Set only the page count — for "log session" on a book that never had one. */
+  updateBookPages: (bookId: string, pages: number) => void;
   updateBookSynopsis: (bookId: string, synopsis: string) => void;
   updateUserProfile: (input: UpdateUserProfileInput) => void;
   getAuthor: (authorId: string) => Author | undefined;
@@ -358,16 +361,16 @@ const enrichProfileAchievements = (
       .filter(Boolean)
   );
   const hasTravelLocation = Array.from(uniqueLocations).some((location) =>
-    ["travel", "airport", "plane", "flight", "train", "commute", "hotel"].some((token) => location.includes(token))
+    ["travel", "airport", "plane", "flight", "train", "commute", "hotel", "viaje", "aeropuerto", "avión", "avion", "vuelo", "tren", "metro", "autobús", "autobus"].some((token) => location.includes(token))
   );
   const hasCoffeeLocation = Array.from(uniqueLocations).some((location) =>
-    ["cafe", "coffee", "coffee shop"].some((token) => location.includes(token))
+    ["cafe", "café", "coffee", "coffee shop", "cafetería", "cafeteria"].some((token) => location.includes(token))
   );
   const hasHomeLocation = Array.from(uniqueLocations).some((location) =>
-    ["home", "bedroom", "bed", "sofa", "couch"].some((token) => location.includes(token))
+    ["home", "bedroom", "bed", "sofa", "couch", "casa", "cama", "sofá", "dormitorio"].some((token) => location.includes(token))
   );
   const hasParkLocation = Array.from(uniqueLocations).some((location) =>
-    ["park", "outside", "garden", "beach"].some((token) => location.includes(token))
+    ["park", "outside", "garden", "beach", "parque", "jardín", "jardin", "playa"].some((token) => location.includes(token))
   );
   const { currentStreak, longestStreak } = calculateStreaks(sessions);
   const longestSingleDayMinutes = Object.values(
@@ -410,7 +413,7 @@ const enrichProfileAchievements = (
     "ach-cozy-reader": sessions.some((session) => {
       const mood = session.mood.toLowerCase();
       const location = normalizeLocation(session.location);
-      return mood.includes("cozy") || mood.includes("rain") || location.includes("bed") || location.includes("sofa");
+      return mood.includes("cozy") || mood.includes("rain") || location.includes("bed") || location.includes("sofa") || location.includes("cama") || location.includes("sofá");
     }) ? 1 : 0,
     "ach-midnight": 0,
     "ach-night-reading": 0,
@@ -615,7 +618,8 @@ const syncBookWithSessions = (book: Book, sessions: ReadingSession[]) => {
 
   const sorted = [...sessions].sort((a, b) => a.date.localeCompare(b.date));
   const firstSession = sorted[0];
-  const latestSession = sorted[sorted.length - 1];
+  // Same-day ties go to the session that got furthest — see sessionProgress.
+  const latestSession = latestSessionOf(sessions) ?? sorted[sorted.length - 1];
   // Unknown page count: page-based sessions cannot say how far along the book
   // is, so leave status/progress untouched. Audiobook sessions store percent
   // (0-100) in endPage when the page count is unknown.
@@ -727,7 +731,9 @@ const buildOverallStats = (books: Book[], sessions: ReadingSession[], authors: A
     return acc;
   }, {});
   const locationMap = sessions.reduce<Record<string, number>>((acc, session) => {
-    acc[session.location] = (acc[session.location] ?? 0) + 1;
+    // A session with no place is not a vote for a place called "".
+    const place = sessionPlace(session.location);
+    if (place) acc[place] = (acc[place] ?? 0) + 1;
     return acc;
   }, {});
   const formatMap = sessions.reduce<Record<string, number>>((acc, session) => {
@@ -1555,6 +1561,12 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       setBooks((current) => current.map((b) => (b.id === bookId ? { ...b, format } : b)));
     };
 
+    const updateBookPages = (bookId: string, pages: number) => {
+      const safe = Math.max(0, Math.round(pages));
+      if (!safe) return;
+      setBooks((current) => current.map((b) => (b.id === bookId ? { ...b, pages: safe } : b)));
+    };
+
     const updateBookSynopsis = (bookId: string, synopsis: string) => {
       setBooks((current) => current.map((b) => (b.id === bookId ? { ...b, synopsis } : b)));
     };
@@ -2067,6 +2079,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       updateBookStatus,
       clearBookLanguages,
       updateBookFormat,
+      updateBookPages,
       updateBookSynopsis,
       updateUserProfile,
       getAuthor,

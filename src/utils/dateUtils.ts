@@ -27,3 +27,11 @@ export const parseDateKey = (key: string): Date | null => {
   }
   return date;
 };
+
+/** The "YYYY-MM-DD" key `days` calendar days away (negative = earlier). Returns the input when it is malformed. */
+export const shiftDateKey = (key: string, days: number): string => {
+  const date = parseDateKey(key);
+  if (!date) return key;
+  date.setDate(date.getDate() + days);
+  return localDateKey(date);
+};

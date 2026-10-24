@@ -1,4 +1,5 @@
 import { Author, Book, Recommendation, ReadingSession } from "../types/models";
+import { sessionPlace } from "../data/sessionProgress";
 
 type RecommendationReason = Recommendation["reason"];
 
@@ -205,7 +206,7 @@ function buildHabitRecommendations(books: Book[], sessions: ReadingSession[]) {
 
   const averageMinutes = sessions.reduce((sum, session) => sum + session.minutesRead, 0) / sessions.length;
   const dominantFormat = getTopCount(sessions.map((session) => session.format));
-  const dominantLocation = getTopCount(sessions.map((session) => session.location));
+  const dominantLocation = getTopCount(sessions.map((session) => sessionPlace(session.location)).filter(Boolean));
 
   const candidates = books.filter(isDiscoverable);
   const recommendations: Recommendation[] = [];

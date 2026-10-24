@@ -48,7 +48,7 @@ export function FloatingTimer() {
           <Ionicons name="book" size={14} color="#fff" />
         </View>
         <Text style={styles.elapsed}>{formatElapsed(elapsedMs)}</Text>
-        <Text style={styles.label}>Reading…</Text>
+        <Text style={styles.label}>{t("timer.reading")}</Text>
       </View>
 
       {/* Right: discard + stop */}
@@ -64,7 +64,7 @@ export function FloatingTimer() {
         </Pressable>
         <Pressable accessibilityRole="button" style={styles.stopBtn} onPress={handleStop}>
           <Ionicons name="stop" size={13} color={c.navy} />
-          <Text style={styles.stopText}>Stop</Text>
+          <Text style={styles.stopText}>{t("timer.stop")}</Text>
         </Pressable>
       </View>
     </View>
