@@ -431,6 +431,7 @@
 		};
 		E330B802A48B48F83D4B9880 /* Sync version with iPhone app */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -438,6 +439,7 @@
 			);
 			inputPaths = (
 				"$(SRCROOT)/Booklio/Info.plist",
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
 			);
 			name = "Sync version with iPhone app";
 			outputFileListPaths = (
