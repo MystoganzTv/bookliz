@@ -6,6 +6,16 @@ type TranslationTree = {
 
 export const translations: Record<AppLocale, TranslationTree> = {
   en: {
+    manageAudio: {
+      title: "Manage files",
+      storageHeader: "Storage",
+      spaceHeader: "On this iPhone",
+      audiobooks: "Audiobooks",
+      free: "Free space",
+      size: "Size",
+      files: "{count} files",
+      empty: "No audiobooks imported yet. Add one from a book's page.",
+    },
     playerSettings: {
       autoplay: "Continue the saga",
       autoplayFooter: "When an audiobook ends, the next one of the same saga starts — if its audio is on this iPhone.",
@@ -123,7 +133,6 @@ export const translations: Record<AppLocale, TranslationTree> = {
         toggle: "Include audio files",
         footerOff: "Your audiobooks stay out of the iPhone's iCloud backup, so they don't fill it up. If you restore onto another iPhone you'll need to import them again; your listening sessions are kept.",
         footerOn: "Your audiobooks travel in the iPhone's iCloud backup. They use iCloud storage, and if it fills up iOS stops backing up the whole device.",
-        size: "They take up {size} right now.",
         failedTitle: "Couldn't change that",
         failedBody: "iOS didn't accept the change on the audiobooks folder. It was left as it was.",
       },
@@ -1202,6 +1211,16 @@ export const translations: Record<AppLocale, TranslationTree> = {
     },
   },
   es: {
+    manageAudio: {
+      title: "Gestionar archivos",
+      storageHeader: "Almacenamiento",
+      spaceHeader: "En este iPhone",
+      audiobooks: "Audiolibros",
+      free: "Espacio libre",
+      size: "Ocupa",
+      files: "{count} archivos",
+      empty: "Aún no has importado audiolibros. Añade uno desde la ficha de un libro.",
+    },
     playerSettings: {
       autoplay: "Seguir con la saga",
       autoplayFooter: "Al terminar un audiolibro empieza el siguiente de la misma saga, si su audio está en el iPhone.",
@@ -1314,7 +1333,6 @@ export const translations: Record<AppLocale, TranslationTree> = {
         toggle: "Incluir archivos de audio",
         footerOff: "Tus audiolibros no entran en la copia de iCloud del iPhone, así que no la llenan. Si restauras en otro iPhone, tendrás que volver a importarlos; tus sesiones de escucha se conservan.",
         footerOn: "Tus audiolibros viajan en la copia de iCloud del iPhone. Ocupan espacio de iCloud y, si se llena, iOS deja de hacer la copia entera.",
-        size: "Ahora ocupan {size}.",
         failedTitle: "No se pudo cambiar",
         failedBody: "iOS no aceptó el cambio en la carpeta de audiolibros. Se deja como estaba.",
       },

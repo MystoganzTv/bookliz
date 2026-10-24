@@ -221,13 +221,19 @@ export function SettingsScreen() {
         />
       </SettingsGroup>
 
+      {/* ── Storage ──────────────────────────────────────────────────────── */}
+      <SettingsGroup header={t("manageAudio.storageHeader")}>
+        <SettingsRow
+          title={t("manageAudio.title")}
+          value={audioBytes > 0 ? formatBytes(audioBytes) : undefined}
+          onPress={() => navigation.navigate("ManageAudio")}
+        />
+      </SettingsGroup>
+
       {/* ── iCloud backup ───────────────────────────────────────────────── */}
       <SettingsGroup
         header={t("settings.audioBackup.header")}
-        footer={[
-          audioInBackup ? t("settings.audioBackup.footerOn") : t("settings.audioBackup.footerOff"),
-          audioBytes > 0 ? t("settings.audioBackup.size", { size: formatBytes(audioBytes) }) : "",
-        ].filter(Boolean).join(" ")}
+        footer={audioInBackup ? t("settings.audioBackup.footerOn") : t("settings.audioBackup.footerOff")}
       >
         <SettingsToggleRow
           title={t("settings.audioBackup.toggle")}

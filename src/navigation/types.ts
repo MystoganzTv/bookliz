@@ -39,6 +39,8 @@ export type RootStackParamList = {
   SettingsChoice: { setting: "language" | "theme" | "skipBack" | "skipForward" | "keepAwake" };
   /** Settings > Player controls. */
   PlayerSettings: undefined;
+  /** Settings > Storage > Manage files. */
+  ManageAudio: undefined;
   EditBook: { bookId: string };
   Achievements: undefined;
   WriteReview: { bookId: string };
