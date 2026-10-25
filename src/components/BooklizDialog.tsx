@@ -12,6 +12,8 @@ type Props = {
   variant?: "default" | "destructive";
   onConfirm: () => void;
   onCancel?: () => void;
+  /** Fires once the native modal is fully gone (iOS `onDismiss`). */
+  onDismissed?: () => void;
 };
 
 export function BooklizDialog({
@@ -23,13 +25,14 @@ export function BooklizDialog({
   variant = "default",
   onConfirm,
   onCancel,
+  onDismissed,
 }: Props) {
   const c = useColors();
   const styles = useMemo(() => createStyles(c), [c]);
   const hasTwoButtons = Boolean(onCancel);
 
   return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={onCancel ?? onConfirm}>
+    <Modal visible={open} transparent animationType="fade" onRequestClose={onCancel ?? onConfirm} onDismiss={onDismissed}>
       <View style={styles.overlay}>
         <Pressable accessibilityRole="button" style={StyleSheet.absoluteFill} onPress={onCancel ?? onConfirm} />
         <View style={styles.card}>

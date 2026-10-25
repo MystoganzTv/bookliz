@@ -38,6 +38,9 @@ export function PaywallScreen() {
   const styles = useMemo(() => createStyles(c), [c]);
   const [selected, setSelected] = useState<ProPlan>("yearly");
   const [busy, setBusy] = useState<"buy" | "restore" | null>(null);
+  // Confirmation lives on the screen itself, not in a dialog (see handleBuy).
+  const [unlocked, setUnlocked] = useState<"bought" | "restored" | null>(null);
+  const owned = pro.isPro || unlocked !== null;
   const highlighted = route.params?.feature;
 
   const monthly = productForPlan(pro.products, "monthly");
@@ -56,8 +59,12 @@ export function PaywallScreen() {
     setBusy("buy");
     try {
       const status = await pro.buy(selected);
+      // Success: no dialog. The StoreKit sheet is still animating out, and
+      // presenting a modal on top of it (then dismissing the paywall from its
+      // callback) is what froze the app in App Review. The screen itself
+      // flips to "You're Pro" as soon as the entitlement lands.
       if (status === "success") {
-        dialog.alert(t("pro.welcomeTitle"), t("pro.welcomeBody"), close);
+        setUnlocked("bought");
       } else if (status === "pending") {
         dialog.alert(t("pro.pendingTitle"), t("pro.pendingBody"));
       } else if (status !== "cancelled") {
@@ -74,7 +81,9 @@ export function PaywallScreen() {
     setBusy("restore");
     try {
       const restored = await pro.restore();
-      if (restored) dialog.alert(t("pro.restoredTitle"), t("pro.restoredBody"), close);
+      // Restored: the screen flips to its "You're Pro" state; no dialog that
+      // closes the paywall from its callback (see handleBuy).
+      if (restored) setUnlocked("restored");
       else dialog.alert(t("pro.nothingTitle"), t("pro.nothingBody"));
     } catch (error) {
       dialog.alert(t("pro.failedTitle"), error instanceof Error ? error.message : String(error));
@@ -94,7 +103,7 @@ export function PaywallScreen() {
           <Ionicons name="close" size={22} color={c.teal} />
         </Pressable>
         <Text style={styles.topTitle}>Bookliz Pro</Text>
-        {pro.isPro ? <View style={styles.topSpacer} /> : (
+        {owned ? <View style={styles.topSpacer} /> : (
           <Pressable accessibilityRole="button" hitSlop={10} onPress={handleRestore} disabled={busy !== null} style={styles.restoreButton}>
             {busy === "restore" ? <ActivityIndicator color={c.teal} /> : <Text style={styles.restoreText}>{t("pro.restore")}</Text>}
           </Pressable>
@@ -102,8 +111,12 @@ export function PaywallScreen() {
       </View>
 
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + spacing.lg }]}>
-        <Text style={styles.headline}>{pro.isPro ? t("pro.youArePro") : t("pro.headline")}</Text>
-        {pro.isPro && renewsLine ? <Text style={styles.subhead}>{renewsLine}</Text> : null}
+        <Text style={styles.headline}>
+          {unlocked === "bought" ? t("pro.welcomeTitle") : unlocked === "restored" ? t("pro.restoredTitle") : pro.isPro ? t("pro.youArePro") : t("pro.headline")}
+        </Text>
+        {unlocked ? (
+          <Text style={styles.subhead}>{unlocked === "bought" ? t("pro.welcomeBody") : t("pro.restoredBody")}</Text>
+        ) : pro.isPro && renewsLine ? <Text style={styles.subhead}>{renewsLine}</Text> : null}
 
         <View style={styles.features}>
           {PRO_FEATURES.map((feature) => {
@@ -125,8 +138,8 @@ export function PaywallScreen() {
           })}
         </View>
 
-        {pro.isPro ? (
-          pro.plan && pro.plan !== "lifetime" ? (
+        {owned ? (
+          pro.isPro && pro.plan && pro.plan !== "lifetime" ? (
             <Pressable accessibilityRole="button" style={styles.cta} onPress={() => { void pro.manage(); }}>
               <Text style={styles.ctaText}>{t("pro.manage")}</Text>
             </Pressable>

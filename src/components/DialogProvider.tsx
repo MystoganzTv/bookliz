@@ -10,7 +10,8 @@
  * Keeps every dialog on-brand (theme-aware, consistent typography) instead of
  * the OS-styled Alert popups.
  */
-import { createContext, PropsWithChildren, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Platform } from "react-native";
 import { useI18n } from "../i18n/LocalizationContext";
 import { BooklizDialog } from "./BooklizDialog";
 
@@ -72,6 +73,41 @@ export function DialogProvider({ children }: PropsWithChildren) {
 
   const value = useMemo(() => ({ alert, confirm }), [alert, confirm]);
 
+  // A button's callback must NOT run while the dialog's native modal is still
+  // dismissing. The usual callback is navigation.goBack() on a screen that is
+  // itself a native modal (the paywall): UIKit refuses to dismiss a view
+  // controller while one it presented is mid-dismissal, so the goBack is
+  // dropped and the RN Modal can be left behind as an invisible layer that
+  // swallows every touch. App Review hit exactly that (1.3.0 rejection,
+  // guideline 2.1: "back button does nothing", "unresponsive after purchase").
+  // So: hide first, run the callback once the modal reports it is gone
+  // (iOS onDismiss), with a timer as a fallback for Android and for the case
+  // where onDismiss never arrives.
+  const pendingRef = useRef<(() => void) | null>(null);
+  const fallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushPending = useCallback(() => {
+    if (fallbackRef.current) {
+      clearTimeout(fallbackRef.current);
+      fallbackRef.current = null;
+    }
+    const cb = pendingRef.current;
+    pendingRef.current = null;
+    cb?.();
+  }, []);
+
+  const finish = useCallback((cb?: () => void) => {
+    setActive(null);
+    if (!cb) return;
+    pendingRef.current = cb;
+    if (fallbackRef.current) clearTimeout(fallbackRef.current);
+    fallbackRef.current = setTimeout(flushPending, Platform.OS === "ios" ? 600 : 250);
+  }, [flushPending]);
+
+  useEffect(() => () => {
+    if (fallbackRef.current) clearTimeout(fallbackRef.current);
+  }, []);
+
   return (
     <DialogContext.Provider value={value}>
       {children}
@@ -82,16 +118,9 @@ export function DialogProvider({ children }: PropsWithChildren) {
         confirmLabel={active?.confirmLabel}
         cancelLabel={active?.cancelLabel}
         variant={active?.destructive ? "destructive" : "default"}
-        onConfirm={() => {
-          const cb = active?.onConfirm;
-          setActive(null);
-          cb?.();
-        }}
-        onCancel={active?.twoButtons ? () => {
-          const cb = active?.onCancel;
-          setActive(null);
-          cb?.();
-        } : undefined}
+        onConfirm={() => finish(active?.onConfirm)}
+        onCancel={active?.twoButtons ? () => finish(active?.onCancel) : undefined}
+        onDismissed={flushPending}
       />
     </DialogContext.Provider>
   );
