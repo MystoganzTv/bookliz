@@ -71,8 +71,13 @@ target 'Booklio' do
     # every pod target to the app's own minimum.
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |build_configuration|
+        # Also catch "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)", which on
+        # Xcode 27 resolves to 17.0: Expo compiled that way and the 15.1 app
+        # then failed with "module 'Expo' has a minimum deployment target of
+        # iOS 17.0". Every pod must match the app's own 15.1.
         current = build_configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
-        if current.nil? || Gem::Version.new(current) < Gem::Version.new('15.1')
+        numeric = current.is_a?(String) && current.match?(/\A\d+(\.\d+)*\z/)
+        if !numeric || Gem::Version.new(current) < Gem::Version.new('15.1')
           build_configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
         end
       end

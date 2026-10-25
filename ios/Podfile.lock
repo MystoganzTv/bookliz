@@ -11,6 +11,8 @@ PODS:
     - GoogleUtilities/Environment (~> 8.0)
     - GoogleUtilities/UserDefaults (~> 8.0)
     - PromisesObjC (~> 2.4)
+  - AppIcon (1.0.0):
+    - ExpoModulesCore
   - boost (1.84.0)
   - DoubleConversion (1.1.6)
   - EXApplication (7.0.8):
@@ -354,6 +356,8 @@ PODS:
   - hermes-engine (0.81.5):
     - hermes-engine/Pre-built (= 0.81.5)
   - hermes-engine/Pre-built (0.81.5)
+  - ICloudAudio (1.0.0):
+    - ExpoModulesCore
   - NowPlaying (1.0.0):
     - ExpoModulesCore
   - PromisesObjC (2.4.0)
@@ -2806,6 +2810,8 @@ PODS:
     - SocketRocket
     - Yoga
   - SocketRocket (0.7.1)
+  - StoreKitBridge (1.0.0):
+    - ExpoModulesCore
   - WatchBridge (1.0.0):
     - ExpoModulesCore
   - Yoga (0.0.0)
@@ -2817,6 +2823,7 @@ PODS:
 
 DEPENDENCIES:
   - AirPlayButton (from `../modules/airplay-button/ios`)
+  - AppIcon (from `../modules/app-icon/ios`)
   - boost (from `../node_modules/react-native/third-party-podspecs/boost.podspec`)
   - DoubleConversion (from `../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)
   - EXApplication (from `../node_modules/expo-application/ios`)
@@ -2853,6 +2860,7 @@ DEPENDENCIES:
   - fmt (from `../node_modules/react-native/third-party-podspecs/fmt.podspec`)
   - glog (from `../node_modules/react-native/third-party-podspecs/glog.podspec`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
+  - ICloudAudio (from `../modules/icloud-audio/ios`)
   - NowPlaying (from `../modules/now-playing/ios`)
   - RCT-Folly (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
@@ -2923,6 +2931,7 @@ DEPENDENCIES:
   - "RNGoogleSignin (from `../node_modules/@react-native-google-signin/google-signin`)"
   - RNScreens (from `../node_modules/react-native-screens`)
   - SocketRocket (~> 0.7.1)
+  - StoreKitBridge (from `../modules/store-kit/ios`)
   - WatchBridge (from `../modules/watch-bridge/ios`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
@@ -2941,6 +2950,8 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   AirPlayButton:
     :path: "../modules/airplay-button/ios"
+  AppIcon:
+    :path: "../modules/app-icon/ios"
   boost:
     :podspec: "../node_modules/react-native/third-party-podspecs/boost.podspec"
   DoubleConversion:
@@ -3014,6 +3025,8 @@ EXTERNAL SOURCES:
   hermes-engine:
     :podspec: "../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec"
     :tag: hermes-2025-07-07-RNv0.81.0-e0fc67142ec0763c6b6153ca2bf96df815539782
+  ICloudAudio:
+    :path: "../modules/icloud-audio/ios"
   NowPlaying:
     :path: "../modules/now-playing/ios"
   RCT-Folly:
@@ -3150,6 +3163,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-google-signin/google-signin"
   RNScreens:
     :path: "../node_modules/react-native-screens"
+  StoreKitBridge:
+    :path: "../modules/store-kit/ios"
   WatchBridge:
     :path: "../modules/watch-bridge/ios"
   Yoga:
@@ -3159,6 +3174,7 @@ SPEC CHECKSUMS:
   AirPlayButton: 5f4ff65b8c70ecb3163a7f99c4ffe3644ea551f7
   AppAuth: 1c1a8afa7e12f2ec3a294d9882dfa5ab7d3cb063
   AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
+  AppIcon: 381197770d829b2dd184949eba93f60f513ba629
   boost: 7e761d76ca2ce687f7cc98e698152abd03a18f90
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
   EXApplication: 1e98d4b1dccdf30627f92917f4b2c5a53c330e5f
@@ -3199,6 +3215,7 @@ SPEC CHECKSUMS:
   GTMAppAuth: 217a876b249c3c585a54fd6f73e6b58c4f5c4238
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
   hermes-engine: 9f4dfe93326146a1c99eb535b1cb0b857a3cd172
+  ICloudAudio: 2e210fd51ce544a24f834d8708f9de5ba0ea1c7a
   NowPlaying: c97b367d80e704f5109c5da2a17034ddd49f1285
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
@@ -3269,10 +3286,11 @@ SPEC CHECKSUMS:
   RNGoogleSignin: 15341729e1f79f1b82740393924cae5e429ad176
   RNScreens: 0bbf16c074ae6bb1058a7bf2d1ae017f4306797c
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
+  StoreKitBridge: fb975ab0085409891973be4e6e0aa4770b730575
   WatchBridge: 44ff43a17fbcff9ddd1e235712fe495508c1da00
   Yoga: 728df40394d49f3f471688747cf558158b3a3bd1
   ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
-PODFILE CHECKSUM: 6997867f66c1b1aab26864daff9720f5d3a20f91
+PODFILE CHECKSUM: e1eeae911b0979b06c36730c510e3eb37987b175
 
 COCOAPODS: 1.16.2
