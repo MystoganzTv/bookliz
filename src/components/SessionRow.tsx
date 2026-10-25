@@ -38,9 +38,12 @@ export function SessionRow({ session, bookTitle, onPress }: SessionRowProps) {
       <View style={styles.body}>
         <Text numberOfLines={1} style={styles.book}>{bookTitle}</Text>
         <Text style={styles.meta}>
-          {isListen
-            ? `${t("sessionRow.listened")} · ${t("sessionRow.minutes", { minutes: session.minutesRead })}`
-            : `${pagesText} · ${t("sessionRow.minutes", { minutes: session.minutesRead })} · ${Math.round(session.pagesPerHour)} pp/h`}
+          {[
+            isListen ? t("sessionRow.listened") : pagesText,
+            // Untimed sessions (logged without a timer) have 0 minutes.
+            session.minutesRead > 0 ? t("sessionRow.minutes", { minutes: session.minutesRead }) : null,
+            !isListen && session.minutesRead > 0 ? `${Math.round(session.pagesPerHour)} pp/h` : null,
+          ].filter(Boolean).join(" · ")}
         </Text>
         {contextLine ? <Text numberOfLines={1} style={styles.context}>{contextLine}</Text> : null}
         {session.notes.trim() ? <Text numberOfLines={2} style={styles.notes}>{session.notes.trim()}</Text> : null}

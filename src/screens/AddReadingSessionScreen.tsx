@@ -1,15 +1,11 @@
 /**
  * Log / edit a reading session.
  *
- * Built around the one thing that matters — the page you stopped on — with
- * time and day on one line beneath it and everything else behind "More
- * details". Nothing is pre-filled that the reader did not tell us: no default
- * 45 minutes, no default place. The arithmetic lives in data/sessionProgress.
- *
- * Start time: the one exception, and only because it is not a guess. A session
- * logged for today began `minutes` ago (utils/sessionTime.defaultStartTime);
- * one from the timer began when the timer did. A past day gets no time unless
- * the reader types one.
+ * Only the one thing that matters: the page you stopped on, then Save.
+ * Format, place and note sit behind "More details". No time, day or hour
+ * on screen (dropped 2026-10-25): a log is "today, now, untimed" unless a
+ * timer (Home, Apple Watch) hands in its minutes and start, or an existing
+ * session is being edited. The arithmetic lives in data/sessionProgress.
  */
 import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
@@ -44,12 +40,11 @@ import { RootStackParamList } from "../navigation/types";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useColors, useTheme } from "../theme/ThemeContext";
 import { Book, NewReadingSessionInput, ReadingFormat, ReadingSession } from "../types/models";
-import { localDateKey, parseDateKey, shiftDateKey } from "../utils/dateUtils";
+import { localDateKey } from "../utils/dateUtils";
 import { formatMinutes } from "../utils/duration";
-import { defaultStartTime, parseTimeKey, parseTypedTime, timeKey, timeKeyOf } from "../utils/sessionTime";
+import { timeKeyOf } from "../utils/sessionTime";
 import { hapticSuccess } from "../utils/haptics";
 
-const QUICK_MINUTES = [15, 30, 45, 60, 90, 120];
 const MAX_PLACE_CHIPS = 5;
 const MAX_PICKER_RESULTS = 8;
 /** iOS number pads have no return key; this bar gives them a "Done". */
@@ -121,7 +116,7 @@ type SessionFormProps = {
 function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, onChangeBook }: SessionFormProps) {
   const c = useColors();
   const { isDark } = useTheme();
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const dialog = useDialog();
@@ -200,57 +195,17 @@ function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, o
     setAudioInputOpen(false);
   };
 
-  // ── Time ───────────────────────────────────────────────────────────────
-  const initialMinutes = editingSession?.minutesRead ?? prefillMinutes ?? null;
-  const [minutes, setMinutes] = useState<number | null>(initialMinutes);
-  const [customMinutesOpen, setCustomMinutesOpen] = useState(false);
-  const [customMinutesText, setCustomMinutesText] = useState(initialMinutes ? String(initialMinutes) : "");
-  const minutesIsCustom = minutes !== null && !QUICK_MINUTES.includes(minutes);
-
-  // ── Day ────────────────────────────────────────────────────────────────
-  // A timer started before midnight belongs to the day it started on.
+  // ── Time / day ─────────────────────────────────────────────────────────
+  // Nothing about time on screen any more: the reader only says where they
+  // are. Still kept: an edited session's own values, and the minutes/start a
+  // timer (Home, Apple Watch) hands in. A plain log is "today, now, untimed"
+  // (0 minutes; every stat that divides by minutes already skips 0).
+  const minutes = editingSession?.minutesRead ?? prefillMinutes ?? 0;
   const timerStart = prefillStartedAt !== undefined ? new Date(prefillStartedAt) : undefined;
-  const [date, setDate] = useState(editingSession?.date ?? (timerStart ? localDateKey(timerStart) : today));
-  const yesterday = shiftDateKey(today, -1);
-  const dateLabel =
-    date === today
-      ? t("logSession.today")
-      : date === yesterday
-        ? t("logSession.yesterday")
-        : (parseDateKey(date) ?? new Date()).toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" });
-
-  // ── Start time ─────────────────────────────────────────────────────────
-  // undefined = follow the default (which moves with the minutes and the day),
-  // null = no time (cleared, or an old session that never had one),
-  // "HH:MM" = set by the reader or by the timer.
-  const [explicitTime, setExplicitTime] = useState<string | null | undefined>(
-    editingSession ? editingSession.startTime ?? null : timerStart ? timeKeyOf(timerStart) : undefined
-  );
-  const startTime =
-    explicitTime === undefined
-      ? defaultStartTime({ date, today, minutesRead: minutes, now: new Date() })
-      : explicitTime ?? undefined;
-  const startMinutes = parseTimeKey(startTime);
-  const [timeInputOpen, setTimeInputOpen] = useState(false);
-  const [timeText, setTimeText] = useState("");
-  const timeLabel = (() => {
-    if (startMinutes === null) return "";
-    const at = parseDateKey(date) ?? new Date();
-    at.setHours(Math.floor(startMinutes / 60), startMinutes % 60, 0, 0);
-    return at.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
-  })();
-  const nudgeTime = (delta: number) => {
-    if (startMinutes !== null) setExplicitTime(timeKey(startMinutes + delta));
-  };
-  const openTimeInput = () => {
-    setTimeText(startTime ? startTime.replace(":", "") : "");
-    setTimeInputOpen(true);
-  };
-  const commitTimeText = () => {
-    const typed = parseTypedTime(timeText);
-    if (typed !== null) setExplicitTime(timeKey(typed));
-    setTimeInputOpen(false);
-  };
+  const date = editingSession?.date ?? (timerStart ? localDateKey(timerStart) : today);
+  const startTime = editingSession
+    ? editingSession.startTime ?? undefined
+    : timeKeyOf(timerStart ?? new Date());
 
   // ── Details: place + note ──────────────────────────────────────────────
   const editingPlace = sessionPlace(editingSession?.location);
@@ -293,7 +248,7 @@ function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, o
   // ── Derived summary ────────────────────────────────────────────────────
   const hasProgress = isAudiobook ? audio.gainedPct > 0 : pages.pagesRead > 0;
   const endPct = isAudiobook ? currentPct : hasProgress ? percentOf(pages.endPage, total) : resumePct;
-  const speed = !isAudiobook && minutes && minutes > 0 ? Math.round((pages.pagesRead / minutes) * 60) : 0;
+  const speed = !isAudiobook && minutes > 0 ? Math.round((pages.pagesRead / minutes) * 60) : 0;
   const pagesLabel = (n: number) =>
     n === 1 ? t("logSession.pagesOne") : t("logSession.pagesMany", { count: n });
   const formatLabel = (value: ReadingFormat) =>
@@ -305,7 +260,7 @@ function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, o
   const detailsSummary = [formatLabel(format), place || null, note.trim() ? t("logSession.hasNote") : null]
     .filter(Boolean)
     .join(" · ");
-  const ready = canTrack && hasProgress && minutes !== null && minutes > 0;
+  const ready = canTrack && hasProgress;
 
   const handleSave = () => {
     if (!canTrack) {
@@ -319,21 +274,6 @@ function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, o
     if (!isAudiobook && pages.pagesRead === 0) {
       dialog.alert(t("session.checkTitle"), t("logSession.endBeforeStart", { start: pages.startPage }));
       return;
-    }
-    if (!(minutes && minutes > 0)) {
-      dialog.alert(t("session.checkTitle"), t("session.invalidMinutes"));
-      return;
-    }
-    if (!parseDateKey(date) || date > today) {
-      dialog.alert(t("session.checkTitle"), t("session.invalidDate"));
-      return;
-    }
-    if (startMinutes !== null && date === today) {
-      const now = new Date();
-      if (startMinutes > now.getHours() * 60 + now.getMinutes()) {
-        dialog.alert(t("session.checkTitle"), t("logSession.futureTime"));
-        return;
-      }
     }
 
     const input: NewReadingSessionInput = {
@@ -583,150 +523,6 @@ function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, o
         </View>
       )}
 
-      {/* Time + day, one card */}
-      <View style={styles.card}>
-        <View style={styles.rowHeader}>
-          <Text style={styles.sectionLabel}>{isAudiobook ? t("logSession.timeListened") : t("logSession.timeSpent")}</Text>
-          {prefillMinutes !== undefined && minutes === prefillMinutes && !isEditing ? (
-            <Text style={styles.helper}>{t("logSession.fromTimer")}</Text>
-          ) : null}
-        </View>
-        <View style={styles.chipRow}>
-          {QUICK_MINUTES.map((m) => {
-            const active = !customMinutesOpen && minutes === m;
-            return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                key={m}
-                onPress={() => {
-                  setMinutes(m);
-                  setCustomMinutesOpen(false);
-                }}
-                style={[styles.chip, active && styles.chipActive]}
-              >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{formatMinutes(m)}</Text>
-              </Pressable>
-            );
-          })}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ selected: customMinutesOpen || minutesIsCustom }}
-            onPress={() => {
-              setCustomMinutesText(minutes ? String(minutes) : "");
-              setCustomMinutesOpen(true);
-            }}
-            style={[styles.chip, (customMinutesOpen || minutesIsCustom) && styles.chipActive]}
-          >
-            <Text style={[styles.chipText, (customMinutesOpen || minutesIsCustom) && styles.chipTextActive]}>
-              {minutesIsCustom && minutes ? formatMinutes(minutes) : t("logSession.minutesCustom")}
-            </Text>
-          </Pressable>
-        </View>
-        {customMinutesOpen ? (
-          <TextInput
-            autoFocus
-            inputAccessoryViewID={doneId}
-            keyboardType="number-pad"
-            placeholder={t("logSession.minutesPlaceholder")}
-            placeholderTextColor={c.gray}
-            style={styles.input}
-            value={customMinutesText}
-            onChangeText={(text) => {
-              const clean = text.replace(/[^0-9]/g, "");
-              setCustomMinutesText(clean);
-              setMinutes(parsePositive(clean));
-            }}
-          />
-        ) : null}
-
-        <View style={styles.divider} />
-
-        <View style={styles.dayRow}>
-          <Text style={styles.sectionLabel}>{t("logSession.dateLabel")}</Text>
-          <View style={styles.dayStepper}>
-            <Pressable
-              accessibilityLabel={t("logSession.prevDay")}
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={() => setDate((d) => shiftDateKey(d, -1))}
-              style={styles.dayBtn}
-            >
-              <Ionicons name="chevron-back" size={18} color={c.ink} />
-            </Pressable>
-            <Text style={styles.dayLabel}>{dateLabel}</Text>
-            <Pressable
-              accessibilityLabel={t("logSession.nextDay")}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: date >= today }}
-              disabled={date >= today}
-              hitSlop={8}
-              onPress={() => setDate((d) => (d >= today ? d : shiftDateKey(d, 1)))}
-              style={[styles.dayBtn, date >= today && styles.dayBtnOff]}
-            >
-              <Ionicons name="chevron-forward" size={18} color={c.ink} />
-            </Pressable>
-          </View>
-        </View>
-
-        <View style={[styles.dayRow, styles.timeRow]}>
-          <Text style={styles.sectionLabel}>{t("logSession.timeOfDayLabel")}</Text>
-          {startTime ? (
-            <View style={styles.dayStepper}>
-              <Pressable
-                accessibilityLabel={t("logSession.earlier")}
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={() => nudgeTime(-15)}
-                style={styles.dayBtn}
-              >
-                <Ionicons name="remove" size={18} color={c.ink} />
-              </Pressable>
-              <Pressable accessibilityLabel={t("logSession.editTime")} accessibilityRole="button" hitSlop={8} onPress={openTimeInput}>
-                <Text style={styles.dayLabel}>{timeLabel}</Text>
-              </Pressable>
-              <Pressable
-                accessibilityLabel={t("logSession.later")}
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={() => nudgeTime(15)}
-                style={styles.dayBtn}
-              >
-                <Ionicons name="add" size={18} color={c.ink} />
-              </Pressable>
-            </View>
-          ) : (
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={openTimeInput} style={styles.addTimeBtn}>
-              <Ionicons name="time-outline" size={16} color={c.tealDark} />
-              <Text style={styles.addTimeText}>{t("logSession.addTime")}</Text>
-            </Pressable>
-          )}
-        </View>
-        {timeInputOpen ? (
-          <TextInput
-            autoFocus
-            inputAccessoryViewID={doneId}
-            keyboardType="number-pad"
-            maxLength={5}
-            placeholder={t("logSession.timePlaceholder")}
-            placeholderTextColor={c.gray}
-            style={styles.input}
-            value={timeText}
-            onChangeText={(text) => setTimeText(text.replace(/[^0-9:]/g, ""))}
-            onEndEditing={commitTimeText}
-            onSubmitEditing={commitTimeText}
-          />
-        ) : null}
-        <View style={styles.timeFooter}>
-          <Text style={[styles.hint, styles.timeHint]}>{t("logSession.timeHint")}</Text>
-          {startTime ? (
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={() => { setExplicitTime(null); setTimeInputOpen(false); }}>
-              <Text style={styles.clearTimeText}>{t("logSession.clearTime")}</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
-
       {/* More details */}
       <Pressable accessibilityRole="button" onPress={() => setDetailsOpen((v) => !v)} style={styles.detailsToggle}>
         <Ionicons name={detailsOpen ? "chevron-up" : "chevron-down"} size={16} color={c.muted} />
@@ -836,9 +632,11 @@ function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, o
       {/* Save */}
       {ready ? (
         <Text style={styles.summary}>
-          {isAudiobook
-            ? `${t("logSession.gainedPct", { percent: audio.gainedPct })} · ${formatMinutes(minutes ?? 0)}`
-            : `${pagesLabel(pages.pagesRead)} · ${formatMinutes(minutes ?? 0)} · ${t("logSession.speed", { speed })}`}
+          {[
+            isAudiobook ? t("logSession.gainedPct", { percent: audio.gainedPct }) : pagesLabel(pages.pagesRead),
+            minutes > 0 ? formatMinutes(minutes) : null,
+            !isAudiobook && speed > 0 ? t("logSession.speed", { speed }) : null,
+          ].filter(Boolean).join(" · ")}
         </Text>
       ) : null}
       <Pressable accessibilityRole="button" onPress={handleSave} style={[styles.saveButton, !ready && styles.saveButtonIdle]}>

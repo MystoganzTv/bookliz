@@ -404,10 +404,12 @@ const enrichProfileAchievements = (
       return acc;
     }, {})
   ).reduce((max, minutes) => Math.max(max, minutes), 0);
+  // Untimed sessions (0 minutes, pagesPerHour 0) say nothing about speed.
+  const timedSessions = sessions.filter((session) => session.minutesRead > 0);
   const averagePagesPerHour =
-    sessions.length > 0
+    timedSessions.length > 0
       ? Math.round(
-          sessions.reduce((sum, session) => sum + session.pagesPerHour, 0) / sessions.length
+          timedSessions.reduce((sum, session) => sum + session.pagesPerHour, 0) / timedSessions.length
         )
       : 0;
   const booksReadThisYear = completedBooks.filter(
@@ -550,7 +552,13 @@ const getBookStatsFromSessions = (sessions: ReadingSession[]): BookStats => {
     totalPages,
     averagePagesPerSession: totalSessions ? Math.round(totalPages / totalSessions) : 0,
     averageMinutesPerSession: totalSessions ? Math.round(totalMinutes / totalSessions) : 0,
-    averageSpeed: totalMinutes ? Math.round((totalPages / totalMinutes) * 60) : 0,
+    // Only timed sessions: an untimed log's pages would inflate the speed.
+    averageSpeed: (() => {
+      const timed = sessions.filter((session) => session.minutesRead > 0);
+      const minutes = timed.reduce((sum, session) => sum + session.minutesRead, 0);
+      const pages = timed.reduce((sum, session) => sum + session.pagesRead, 0);
+      return minutes ? Math.round((pages / minutes) * 60) : 0;
+    })(),
     longestSession,
     latestSessions: [...sessions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3)
   };
@@ -804,7 +812,8 @@ const buildOverallStats = (books: Book[], sessions: ReadingSession[], authors: A
     statusCounts,
     formatCounts: Object.entries(formatMap).map(([label, value]) => ({ label: formatLabel(label), value })).sort((a, b) => b.value - a.value),
     locationCounts: Object.entries(locationMap).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value),
-    speedOverTime: [...sessions]
+    speedOverTime: sessions
+      .filter((session) => session.minutesRead > 0)
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((session) => ({ label: formatMonth(session.date), value: Math.round(session.pagesPerHour) })),
     mostActiveDays: Object.entries(weekdayMap).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)
