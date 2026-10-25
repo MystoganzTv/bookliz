@@ -6,7 +6,7 @@
 	<string>Bookliz</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
-	<key>WKBackgroundModes</key>
+	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
 	</array>
