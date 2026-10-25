@@ -41,6 +41,7 @@ import {
   deleteAudioFolder,
   importAudioFiles,
   pickAudioFiles,
+  pickedFromFileUris,
   strayAudioFolders,
   trackUri,
   type ImportedAudio,
@@ -846,6 +847,32 @@ export class AudiobookEngine {
     } finally {
       this.setMain({ importing: null });
     }
+  }
+
+  /**
+   * Files already on this device that came from somewhere else (an iCloud
+   * download): they become the book's audio when that book is in this
+   * library, and an inbox item named `title` otherwise.
+   */
+  async importDownloaded(uris: readonly string[], bookId: string | null, title?: string): Promise<"book" | "inbox"> {
+    const picked = pickedFromFileUris(uris);
+    if (bookId && this.host.getBook(bookId)) {
+      await waitFor(() => !this.main.importing, 10 * 60_000);
+      this.setMain({ importing: { bookId, done: 0, total: picked.length } });
+      try {
+        const imported = await importAudioFiles(picked, (done, total) => this.setMain({ importing: { bookId, done, total } }));
+        this.installAudio(bookId, imported);
+        return "book";
+      } catch (error) {
+        if (error instanceof AudioImportError) throw error;
+        throw new AudioImportError("unreadable", undefined, errorDetail(error));
+      } finally {
+        this.setMain({ importing: null });
+      }
+    }
+    const item = await this.importIntoInbox(picked);
+    if (title) this.renameInboxItem(item.id, title);
+    return "inbox";
   }
 
   /** Give an inbox item to a book (replacing that book's audio, if any). */

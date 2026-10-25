@@ -80,6 +80,9 @@ export const audioRootUri = () => root().uri;
 
 export const trackUri = (folder: string, file: string) => new File(Paths.document, ROOT_NAME, folder, file).uri;
 
+/** A book's folder (Documents/audiobooks/<folder>/) as a file:// URI. */
+export const audioFolderUri = (folder: string) => new Directory(Paths.document, ROOT_NAME, folder).uri;
+
 export function audioFileExists(folder: string, file: string): boolean {
   try {
     return new File(Paths.document, ROOT_NAME, folder, file).exists;

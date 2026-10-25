@@ -1,0 +1,7 @@
+{
+  "name": "icloud-audio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Audiobook files in the app's iCloud Drive container: copy up, list, download, remove.",
+  "main": "index.ts"
+}

@@ -16,6 +16,9 @@ import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 import { INBOX_IMPORT } from "../audio/audiobookEngine";
 import { AudioImportError, audioFolderSize } from "../audio/audioFiles";
 import { formatBytes, type AudioInboxItem } from "../audio/audiobookModel";
+import { CloudEntry } from "../audio/cloudAudio";
+import { useCloudAudio } from "../audio/useCloudAudio";
+import { usePro } from "../pro/ProContext";
 import { BookPickerSheet } from "../components/BookPickerSheet";
 import { useDialog } from "../components/DialogProvider";
 import { Screen } from "../components/Screen";
@@ -50,6 +53,59 @@ export function ManageAudioScreen() {
   const [actionsFor, setActionsFor] = useState<AudioInboxItem | null>(null);
   const [assigning, setAssigning] = useState<AudioInboxItem | null>(null);
   const [renaming, setRenaming] = useState<AudioInboxItem | null>(null);
+  const { isPro } = usePro();
+  const cloud = useCloudAudio(isPro);
+  const cloudReady = isPro && cloud.supported && cloud.status.available;
+  const remoteOnly = cloud.entries.filter((entry) => !entry.onThisDevice);
+
+  const cloudError = (error: unknown) =>
+    dialog.alert(t("cloudAudio.failedTitle"), error instanceof Error ? error.message : String(error));
+
+  const saveToCloud = async (bookId: string) => {
+    if (!isPro) {
+      navigation.navigate("Paywall", { feature: "cloudAudio" });
+      return;
+    }
+    if (!cloudReady) {
+      dialog.alert(t("cloudAudio.offTitle"), t("cloudAudio.offBody"));
+      return;
+    }
+    try {
+      await cloud.upload(bookId);
+      hapticSuccess();
+    } catch (error) {
+      cloudError(error);
+    }
+  };
+
+  const downloadFromCloud = async (entry: CloudEntry) => {
+    try {
+      const where = await cloud.download(entry);
+      hapticSuccess();
+      setVersion((v) => v + 1);
+      if (where === "inbox") dialog.alert(t("cloudAudio.inInboxTitle"), t("cloudAudio.inInboxBody"));
+    } catch (error) {
+      cloudError(error);
+    }
+  };
+
+  const removeFromCloud = (entry: CloudEntry, title: string) =>
+    dialog.confirm({
+      title: t("cloudAudio.removeTitle"),
+      body: t("cloudAudio.removeBody", { title }),
+      confirmLabel: t("cloudAudio.removeConfirm"),
+      destructive: true,
+      onConfirm: () => { void cloud.remove(entry).catch(cloudError); },
+    });
+
+  const transferText = (id: string) => {
+    const transfer = cloud.transfers[id];
+    if (!transfer) return null;
+    return t(transfer.direction === "upload" ? "cloudAudio.uploading" : "cloudAudio.downloading", {
+      done: transfer.done,
+      total: transfer.total,
+    });
+  };
 
   const importingInbox = player.importing?.bookId === INBOX_IMPORT ? player.importing : null;
 
@@ -164,6 +220,54 @@ export function ManageAudioScreen() {
         </Text>
       </Pressable>
 
+      {/* ── iCloud (Pro) ─────────────────────────────────────────────────── */}
+      <SettingsGroup
+        header={t("cloudAudio.header")}
+        footer={
+          !isPro
+            ? t("cloudAudio.footerPro")
+            : !cloud.supported
+              ? t("cloudAudio.footerUnsupported")
+              : !cloud.status.available
+                ? t("cloudAudio.offBody")
+                : remoteOnly.length
+                  ? t("cloudAudio.footerRemote")
+                  : t("cloudAudio.footerEmpty")
+        }
+      >
+        {!isPro ? (
+          <SettingsRow
+            title={t("cloudAudio.rowLocked")}
+            value={t("pro.requiresPro")}
+            onPress={() => navigation.navigate("Paywall", { feature: "cloudAudio" })}
+          />
+        ) : null}
+        {cloudReady
+          ? remoteOnly.map((entry) => {
+              const title = entry.manifest?.title || t("fileManager.untitled");
+              const moving = transferText(entry.remoteId);
+              return (
+                <SettingsRow
+                  key={entry.remoteId}
+                  title={title}
+                  subtitle={moving ?? [entry.manifest?.author, t("manageAudio.files", { count: entry.files }), formatBytes(entry.bytes)].filter(Boolean).join(" · ")}
+                  chevron={false}
+                  accessory={
+                    moving ? (
+                      <ActivityIndicator color={c.teal} />
+                    ) : (
+                      <Pressable accessibilityRole="button" accessibilityLabel={t("cloudAudio.download")} hitSlop={8} onPress={() => void downloadFromCloud(entry)}>
+                        <Ionicons name="cloud-download-outline" size={22} color={c.teal} />
+                      </Pressable>
+                    )
+                  }
+                  onPress={moving ? undefined : () => removeFromCloud(entry, title)}
+                />
+              );
+            })
+          : null}
+      </SettingsGroup>
+
       <SettingsGroup
         header={t("fileManager.inboxHeader")}
         footer={inboxRows.length ? t("fileManager.inboxFooter") : t("fileManager.inboxEmpty")}
@@ -218,6 +322,33 @@ export function ManageAudioScreen() {
               })
             }
           />
+          {(() => {
+            const moving = transferText(row.bookId);
+            const entry = cloud.inCloud.get(row.bookId);
+            if (moving) {
+              return <SettingsRow title={moving} chevron={false} accessory={<ActivityIndicator color={c.teal} />} />;
+            }
+            if (entry && cloudReady) {
+              return (
+                <SettingsRow
+                  title={entry.uploaded ? t("cloudAudio.inCloud") : t("cloudAudio.syncing")}
+                  subtitle={t("cloudAudio.removeHint")}
+                  chevron={false}
+                  accessory={<Ionicons name={entry.uploaded ? "cloud-done-outline" : "cloud-upload-outline"} size={20} color={c.teal} />}
+                  onPress={() => removeFromCloud(entry, row.title)}
+                />
+              );
+            }
+            return (
+              <SettingsRow
+                title={t("cloudAudio.save")}
+                value={isPro ? undefined : t("pro.requiresPro")}
+                chevron={false}
+                accessory={<Ionicons name="cloud-upload-outline" size={20} color={c.teal} />}
+                onPress={() => void saveToCloud(row.bookId)}
+              />
+            );
+          })()}
           <SettingsRow title={t("player.removeAudio")} destructive chevron={false} onPress={() => removeAudio(row.bookId)} />
         </SettingsGroup>
       ))}
