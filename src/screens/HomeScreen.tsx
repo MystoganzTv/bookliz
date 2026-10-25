@@ -6,7 +6,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { BookCover } from "../components/BookCover";
 import { CatalogBookCard } from "../components/CatalogBookCard";
-import { EditionBanner } from "../components/EditionBanner";
 import { APP_ICONS } from "../pro/appIcons";
 
 import { RecommendationCard } from "../components/RecommendationCard";
@@ -260,13 +259,15 @@ export function HomeScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Image source={logoSource} style={[styles.logo, edition !== "classic" && { borderRadius: 14 }]} resizeMode="contain" />
-        <View>
+        <View style={styles.headerCopy}>
           <Text style={styles.greeting}>{getGreeting(t)},</Text>
           <Text style={styles.name}>{userProfile.name}.</Text>
+          {/* The atmosphere's one line — the rest of it is the whole app's colour. */}
+          {edition !== "classic" ? (
+            <Text style={styles.tagline} numberOfLines={2}>{t(`appearancePro.editionMessages.${edition}`)}</Text>
+          ) : null}
         </View>
       </View>
-
-      {edition !== "classic" ? <EditionBanner edition={edition} /> : null}
 
       {/* Stats strip */}
       <View style={styles.statsStrip}>
@@ -562,6 +563,14 @@ function createStyles(c: AppColors) {
       marginBottom: spacing.md,
     },
     logo: { height: 48, width: 48 },
+    headerCopy: { flex: 1 },
+    tagline: {
+      color: c.muted,
+      fontFamily: fonts.bodyRegular,
+      fontSize: 14,
+      fontStyle: "italic",
+      marginTop: 4,
+    },
     greeting: {
       color: c.muted,
       fontFamily: fonts.body,

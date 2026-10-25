@@ -90,6 +90,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
     },
     appearancePro: {
       accentTitle: "Accent colour",
+      accentFromAtmosphere: "Atmosphere",
       iconTitle: "Icons & atmosphere",
       homeScreenTitle: "On your home screen",
       collectionDescription: "New illustrations, familiar Bookliz. Choose any edition, any time of year.",
@@ -100,7 +101,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
         originals: "The originals",
       },
       inAppTitle: "Inside Bookliz",
-      inAppDescription: "A new logo and an illustrated reading banner on Home. Mix an atmosphere with any app icon or accent colour.",
+      inAppDescription: "Repaints all of Bookliz — backgrounds, cards, buttons and the tab bar, in light and dark — with its motifs at the top of every screen. Mix it with any app icon. An accent colour you pick yourself still wins.",
       updating: "Loading app icon",
       iconFailedBody: "Your previous icon is still selected. Please try again.",
       seasonalHint: "Automatic follows your local calendar and chosen hemisphere, using month-based seasons. Valentine’s Day (14 February), Walpurgis (30 April), Workers’ Day (1 May), Halloween (October) and Christmas (December) take priority. The summer artwork celebrates the solstice. This changes the atmosphere inside Bookliz; choose the phone icon separately above.",
@@ -1715,6 +1716,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
     },
     appearancePro: {
       accentTitle: "Color de acento",
+      accentFromAtmosphere: "Del ambiente",
       iconTitle: "Iconos y ambiente",
       homeScreenTitle: "En la pantalla de tu teléfono",
       collectionDescription: "Ilustraciones nuevas con el espíritu de Bookliz. Elige cualquier edición, en cualquier época del año.",
@@ -1725,7 +1727,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
         originals: "Los originales",
       },
       inAppTitle: "Dentro de Bookliz",
-      inAppDescription: "Un logo nuevo y una tarjeta ilustrada en Inicio. Combina un ambiente con cualquier icono o color de acento.",
+      inAppDescription: "Pinta todo Bookliz —fondos, tarjetas, botones y la barra de pestañas, en claro y oscuro— con sus motivos arriba de cada pantalla. Combínalo con cualquier icono. Si eliges un color de acento propio, manda el tuyo.",
       updating: "Cargando el icono de la app",
       iconFailedBody: "Se mantiene tu icono anterior. Vuelve a intentarlo.",
       seasonalHint: "Automático sigue tu calendario local y el hemisferio elegido, con estaciones por meses. Tienen prioridad San Valentín (14 de febrero), Walpurgis (30 de abril), Día del Trabajador (1 de mayo), Halloween (octubre) y Navidad (diciembre). El diseño de verano celebra el solsticio. Cambia el ambiente dentro de Bookliz; el icono del teléfono se elige por separado arriba.",

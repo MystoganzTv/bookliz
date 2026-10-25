@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, useWindowDimensions, View, ViewStyle } from "re
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColors } from "../theme/ThemeContext";
 import { spacing } from "../theme/theme";
+import { AtmosphereBackdrop } from "./AtmosphereBackdrop";
 
 /**
  * How wide the content column is allowed to get.
@@ -50,6 +51,7 @@ export function Screen({ children, scroll = true, contentStyle, headerRight, wid
   if (!scroll) {
     return (
       <SafeAreaView style={[styles.safe, contentStyle]}>
+        <AtmosphereBackdrop />
         {headerRight ? <View style={styles.headerRight}>{headerRight}</View> : null}
         {/* flex:1 so a list inside still owns the full height — only the width is capped. */}
         <View style={[styles.column, styles.columnFill, !capped && styles.columnFree]}>{children}</View>
@@ -59,6 +61,7 @@ export function Screen({ children, scroll = true, contentStyle, headerRight, wid
 
   return (
     <SafeAreaView style={styles.safe}>
+      <AtmosphereBackdrop />
       {headerRight ? <View style={styles.headerRight}>{headerRight}</View> : null}
       <ScrollView
         ref={scrollRef}

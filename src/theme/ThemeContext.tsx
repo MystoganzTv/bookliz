@@ -11,6 +11,7 @@ import React, {
 import { AppState, Appearance, useColorScheme } from "react-native";
 import { AppColors, darkColors, lightColors } from "./theme";
 import { ACCENTS, AccentId, isAccentId } from "./accents";
+import { Atmosphere, atmosphereFor, paintAtmosphere } from "./atmospheres";
 import { usePro } from "../pro/ProContext";
 import { EditionId, EditionPreference, Hemisphere, isEditionPreference, isHemisphere, resolveEdition } from "../pro/editions";
 
@@ -42,7 +43,13 @@ type ThemeContextValue = {
   /** Chosen accent (Pro). Painted only while Pro is active; kept if it lapses. */
   accent:        AccentId;
   setAccent:     (accent: AccentId) => void;
+  /**
+   * The edition in force (Pro + chosen or automatic). It repaints `colors`
+   * through `paintAtmosphere`; `atmosphere` carries what isn't a colour token
+   * (motifs, the wash) for `<Screen>`. Null for Classic.
+   */
   edition: EditionId;
+  atmosphere: Atmosphere | null;
   editionPreference: EditionPreference;
   setEditionPreference: (edition: EditionPreference) => void;
   hemisphere: Hemisphere;
@@ -59,6 +66,7 @@ const ThemeContext = createContext<ThemeContextValue>({
   accent:        "teal",
   setAccent:     () => {},
   edition: "classic",
+  atmosphere: null,
   editionPreference: "classic",
   setEditionPreference: () => {},
   hemisphere: "north",
@@ -145,12 +153,15 @@ export function ThemeProvider({ children }: PropsWithChildren) {
 
   const value = useMemo<ThemeContextValue>(() => {
     const isDark = mode === "dark";
-    const base = isDark ? darkColors : lightColors;
+    const edition = resolveEdition(editionPreference, isPro, calendarDate, hemisphere);
+    // The atmosphere paints first (bg, surfaces, text tints, its own accent);
+    // an accent the reader picked on purpose (anything but the stock teal)
+    // still wins over the atmosphere's accent.
+    const base = paintAtmosphere(isDark ? darkColors : lightColors, edition, isDark);
     const painted = isPro && accent !== "teal" ? ACCENTS[accent] : null;
     const colors = painted ? { ...base, teal: painted.main, tealDark: painted.dark } : base;
-    const edition = resolveEdition(editionPreference, isPro, calendarDate, hemisphere);
     return { mode, isDark, colors, preference, setPreference, toggleTheme, accent, setAccent,
-      edition, editionPreference, setEditionPreference, hemisphere, setHemisphere };
+      edition, atmosphere: atmosphereFor(edition), editionPreference, setEditionPreference, hemisphere, setHemisphere };
   }, [accent, isPro, mode, preference, setAccent, setPreference, toggleTheme, editionPreference, calendarDate, setEditionPreference, hemisphere, setHemisphere]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

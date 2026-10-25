@@ -59,8 +59,9 @@ function AppTabs() {
   const { t } = useI18n();
   // Files waiting for a book: a badge on the tab, like the old card in Library did.
   const { inbox: audioInbox } = useAudiobookPlayer();
-  const addFrameBase = isDark ? "rgba(255,200,87,0.16)" : c.surfaceAlt;
-  const addFrameBorder = isDark ? "rgba(255,200,87,0.30)" : c.border;
+  // From the colour set (not literal gold) so an atmosphere's highlight reaches the tab bar too.
+  const addFrameBase = isDark ? withAlpha(c.gold, 0.16) : c.surfaceAlt;
+  const addFrameBorder = isDark ? withAlpha(c.gold, 0.3) : c.border;
   const addFrameFocused = isDark ? withAlpha(c.teal, 0.22) : c.gold;
   const addFrameFocusedBorder = isDark ? withAlpha(c.teal, 0.38) : c.gold;
 

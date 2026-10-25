@@ -1,5 +1,7 @@
 /**
  * Settings › Accent colour and Settings › Icons & atmosphere (Bookliz Pro).
+ * An atmosphere repaints the whole app (src/theme/atmospheres.ts); this
+ * screen is the first place you see it, since it repaints as you tap.
  * Without Pro both screens still show every option — tapping one opens the
  * paywall on that feature instead of applying it.
  */
@@ -9,7 +11,6 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { currentIcon, setIcon, supportsAlternateIcons } from "../../modules/app-icon";
-import { EditionBanner } from "../components/EditionBanner";
 import { EDITION_IDS, EditionPreference, seasonalEdition } from "../pro/editions";
 import { useDialog } from "../components/DialogProvider";
 import { Screen } from "../components/Screen";
@@ -19,7 +20,8 @@ import { APP_ICONS, ICON_COLLECTIONS, AppIconId, iconIdForNativeName } from "../
 import { usePro } from "../pro/ProContext";
 import { ACCENT_IDS, ACCENTS, AccentId } from "../theme/accents";
 import { useTheme } from "../theme/ThemeContext";
-import { AppColors, fonts, radii, spacing } from "../theme/theme";
+import { atmosphereFor, paintAtmosphere } from "../theme/atmospheres";
+import { AppColors, darkColors, fonts, lightColors, radii, spacing } from "../theme/theme";
 
 function ProNote({ text }: { text: string }) {
   const { colors: c } = useTheme();
@@ -33,7 +35,7 @@ function ProNote({ text }: { text: string }) {
 }
 
 export function AccentPickerScreen() {
-  const { colors: c, accent, setAccent } = useTheme();
+  const { colors: c, accent, setAccent, atmosphere, isDark } = useTheme();
   const { t } = useI18n();
   const { isPro } = usePro();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -55,21 +57,26 @@ export function AccentPickerScreen() {
       <View style={styles.grid}>
         {ACCENT_IDS.map((id) => {
           const selected = id === active;
+          // "teal" means "no accent of my own": under an atmosphere that is the
+          // atmosphere's accent, so the first swatch shows and says exactly that.
+          const followsAtmosphere = id === "teal" && atmosphere !== null;
+          const swatch = followsAtmosphere ? (isDark ? atmosphere.dark : atmosphere.light).teal : ACCENTS[id].main;
+          const label = followsAtmosphere ? t("appearancePro.accentFromAtmosphere") : t(`appearancePro.accents.${id}`);
           return (
             <Pressable
               key={id}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
-              accessibilityLabel={t(`appearancePro.accents.${id}`)}
+              accessibilityLabel={label}
               onPress={() => choose(id)}
               style={styles.swatchCell}
             >
-              <View style={[styles.swatchRing, selected && { borderColor: ACCENTS[id].main }]}>
-                <View style={[styles.swatch, { backgroundColor: ACCENTS[id].main }]}>
+              <View style={[styles.swatchRing, selected && { borderColor: swatch }]}>
+                <View style={[styles.swatch, { backgroundColor: swatch }]}>
                   {selected ? <Ionicons name="checkmark" size={24} color="#fff" /> : null}
                 </View>
               </View>
-              <Text style={styles.label}>{t(`appearancePro.accents.${id}`)}</Text>
+              <Text style={styles.label}>{label}</Text>
             </Pressable>
           );
         })}
@@ -87,7 +94,7 @@ export function AccentPickerScreen() {
 }
 
 export function AppIconPickerScreen() {
-  const { colors: c, edition, editionPreference, setEditionPreference, hemisphere, setHemisphere } = useTheme();
+  const { colors: c, isDark, editionPreference, setEditionPreference, hemisphere, setHemisphere } = useTheme();
   const { t } = useI18n();
   const { isPro } = usePro();
   const dialog = useDialog();
@@ -184,7 +191,6 @@ export function AppIconPickerScreen() {
       <View style={styles.divider} />
       <Text style={styles.sectionTitle}>{t("appearancePro.inAppTitle")}</Text>
       <Text style={styles.description}>{t("appearancePro.inAppDescription")}</Text>
-      <EditionBanner edition={edition} />
       {activeEdition === "seasonal" ? (
         <View style={styles.calendarOptions}>
           <Text style={styles.collectionTitle}>{t("appearancePro.hemisphereTitle")}</Text>
@@ -210,6 +216,10 @@ export function AppIconPickerScreen() {
           const previewId = id === "seasonal" ? seasonalEdition(new Date(), hemisphere) : id;
           const icon = APP_ICONS.find((row) => row.id === (previewId === "classic" ? "default" : previewId))!;
           const chosen = activeEdition === id;
+          // Each tile is painted in its own atmosphere (current light/dark), so
+          // the grid is a preview of the app — the screen behind it repaints too.
+          const tile = paintAtmosphere(isDark ? darkColors : lightColors, previewId, isDark);
+          const themed = atmosphereFor(previewId) !== null;
           return (
             <Pressable
               key={id}
@@ -219,13 +229,22 @@ export function AppIconPickerScreen() {
               onPress={() => chooseEdition(id)}
               style={styles.editionCell}
             >
-              <View style={[styles.editionTile, chosen && { borderColor: c.teal }]}>
-                {id === "seasonal" ? <Ionicons name="calendar-outline" size={30} color={c.teal} />
+              <View style={[styles.editionTile, { backgroundColor: tile.bg, borderColor: chosen ? tile.teal : tile.border }]}>
+                {id === "seasonal" ? <Ionicons name="calendar-outline" size={30} color={tile.teal} />
                   : <Image source={icon.preview} style={styles.editionImage} accessible={false} />}
-                <Text style={styles.editionLabel}>{t(`appearancePro.editions.${id}`)}</Text>
+                <View style={styles.editionCopy}>
+                  <Text style={[styles.editionLabel, { color: tile.ink }]}>{t(`appearancePro.editions.${id}`)}</Text>
+                  {themed || id === "classic" ? (
+                    <View style={styles.editionSwatches}>
+                      {[tile.surface, tile.teal, tile.coral].map((color, index) => (
+                        <View key={index} style={[styles.editionSwatch, { backgroundColor: color, borderColor: tile.border }]} />
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
                 {chosen || (!isPro && id !== "classic") ? (
                   <View style={styles.editionIndicator}>
-                    <Ionicons name={chosen ? "checkmark-circle" : "lock-closed"} size={chosen ? 17 : 12} color={chosen ? c.teal : c.muted} />
+                    <Ionicons name={chosen ? "checkmark-circle" : "lock-closed"} size={chosen ? 17 : 12} color={chosen ? tile.teal : tile.muted} />
                   </View>
                 ) : null}
               </View>
@@ -254,7 +273,10 @@ function createStyles(c: AppColors) {
     editionTile: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, minHeight: 74, borderRadius: radii.md, borderWidth: 2, borderColor: c.border, backgroundColor: c.surface },
     editionImage: { height: 34, width: 34, borderRadius: 10 },
     editionIndicator: { position: "absolute", right: 5, top: 5 },
-    editionLabel: { flex: 1, color: c.ink, fontFamily: fonts.body, fontSize: 12 },
+    editionCopy: { flex: 1, gap: 6 },
+    editionLabel: { color: c.ink, fontFamily: fonts.body, fontSize: 12, paddingRight: 14 },
+    editionSwatches: { flexDirection: "row", gap: 4 },
+    editionSwatch: { width: 12, height: 12, borderRadius: 6, borderWidth: 1 },
     footnote: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 12, lineHeight: 19, marginTop: spacing.md },
     note: { alignItems: "center", backgroundColor: c.surface, borderRadius: radii.md, flexDirection: "row", gap: spacing.sm, marginBottom: spacing.md, padding: spacing.md },
     noteText: { color: c.ink, flex: 1, fontFamily: fonts.bodyRegular, fontSize: 14, lineHeight: 20 },
