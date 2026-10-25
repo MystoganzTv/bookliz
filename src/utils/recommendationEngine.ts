@@ -1,5 +1,4 @@
 import { Author, Book, Recommendation, ReadingSession } from "../types/models";
-import { sessionPlace } from "../data/sessionProgress";
 
 type RecommendationReason = Recommendation["reason"];
 
@@ -13,7 +12,6 @@ export function buildGlobalRecommendations(
   recommendations.push(...buildContinueSagaRecommendations(books));
   recommendations.push(...buildSameAuthorRecommendations(books, authors));
   recommendations.push(...buildBecauseYouLikedRecommendations(books));
-  recommendations.push(...buildHabitRecommendations(books, sessions));
   recommendations.push(...buildUpcomingRecommendations(books));
 
   return dedupeRecommendations(recommendations).sort((a, b) => b.confidence - a.confidence);
@@ -98,8 +96,6 @@ export function buildBookSpecificRecommendations(
       );
     });
 
-  const habitFit = buildHabitRecommendations(discoverable, sessions).slice(0, 2);
-  recommendations.push(...habitFit);
 
   return dedupeRecommendations(recommendations)
     .filter((recommendation) => recommendation.bookId !== targetBook.id)
@@ -197,55 +193,6 @@ function buildBecauseYouLikedRecommendations(books: Book[]) {
       )
     );
   });
-
-  return recommendations;
-}
-
-function buildHabitRecommendations(books: Book[], sessions: ReadingSession[]) {
-  if (!sessions.length) return [];
-
-  const averageMinutes = sessions.reduce((sum, session) => sum + session.minutesRead, 0) / sessions.length;
-  const dominantFormat = getTopCount(sessions.map((session) => session.format));
-  const dominantLocation = getTopCount(sessions.map((session) => sessionPlace(session.location)).filter(Boolean));
-
-  const candidates = books.filter(isDiscoverable);
-  const recommendations: Recommendation[] = [];
-
-  const shortCandidate = averageMinutes < 65
-    ? candidates
-        .filter((book) => book.pages <= 350)
-        .sort((a, b) => a.pages - b.pages)[0]
-    : undefined;
-
-  if (shortCandidate) {
-    recommendations.push(
-      makeRecommendation(
-        `habit-short-${shortCandidate.id}`,
-        shortCandidate.id,
-        "reading-log-habits",
-        79,
-        `${shortCandidate.title} fits your shorter ${Math.round(averageMinutes)}-minute reading sessions.`
-      )
-    );
-  }
-
-  const formatCandidate = dominantFormat
-    ? candidates.find((book) => book.format === dominantFormat)
-    : undefined;
-
-  if (formatCandidate) {
-    recommendations.push(
-      makeRecommendation(
-        `habit-format-${formatCandidate.id}`,
-        formatCandidate.id,
-        "reading-log-habits",
-        75,
-        dominantLocation
-          ? `${formatCandidate.title} matches your usual ${dominantFormat} sessions around ${dominantLocation.toLowerCase()}.`
-          : `${formatCandidate.title} lines up with your most-used reading format: ${dominantFormat}.`
-      )
-    );
-  }
 
   return recommendations;
 }

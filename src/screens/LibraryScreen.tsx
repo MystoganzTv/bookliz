@@ -328,8 +328,11 @@ export function LibraryScreen() {
         </ScrollView>
       ) : null}
 
-      {/* ── Folders — top level; a folder opens its own screen ── */}
-      {books.length > 0 ? (
+      {/* ── Folders — top level; a folder opens its own screen ──
+          Only once a folder exists: a rail holding nothing but a big "New
+          folder" card took the top of the screen for nothing. The first folder
+          is made from a book's "Move to folder" (that sheet creates one). */}
+      {books.length > 0 && topFolders.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.foldersRail} contentContainerStyle={styles.foldersRailContent}>
           {topFolders.map((folder) => (
             <ScalePressable
@@ -347,11 +350,10 @@ export function LibraryScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t("folders.new")}
-            style={[styles.folderCard, styles.folderCardNew]}
+            style={[styles.folderCard, styles.folderCardNew, styles.folderCardNewCompact]}
             onPress={() => setCreateFolderOpen(true)}
           >
-            <Ionicons name="folder-open-outline" size={20} color={c.teal} />
-            <Text style={styles.folderCardNewText} numberOfLines={1}>{t("folders.new")}</Text>
+            <Ionicons name="add" size={20} color={c.teal} />
           </Pressable>
         </ScrollView>
       ) : null}
@@ -963,6 +965,11 @@ function createStyles(c: AppColors, isDark: boolean) {
       color: c.muted,
       fontFamily: fonts.bodyRegular,
       fontSize: 12
+    },
+    folderCardNewCompact: {
+      alignItems: "center",
+      justifyContent: "center",
+      width: 52,
     },
     folderCardNew: {
       alignItems: "flex-start",

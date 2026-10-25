@@ -2,8 +2,9 @@
  * Accounts that get Bookliz Pro without buying it — the developer's own.
  *
  * StoreKit stays the source of truth for everyone else; this only adds Pro on
- * top when the reader is signed in (a real Supabase session, not just a linked
- * Google account) with one of these emails. Stored as SHA-256 of the
+ * top when one of these emails is either the Supabase session's or the Google /
+ * Apple account linked on this device (ProContext checks both: a linked account
+ * whose token the cloud refused still has to count, or Pro never shows up). Stored as SHA-256 of the
  * normalised address so the email itself is not readable in the shipped
  * bundle. To add one: `printf '%s' 'name@example.com' | shasum -a 256`.
  *

@@ -57,6 +57,12 @@ type ProContextValue = {
   debugPro: boolean;
   /** Pro given to this signed-in account (see complimentaryPro.ts), not bought. */
   complimentary: boolean;
+  /**
+   * The Google/Apple account linked on this device (BooklizContext reports it).
+   * Complimentary Pro must not wait for a Supabase session: linking can succeed
+   * while the cloud refuses the token, and then Pro silently never appeared.
+   */
+  setLinkedAccountEmail: (email: string | null) => void;
   setDebugPro: (value: boolean) => void;
   buy: (plan: ProPlan) => Promise<PurchaseStatus>;
   restore: () => Promise<boolean>;
@@ -72,6 +78,7 @@ const ProContext = createContext<ProContextValue>({
   storeAvailable: false,
   debugPro: false,
   complimentary: false,
+  setLinkedAccountEmail: () => {},
   setDebugPro: () => {},
   buy: async () => "unavailable",
   restore: async () => false,
@@ -87,12 +94,26 @@ function sanitizeEntitlements(value: unknown): StoreEntitlement[] {
   );
 }
 
+async function emailIsComplimentary(email: string | null | undefined): Promise<boolean> {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return false;
+  try {
+    const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, normalized);
+    return isComplimentaryHash(hash);
+  } catch {
+    return false;
+  }
+}
+
 export function ProProvider({ children }: PropsWithChildren) {
   const [entitlements, setEntitlements] = useState<StoreEntitlement[]>([]);
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(isStoreKitAvailable);
   const [debugPro, setDebugProState] = useState(false);
-  const [complimentary, setComplimentary] = useState(false);
+  const [sessionComplimentary, setSessionComplimentary] = useState(false);
+  const [linkedComplimentary, setLinkedComplimentary] = useState(false);
+  const [linkedEmail, setLinkedEmail] = useState<string | null>(null);
+  const complimentary = sessionComplimentary || linkedComplimentary;
   const [now, setNow] = useState(() => Date.now());
   const mounted = useRef(true);
 
@@ -159,17 +180,8 @@ export function ProProvider({ children }: PropsWithChildren) {
     if (!supabase) return;
     let alive = true;
     const check = async (email: string | null | undefined) => {
-      const normalized = normalizeEmail(email);
-      if (!normalized) {
-        if (alive) setComplimentary(false);
-        return;
-      }
-      try {
-        const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, normalized);
-        if (alive) setComplimentary(isComplimentaryHash(hash));
-      } catch {
-        if (alive) setComplimentary(false);
-      }
+      const result = await emailIsComplimentary(email);
+      if (alive) setSessionComplimentary(result);
     };
     supabase.auth.getSession().then(({ data }) => check(data.session?.user?.email)).catch(() => {});
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -179,6 +191,22 @@ export function ProProvider({ children }: PropsWithChildren) {
       alive = false;
       data.subscription.unsubscribe();
     };
+  }, []);
+
+  // The same check against the account linked on this device — on as soon as
+  // the developer's Google account is linked, whatever the cloud said.
+  useEffect(() => {
+    let alive = true;
+    emailIsComplimentary(linkedEmail).then((result) => {
+      if (alive) setLinkedComplimentary(result);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [linkedEmail]);
+
+  const setLinkedAccountEmail = useCallback((email: string | null) => {
+    setLinkedEmail(email ? normalizeEmail(email) : null);
   }, []);
 
   const buy = useCallback(
@@ -217,13 +245,14 @@ export function ProProvider({ children }: PropsWithChildren) {
       storeAvailable: isStoreKitAvailable,
       debugPro,
       complimentary,
+      setLinkedAccountEmail,
       setDebugPro,
       buy,
       restore,
       manage: showManageSubscriptions,
       refresh,
     };
-  }, [buy, complimentary, debugPro, entitlements, now, products, productsLoading, refresh, restore, setDebugPro]);
+  }, [buy, complimentary, setLinkedAccountEmail, debugPro, entitlements, now, products, productsLoading, refresh, restore, setDebugPro]);
 
   return <ProContext.Provider value={value}>{children}</ProContext.Provider>;
 }

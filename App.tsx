@@ -18,6 +18,7 @@ import { DialogProvider } from "./src/components/DialogProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import { ProProvider } from "./src/pro/ProContext";
+import { LinkedAccountProBridge } from "./src/pro/LinkedAccountProBridge";
 
 function Root() {
   const { isDark } = useTheme();
@@ -50,6 +51,7 @@ export default function App() {
           <ThemeProvider>
             <DialogProvider>
               <BooklizProvider>
+                <LinkedAccountProBridge />
                 <ReadingTimerProvider>
                   <AudiobookPlayerProvider>
                     <Root />

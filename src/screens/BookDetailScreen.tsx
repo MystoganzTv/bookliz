@@ -21,7 +21,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BookCover } from "../components/BookCover";
 import { ScalePressable } from "../components/ScalePressable";
-import { RecommendationCard } from "../components/RecommendationCard";
 import { BookStatusSheet } from "../components/BookStatusSheet";
 import { BookListSheet } from "../components/BookListSheet";
 import { FolderPickerSheet } from "../components/FolderPickerSheet";
@@ -48,6 +47,9 @@ import { hapticLight, hapticMedium } from "../utils/haptics";
 import { isPlaceholderText, resolveBookMetadata } from "../utils/bookMetadata";
 import { isSameLanguage } from "../utils/languageUtils";
 import { statusLabelKey } from "../utils/statusLabels";
+import { formatLabel } from "../utils/formatLabels";
+import { audioFileSize } from "../audio/audioFiles";
+import { formatBytes, formatClock } from "../audio/audiobookModel";
 
 function cleanGenres(raw: string[]): string[] {
   return raw
@@ -68,7 +70,7 @@ export function BookDetailScreen() {
 
   const {
     deleteBook, getAuthor, getBook, getBookStats,
-    getRecommendationsForBook, updateBookStatus, updateBookSynopsis, getReviewForBook,
+    updateBookStatus, updateBookSynopsis, getReviewForBook,
     getSessionsForBook, bookFolders, moveBookToFolder,
   } = useBookliz();
   const [folderSheetOpen, setFolderSheetOpen] = useState(false);
@@ -138,11 +140,38 @@ export function BookDetailScreen() {
     return { label: t("bookDetail.startReading"), icon: "book-outline" as const, onPress: () => updateBookStatus(book.id, "reading", book.userStatus.rating) };
   })();
 
-  const relatedRecs = getRecommendationsForBook(book.id, 4)
-    .map((rec) => ({ rec, recBook: getBook(rec.bookId) }))
-    .filter((item): item is { rec: (typeof item)["rec"]; recBook: NonNullable<ReturnType<typeof getBook>> } =>
-      Boolean(item.recBook)
-    );
+  // The book's audio files, one row each, so a single file can go without
+  // removing the whole audiobook. Sizes are read when the list changes.
+  const audioFiles = useMemo(() => {
+    if (!audiobook) return [];
+    return audiobook.tracks.map((track, index) => ({
+      index,
+      name: track.title || track.file,
+      durationSec: track.durationSec,
+      removed: Boolean(track.removed),
+      bytes: track.removed ? 0 : audioFileSize(audiobook.folder, track.file),
+    }));
+  }, [audiobook]);
+  const audioBytes = audioFiles.reduce((sum, f) => sum + f.bytes, 0);
+  const [showAllFiles, setShowAllFiles] = useState(false);
+  const visibleFiles = showAllFiles ? audioFiles : audioFiles.slice(0, 5);
+  const confirmRemoveFile = (index: number, name: string) => {
+    const isLast = audioFiles.filter((f) => !f.removed).length <= 1;
+    dialog.confirm({
+      title: isLast ? t("player.removeConfirmTitle") : t("bookDetail.audioFileDeleteTitle"),
+      body: isLast ? t("player.removeConfirmBody") : t("bookDetail.audioFileDeleteBody", { name }),
+      confirmLabel: isLast ? t("player.removeConfirm") : t("common.delete"),
+      destructive: true,
+      onConfirm: () => {
+        audioPlayer.engine.removeTrack(book.id, index);
+      },
+    });
+  };
+  const durationLabel = (sec: number) => {
+    const h = Math.floor(sec / 3600);
+    const m = Math.round((sec % 3600) / 60);
+    return h ? `${h} h ${m} min` : `${m} min`;
+  };
 
   const [gradTop, gradBot] = book.coverGradient;
 
@@ -369,13 +398,17 @@ export function BookDetailScreen() {
 
         {/* ── COLLECTOR ROW ────────────────────────────────────────────────── */}
         <View style={[styles.collectorRow, { marginTop: spacing.sm }]}>
-          <CollectorChip icon="trophy-outline" label={t("bookDetail.rank")} value={book.userStatus.personalRanking ? `#${book.userStatus.personalRanking}` : "—"} styles={styles} c={c} />
-          <CollectorChip icon="chatbubble-ellipses-outline" label={t("bookDetail.quotes")} value={String(book.userStatus.favoriteQuotes.length)} styles={styles} c={c} />
+          {/* Rank and Quotes chips are gone: rank was a number set deep in Edit
+              that nothing on this screen used, and the quote count only
+              repeated the Quotes section below. */}
           {/* Ownership had no indicator anywhere on this screen: the only way
               to see it was to open the status sheet. */}
           <CollectorChip icon={isOwned ? "checkmark-circle-outline" : "ellipse-outline"} label={t("bookDetail.chipOwnership")} value={isOwned ? t("bookDetail.chipOwned") : t("bookDetail.chipNotOwned")} styles={styles} c={c} />
-          <CollectorChip icon="pricetag-outline" label={t("bookDetail.labelFormat")} value={book.format.charAt(0).toUpperCase() + book.format.slice(1).replace(/-/g, " ")} styles={styles} c={c} />
-          {book.pages ? <CollectorChip icon="document-text-outline" label={t("bookDetail.labelPages")} value={String(book.pages)} styles={styles} c={c} /> : null}
+          <CollectorChip icon="pricetag-outline" label={t("bookDetail.labelFormat")} value={formatLabel(book.format, t)} styles={styles} c={c} />
+          {/* An audiobook with its audio here is measured in hours, not pages. */}
+          {audiobook && audiobook.totalSec > 0
+            ? <CollectorChip icon="time-outline" label={t("bookDetail.labelDuration")} value={durationLabel(audiobook.totalSec)} styles={styles} c={c} />
+            : book.pages ? <CollectorChip icon="document-text-outline" label={t("bookDetail.labelPages")} value={String(book.pages)} styles={styles} c={c} /> : null}
         </View>
 
         {/* ── SYNOPSIS ─────────────────────────────────────────────────────── */}
@@ -564,6 +597,48 @@ export function BookDetailScreen() {
           </View>
         ) : null}
 
+        {/* ── AUDIO FILES ──────────────────────────────────────────────────── */}
+        {audioFiles.length > 0 ? (
+          <View style={[styles.sectionBlock, { marginTop: spacing.lg }]}>
+            <View style={styles.sectionBlockHeader}>
+              <Text style={styles.sectionTitle}>{t("bookDetail.audioFiles")}</Text>
+              <Text style={styles.mutedSm}>{formatBytes(audioBytes)}</Text>
+            </View>
+            <View style={[styles.card, { marginTop: spacing.sm, paddingHorizontal: 0, paddingVertical: 0 }]}>
+              {visibleFiles.map((file, i) => (
+                <View key={file.index} style={[styles.fileRow, i < visibleFiles.length - 1 && styles.editionRowDivider]}>
+                  <Ionicons name={file.removed ? "remove-circle-outline" : "musical-note-outline"} size={18} color={file.removed ? c.border : c.teal} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.fileName, file.removed && { color: c.muted }]} numberOfLines={1}>{file.name}</Text>
+                    <Text style={styles.mutedSm}>
+                      {file.removed
+                        ? t("bookDetail.audioFileDeleted")
+                        : `${formatClock(file.durationSec)} · ${formatBytes(file.bytes)}`}
+                    </Text>
+                  </View>
+                  {file.removed ? null : (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={t("bookDetail.audioFileDeleteA11y", { name: file.name })}
+                      hitSlop={10}
+                      onPress={() => confirmRemoveFile(file.index, file.name)}
+                    >
+                      <Ionicons name="trash-outline" size={18} color={c.danger} />
+                    </Pressable>
+                  )}
+                </View>
+              ))}
+            </View>
+            {audioFiles.length > 5 ? (
+              <Pressable accessibilityRole="button" onPress={() => setShowAllFiles((v) => !v)} style={{ marginTop: spacing.sm }}>
+                <Text style={styles.sectionAction}>
+                  {showAllFiles ? t("bookDetail.audioFilesShowLess") : t("bookDetail.audioFilesShowAll", { count: audioFiles.length })}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* ── NOTES ────────────────────────────────────────────────────────── */}
         {book.userStatus.notes && !/^Added through the .* flow\.$/.test(book.userStatus.notes.trim()) ? (
           <View style={[styles.sectionBlock, { marginTop: spacing.lg }]}>
@@ -605,8 +680,6 @@ export function BookDetailScreen() {
             { label: t("bookDetail.labelPublisher"), value: book.publisher || null },
             { label: t("bookDetail.labelPublished"), value: book.publishedDate ? book.publishedDate.slice(0, 4) : null },
             { label: t("bookDetail.labelLanguage"),  value: book.language || null },
-            { label: t("bookDetail.labelFormat"),    value: book.format ? book.format.charAt(0).toUpperCase() + book.format.slice(1).replace(/-/g, " ") : null },
-            { label: t("bookDetail.labelPages"),     value: book.pages ? String(book.pages) : null },
             { label: t("bookDetail.labelIsbn"),      value: book.isbn || null },
           ].filter((r): r is { label: string; value: string } => Boolean(r.value));
           if (rows.length === 0) return null;
@@ -625,23 +698,6 @@ export function BookDetailScreen() {
           );
         })()}
 
-        {/* ── SIMILAR BOOKS ────────────────────────────────────────────────── */}
-        {relatedRecs.length > 0 ? (
-          <View style={[styles.sectionBlock, { marginTop: spacing.lg }]}>
-            <View style={{ gap: spacing.sm }}>
-              {relatedRecs.map(({ rec, recBook }) => (
-                <RecommendationCard
-                  key={rec.id}
-                  authorName={getAuthor(recBook.authorId)?.name ?? ""}
-                  book={recBook}
-                  compact
-                  recommendation={rec}
-                  onPress={() => navigation.navigate("BookDetail", { bookId: recBook.id })}
-                />
-              ))}
-            </View>
-          </View>
-        ) : null}
       </Animated.ScrollView>
 
       <BookStatusSheet
@@ -778,7 +834,8 @@ function CollectorChip({ icon, label, value, styles, c }: {
   return (
     <View style={styles.collectorChip}>
       <Ionicons name={icon} size={18} color={c.muted} />
-      <Text style={styles.collectorChipValue}>{value}</Text>
+      {/* Never wider than its chip: "Audiobook" used to spill its last letter out of the frame. */}
+      <Text style={styles.collectorChipValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{value}</Text>
       <Text style={styles.collectorChipLabel}>{label}</Text>
     </View>
   );
@@ -885,7 +942,9 @@ function createStyles(c: AppColors, isDark: boolean) {
       alignItems: "center", backgroundColor: c.surface, borderColor: c.border,
       borderRadius: radii.sm, borderWidth: 1, flex: 1, gap: 3, paddingVertical: 10,
     },
-    collectorChipValue: { color: c.ink, fontFamily: fonts.display, fontSize: 14, fontWeight: "900" },
+    collectorChipValue: { color: c.ink, fontFamily: fonts.display, fontSize: 14, fontWeight: "900", paddingHorizontal: 6, textAlign: "center" },
+    fileRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: 12 },
+    fileName: { color: c.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: "700" },
     collectorChipLabel: { color: c.muted, fontFamily: fonts.body, fontSize: 9, fontWeight: "800", textTransform: "uppercase" },
 
     // Synopsis

@@ -158,6 +158,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       requiresPro: "Pro",
       settingsRow: "Bookliz Pro",
       settingsActive: "Active",
+      profileGetPro: "Get Pro",
       settingsFooter: "Pro adds playback on Apple Watch without your iPhone, audiobooks in iCloud, your year in reading, accent colours and app icons. Everything else stays free.",
       features: {
         watchStandalone: {
@@ -885,6 +886,14 @@ export const translations: Record<AppLocale, TranslationTree> = {
       unknownAuthor: "Unknown author",
     },
     bookDetail: {
+      audioFiles: "Audio files",
+      audioFilesShowAll: "Show all ({count})",
+      audioFilesShowLess: "Show less",
+      audioFileDeleted: "Deleted",
+      audioFileDeleteTitle: "Delete this file?",
+      audioFileDeleteBody: "“{name}” will be deleted from this iPhone. Your progress and sessions stay; that part of the book just won't play any more.",
+      audioFileDeleteA11y: "Delete {name}",
+      labelDuration: "Length",
       logSession: "Log Session",
       editReview: "Edit Review",
       writeReview: "Write Review",
@@ -1669,6 +1678,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       requiresPro: "Pro",
       settingsRow: "Bookliz Pro",
       settingsActive: "Activo",
+      profileGetPro: "Hazte Pro",
       settingsFooter: "Pro añade escuchar en el Apple Watch sin el iPhone, audiolibros en iCloud, tu año de lectura, colores de acento e iconos. Todo lo demás sigue siendo gratis.",
       features: {
         watchStandalone: {
@@ -2390,6 +2400,14 @@ export const translations: Record<AppLocale, TranslationTree> = {
       unknownAuthor: "Autor desconocido",
     },
     bookDetail: {
+      audioFiles: "Archivos de audio",
+      audioFilesShowAll: "Ver todos ({count})",
+      audioFilesShowLess: "Ver menos",
+      audioFileDeleted: "Borrado",
+      audioFileDeleteTitle: "¿Borrar este archivo?",
+      audioFileDeleteBody: "«{name}» se borrará de este iPhone. Tu progreso y tus sesiones se quedan; esa parte del libro simplemente ya no se podrá escuchar.",
+      audioFileDeleteA11y: "Borrar {name}",
+      labelDuration: "Duración",
       logSession: "Registrar sesión",
       editReview: "Editar reseña",
       writeReview: "Escribir reseña",

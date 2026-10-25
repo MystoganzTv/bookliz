@@ -7,6 +7,7 @@ import { BookCard } from "../components/BookCard";
 import { Screen } from "../components/Screen";
 import { SectionHeader } from "../components/SectionHeader";
 import { useBookliz } from "../data/BooklizContext";
+import { usePro } from "../pro/ProContext";
 import { useI18n } from "../i18n/LocalizationContext";
 import { useIsWide } from "../utils/layout";
 import { RootStackParamList } from "../navigation/types";
@@ -64,6 +65,7 @@ export function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors: c } = useTheme();
   const { t, locale } = useI18n();
+  const { isPro } = usePro();
   const styles = useMemo(() => createStyles(c), [c]);
   const isWide = useIsWide();
   const { books, getAuthor, overallStats, repositoryStatus, userProfile } = useBookliz();
@@ -115,7 +117,20 @@ export function ProfileScreen() {
           </View>
 
           <View style={styles.heroCopy}>
-            <Text style={styles.name}>{userProfile.name}</Text>
+            <View style={styles.nameRow}>
+              <Text style={styles.name} numberOfLines={1}>{userProfile.name}</Text>
+              {/* Pro was only visible deep in Settings; the profile is where you look for it. */}
+              <Pressable
+                accessibilityRole="button"
+                style={[styles.proBadge, !isPro && styles.proBadgeGet]}
+                onPress={() => navigation.navigate("Paywall")}
+              >
+                <Ionicons name="sparkles" size={11} color={isPro ? c.navy : c.gold} />
+                <Text style={[styles.proBadgeText, !isPro && { color: c.gold }]}>
+                  {isPro ? "PRO" : t("pro.profileGetPro")}
+                </Text>
+              </Pressable>
+            </View>
             <Text style={styles.level}>{level.level.title}</Text>
             <Text style={styles.levelNote}>{level.level.note}</Text>
             {userProfile.email ? <Text style={styles.email}>{userProfile.email}</Text> : null}
@@ -516,11 +531,38 @@ function createStyles(c: AppColors) {
     heroCopy: {
       flex: 1
     },
+    nameRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8
+    },
     name: {
       color: "#FFFFFF",
+      flexShrink: 1,
       fontFamily: fonts.display,
       fontSize: 24,
       fontWeight: "900"
+    },
+    proBadge: {
+      alignItems: "center",
+      backgroundColor: c.gold,
+      borderRadius: radii.pill,
+      flexDirection: "row",
+      gap: 3,
+      paddingHorizontal: 8,
+      paddingVertical: 3
+    },
+    proBadgeGet: {
+      backgroundColor: "transparent",
+      borderColor: c.gold,
+      borderWidth: 1
+    },
+    proBadgeText: {
+      color: c.navy,
+      fontFamily: fonts.body,
+      fontSize: 10,
+      fontWeight: "900",
+      letterSpacing: 0.6
     },
     levelEyebrow: {
       color: "rgba(140,232,219,0.92)",

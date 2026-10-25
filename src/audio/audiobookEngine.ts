@@ -701,6 +701,31 @@ export class AudiobookEngine {
     return indexes.size;
   }
 
+  /**
+   * Delete one file of a book's audio. Like a listened file freed for space it
+   * keeps its place on the timeline — progress and sessions stay put, that
+   * stretch just can't be played. Deleting the last playable file takes the
+   * audio off the book altogether (an audiobook of nothing is no audiobook).
+   */
+  removeTrack(bookId: string, index: number): "track" | "all" | null {
+    const before = this.library[bookId];
+    const target = before?.tracks[index];
+    if (!before || !target || target.removed) return null;
+    if (!before.tracks.some((t, i) => i !== index && !t.removed)) {
+      this.removeAudio(bookId);
+      return "all";
+    }
+    // Pulling the file out from under the player: put the book away first.
+    if (this.loadedBookId === bookId && this.trackIndex === index) this.close();
+    const audiobook = this.library[bookId] ?? before; // close() may have saved a position
+    deleteAudioFile(audiobook.folder, target.file);
+    const tracks = audiobook.tracks.map((t, i) => (i === index ? { ...t, removed: true } : t));
+    const next: Audiobook = { ...audiobook, tracks };
+    if (next.returnSec !== undefined && playablePosition(tracks, next.returnSec) !== next.returnSec) delete next.returnSec;
+    this.commitLibrary({ ...this.library, [bookId]: next });
+    return "track";
+  }
+
   /** Bookmark where the listener is now. Returns the bookmarked second, or null with no book loaded. */
   addBookmark(): number | null {
     const bookId = this.main.activeBookId;
