@@ -42,7 +42,10 @@ export type RootStackParamList = {
   /** Settings > Player controls. */
   PlayerSettings: undefined;
   /** Settings > Storage > Manage files. */
-  ManageAudio: undefined;
+  /** inboxItemId: open that unassigned item's actions straight away (from the Audio tab). */
+  ManageAudio: { inboxItemId?: string } | undefined;
+  AudioFolder: { folderId: string };
+  AudioBookFiles: { bookId: string };
   /** Settings > Credits and licences. */
   Credits: undefined;
   /** A Library folder (subfolders + books). */

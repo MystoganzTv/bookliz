@@ -1,0 +1,397 @@
+/**
+ * The Audio tab — a BookPlayer-style library of everything that plays here.
+ *
+ * Every book with audio is one row (cover, title, author, length, progress)
+ * and also its own folder: tapping it lists its files in order, so a book
+ * imported as "Part 05…Part 11" arrives already organised. A ▶︎ on the row
+ * plays without leaving the list. The reader's own folders (the same folders
+ * the app already keeps, `bookFolders`) group books further.
+ *
+ * Files not given to a book yet sit on top, named after what the group of
+ * files shares. Space, iCloud and the Apple Watch live one level down
+ * ("···" → Files & storage) so the list stays a list.
+ *
+ * The same component is the tab (no folderId) and a pushed folder.
+ */
+import { Ionicons } from "@expo/vector-icons";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
+import { INBOX_IMPORT } from "../audio/audiobookEngine";
+import { AudioImportError } from "../audio/audioFiles";
+import type { Audiobook } from "../audio/audiobookModel";
+import { CreateListSheet } from "../components/CreateListSheet";
+import { useDialog } from "../components/DialogProvider";
+import { FolderPickerSheet } from "../components/FolderPickerSheet";
+import { MiniCover } from "../components/MiniCover";
+import { Screen } from "../components/Screen";
+import { useBookliz } from "../data/BooklizContext";
+import { childFolders, deepBookCount, folderOfBook } from "../data/bookFolders";
+import { useI18n } from "../i18n/LocalizationContext";
+import { RootStackParamList } from "../navigation/types";
+import { useColors } from "../theme/ThemeContext";
+import { AppColors, fonts, radii, spacing } from "../theme/theme";
+import type { BookFolder } from "../types/models";
+import { hapticLight, hapticSuccess } from "../utils/haptics";
+import { formatListenLength } from "./ManageAudioScreen";
+
+type Menu =
+  | { kind: "screen" }
+  | { kind: "book"; bookId: string }
+  | { kind: "folder"; folder: BookFolder };
+
+export function AudioLibraryScreen() {
+  const route = useRoute<RouteProp<RootStackParamList, "AudioFolder">>();
+  const folderId = route.params?.folderId ?? null;
+  const isRoot = folderId === null;
+  const { t } = useI18n();
+  const c = useColors();
+  const styles = useMemo(() => createStyles(c), [c]);
+  const dialog = useDialog();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { getBook, getAuthor, bookFolders, createFolder, renameFolder, deleteFolder, moveBookToFolder } = useBookliz();
+  const player = useAudiobookPlayer();
+  const { engine } = player;
+
+  const folder = folderId ? bookFolders.find((f) => f.id === folderId) ?? null : null;
+  useEffect(() => {
+    if (!isRoot) navigation.setOptions({ title: folder ? `${folder.emoji ?? "📁"} ${folder.name}` : "" });
+  }, [folder, isRoot, navigation]);
+
+  /** Books that have audio here (and still exist in the library). */
+  const audioIds = useMemo(
+    () => new Set(Object.keys(player.library).filter((id) => Boolean(getBook(id)))),
+    [getBook, player.library]
+  );
+
+  // Folders here: those holding audio somewhere below, and empty ones (just
+  // made, waiting to be filled). Library folders with only print books stay out.
+  const folders = useMemo(
+    () =>
+      childFolders(bookFolders, folderId).filter((f) => {
+        if (deepBookCount(bookFolders, f.id, audioIds) > 0) return true;
+        const hasAnyBook = bookFolders.some((g) => (g.id === f.id || g.parentId === f.id) && g.bookIds.length > 0);
+        return !hasAnyBook;
+      }),
+    [audioIds, bookFolders, folderId]
+  );
+
+  const audiobooks = useMemo(() => {
+    const here = [...audioIds].filter((id) => (folderOfBook(bookFolders, id)?.id ?? null) === folderId);
+    const rank = (a: Audiobook) => a.lastPlayedAt ?? a.addedAt;
+    return here.map((id) => player.library[id]).sort((a, b) => rank(b).localeCompare(rank(a)));
+  }, [audioIds, bookFolders, folderId, player.library]);
+
+  const inbox = isRoot ? player.inbox : [];
+  const importingInbox = player.importing?.bookId === INBOX_IMPORT ? player.importing : null;
+  const isEmpty = !inbox.length && !folders.length && !audiobooks.length;
+
+  // ── Menus ────────────────────────────────────────────────────────────────
+  const [menu, setMenu] = useState<Menu | null>(null);
+  const [sheet, setSheet] = useState<
+    { kind: "createFolder" } | { kind: "renameFolder"; folder: BookFolder } | { kind: "moveBook"; bookId: string } | null
+  >(null);
+  // An action picked in the menu runs once the menu's Modal is gone: iOS
+  // refuses to present a second modal while the first is still sliding out.
+  const pendingRef = useRef<(() => void) | null>(null);
+  const runAfterMenu = (action: () => void) => {
+    pendingRef.current = action;
+    setMenu(null);
+    setTimeout(flushPending, 600);
+  };
+  const flushPending = () => {
+    const action = pendingRef.current;
+    pendingRef.current = null;
+    action?.();
+  };
+
+  const importFiles = async () => {
+    try {
+      const item = await engine.pickIntoInbox();
+      if (item) hapticSuccess();
+    } catch (error) {
+      const problem = error instanceof AudioImportError ? error.problem : "unreadable";
+      const detail = error instanceof AudioImportError ? error.detail : error instanceof Error ? error.message : undefined;
+      const body = t(`player.errors.${problem}Body`);
+      dialog.alert(t(`player.errors.${problem}Title`), detail ? `${body}\n\n${t("auth.errorDetail", { detail })}` : body);
+    }
+  };
+
+  const playOrPause = (bookId: string) => {
+    hapticLight();
+    if (player.activeBookId === bookId && player.isPlaying) engine.pause();
+    else void engine.open(bookId, true);
+  };
+
+  const removeAudio = (bookId: string) =>
+    dialog.confirm({
+      title: t("player.removeConfirmTitle"),
+      body: t("player.removeConfirmBody"),
+      confirmLabel: t("player.removeConfirm"),
+      destructive: true,
+      onConfirm: () => engine.removeAudio(bookId),
+    });
+
+  const confirmDeleteFolder = (target: BookFolder) =>
+    dialog.confirm({
+      title: t("audioLib.deleteFolderTitle", { name: target.name }),
+      body: t("audioLib.deleteFolderBody"),
+      confirmLabel: t("common.delete"),
+      destructive: true,
+      onConfirm: () => deleteFolder(target.id),
+    });
+
+  // ── Render ───────────────────────────────────────────────────────────────
+  const menuRows: { key: string; icon: keyof typeof Ionicons.glyphMap; label: string; danger?: boolean; run: () => void }[] =
+    menu?.kind === "screen"
+      ? [
+          { key: "import", icon: "download-outline", label: t("fileManager.import"), run: () => void importFiles() },
+          { key: "newFolder", icon: "folder-open-outline", label: t("audioLib.newFolder"), run: () => setSheet({ kind: "createFolder" }) },
+          { key: "storage", icon: "server-outline", label: t("audioLib.storage"), run: () => navigation.navigate("ManageAudio") },
+        ]
+      : menu?.kind === "book"
+        ? [
+            { key: "files", icon: "list-outline", label: t("audioLib.showFiles"), run: () => navigation.navigate("AudioBookFiles", { bookId: menu.bookId }) },
+            { key: "move", icon: "folder-outline", label: t("audioLib.moveToFolder"), run: () => setSheet({ kind: "moveBook", bookId: menu.bookId }) },
+            { key: "detail", icon: "book-outline", label: t("audioLib.openBook"), run: () => navigation.navigate("BookDetail", { bookId: menu.bookId }) },
+            { key: "remove", icon: "trash-outline", label: t("player.removeAudio"), danger: true, run: () => removeAudio(menu.bookId) },
+          ]
+        : menu?.kind === "folder"
+          ? [
+              { key: "rename", icon: "create-outline", label: t("audioLib.renameFolder"), run: () => setSheet({ kind: "renameFolder", folder: menu.folder }) },
+              { key: "delete", icon: "trash-outline", label: t("audioLib.deleteFolder"), danger: true, run: () => confirmDeleteFolder(menu.folder) },
+            ]
+          : [];
+  const menuTitle =
+    menu?.kind === "book" ? getBook(menu.bookId)?.title ?? "" : menu?.kind === "folder" ? menu.folder.name : "";
+
+  return (
+    <Screen>
+      <View style={styles.header}>
+        {isRoot ? <Text style={styles.title}>{t("audioLib.title")}</Text> : <View style={{ flex: 1 }} />}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("fileManager.import")}
+          disabled={Boolean(player.importing)}
+          hitSlop={6}
+          style={styles.circleBtn}
+          onPress={() => void importFiles()}
+        >
+          {importingInbox ? <ActivityIndicator color={c.teal} /> : <Ionicons name="add" size={22} color={c.teal} />}
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("a11y.more")}
+          hitSlop={6}
+          style={styles.circleBtn}
+          onPress={() => setMenu({ kind: "screen" })}
+        >
+          <Ionicons name="ellipsis-horizontal" size={20} color={c.teal} />
+        </Pressable>
+      </View>
+      {importingInbox ? (
+        <Text style={styles.importing}>{t("fileManager.importing", { done: importingInbox.done, total: importingInbox.total })}</Text>
+      ) : null}
+
+      {isEmpty ? (
+        <View style={styles.empty}>
+          <Ionicons name={isRoot ? "headset-outline" : "folder-open-outline"} size={40} color={c.muted} />
+          <Text style={styles.emptyTitle}>{isRoot ? t("audioLib.emptyTitle") : t("audioLib.emptyFolderTitle")}</Text>
+          <Text style={styles.emptyBody}>{isRoot ? t("audioLib.emptyBody") : t("audioLib.emptyFolderBody")}</Text>
+          {isRoot ? (
+            <Pressable accessibilityRole="button" style={styles.emptyBtn} onPress={() => void importFiles()}>
+              <Ionicons name="download-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.emptyBtnText}>{t("fileManager.import")}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
+      {/* ── Not given to a book yet ───────────────────────────────────────── */}
+      {inbox.length ? (
+        <>
+          <Text style={styles.sectionLabel}>{t("audioLib.unassigned")}</Text>
+          {inbox.map((item) => (
+            <Pressable
+              key={item.id}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+              onPress={() => navigation.navigate("ManageAudio", { inboxItemId: item.id })}
+            >
+              <View style={[styles.tile, { backgroundColor: c.coral + "22" }]}>
+                <Ionicons name="musical-notes" size={22} color={c.coral} />
+              </View>
+              <View style={styles.rowCopy}>
+                <Text style={styles.rowTitle} numberOfLines={2}>{item.title || t("fileManager.untitled")}</Text>
+                <Text style={styles.rowSub} numberOfLines={1}>
+                  {[t("manageAudio.files", { count: item.tracks.filter((track) => !track.removed).length }), formatListenLength(item.totalSec, t)].join(" · ")}
+                </Text>
+                <Text style={styles.rowHint}>{t("audioLib.assignHint")}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={c.muted} />
+            </Pressable>
+          ))}
+          {folders.length || audiobooks.length ? <Text style={styles.sectionLabel}>{t("audioLib.audiobooks")}</Text> : null}
+        </>
+      ) : null}
+
+      {/* ── Folders ───────────────────────────────────────────────────────── */}
+      {folders.map((f) => {
+        const count = deepBookCount(bookFolders, f.id, audioIds);
+        return (
+          <Pressable
+            key={f.id}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+            onPress={() => navigation.push("AudioFolder", { folderId: f.id })}
+            onLongPress={() => setMenu({ kind: "folder", folder: f })}
+          >
+            <View style={[styles.tile, { backgroundColor: c.teal + "1A" }]}>
+              <Text style={styles.tileEmoji}>{f.emoji ?? "📁"}</Text>
+            </View>
+            <View style={styles.rowCopy}>
+              <Text style={styles.rowTitle} numberOfLines={1}>{f.name}</Text>
+              <Text style={styles.rowSub}>{count === 1 ? t("audioLib.oneAudiobook") : t("audioLib.audiobookCount", { count })}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={c.muted} />
+          </Pressable>
+        );
+      })}
+
+      {/* ── Audiobooks ────────────────────────────────────────────────────── */}
+      {audiobooks.map((audiobook) => {
+        const book = getBook(audiobook.bookId);
+        if (!book) return null;
+        const active = player.activeBookId === audiobook.bookId;
+        const playing = active && player.isPlaying;
+        const pct = audiobook.totalSec > 0 ? Math.min(100, Math.round((audiobook.positionSec / audiobook.totalSec) * 100)) : 0;
+        const files = audiobook.tracks.filter((track) => !track.removed).length;
+        return (
+          <Pressable
+            key={audiobook.bookId}
+            accessibilityRole="button"
+            accessibilityHint={t("audioLib.rowHint")}
+            style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+            onPress={() => navigation.navigate("AudioBookFiles", { bookId: audiobook.bookId })}
+            onLongPress={() => setMenu({ kind: "book", bookId: audiobook.bookId })}
+          >
+            <MiniCover book={book} width={52} />
+            <View style={styles.rowCopy}>
+              <Text style={[styles.rowTitle, active && { color: c.tealDark }]} numberOfLines={2}>{book.title}</Text>
+              <Text style={styles.rowSub} numberOfLines={1}>{getAuthor(book.authorId)?.name ?? ""}</Text>
+              <Text style={styles.rowSub} numberOfLines={1}>
+                {[
+                  formatListenLength(audiobook.totalSec, t),
+                  files > 1 ? t("manageAudio.files", { count: files }) : null,
+                  pct >= 99 ? t("audioLib.finished") : pct > 0 ? t("audioLib.percent", { pct }) : null,
+                ].filter(Boolean).join(" · ")}
+              </Text>
+              {pct > 0 && pct < 99 ? (
+                <View style={styles.track}><View style={[styles.trackFill, { width: `${pct}%` }]} /></View>
+              ) : null}
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={playing ? t("audioLib.pause") : t("audioLib.play")}
+              hitSlop={8}
+              style={[styles.playBtn, active && styles.playBtnActive]}
+              onPress={() => playOrPause(audiobook.bookId)}
+            >
+              <Ionicons name={playing ? "pause" : "play"} size={18} color={active ? "#FFFFFF" : c.teal} style={playing ? undefined : { marginLeft: 2 }} />
+            </Pressable>
+          </Pressable>
+        );
+      })}
+
+      {/* ── Menu ──────────────────────────────────────────────────────────── */}
+      <Modal visible={Boolean(menu)} transparent animationType="fade" onRequestClose={() => setMenu(null)} onDismiss={flushPending}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t("common.cancel")} style={styles.menuOverlay} onPress={() => setMenu(null)}>
+          <View style={styles.menu}>
+            {menuTitle ? <Text style={styles.menuTitle} numberOfLines={2}>{menuTitle}</Text> : null}
+            {menuRows.map((row) => (
+              <Pressable key={row.key} accessibilityRole="button" style={styles.menuRow} onPress={() => runAfterMenu(row.run)}>
+                <Ionicons name={row.icon} size={19} color={row.danger ? c.danger : c.ink} />
+                <Text style={[styles.menuText, row.danger && { color: c.danger }]}>{row.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+
+      <CreateListSheet
+        kind="folder"
+        open={sheet?.kind === "createFolder"}
+        mode="create"
+        initialEmoji="🎧"
+        onSave={(name, emoji) => createFolder(name, folderId, emoji)}
+        onClose={() => setSheet(null)}
+      />
+      <CreateListSheet
+        kind="folder"
+        open={sheet?.kind === "renameFolder"}
+        mode="rename"
+        initialName={sheet?.kind === "renameFolder" ? sheet.folder.name : ""}
+        initialEmoji={sheet?.kind === "renameFolder" ? sheet.folder.emoji ?? "📁" : "📁"}
+        onSave={(name, emoji) => sheet?.kind === "renameFolder" && renameFolder(sheet.folder.id, name, emoji)}
+        onClose={() => setSheet(null)}
+      />
+      <FolderPickerSheet
+        open={sheet?.kind === "moveBook"}
+        title={t("audioLib.moveTitle", { title: sheet?.kind === "moveBook" ? getBook(sheet.bookId)?.title ?? "" : "" })}
+        currentId={sheet?.kind === "moveBook" ? folderOfBook(bookFolders, sheet.bookId)?.id ?? null : null}
+        noneLabel={t("audioLib.noFolder")}
+        onPick={(target) => sheet?.kind === "moveBook" && moveBookToFolder(sheet.bookId, target)}
+        onClose={() => setSheet(null)}
+      />
+    </Screen>
+  );
+}
+
+function createStyles(c: AppColors) {
+  return StyleSheet.create({
+    header: { alignItems: "center", flexDirection: "row", gap: spacing.sm, marginBottom: spacing.md },
+    title: { color: c.ink, flex: 1, fontFamily: fonts.display, fontSize: 28, fontWeight: "900" },
+    circleBtn: {
+      alignItems: "center", backgroundColor: c.surface, borderColor: c.border, borderRadius: 22,
+      borderWidth: 1, height: 44, justifyContent: "center", width: 44,
+    },
+    importing: { color: c.tealDark, fontFamily: fonts.body, fontSize: 13, fontWeight: "800", marginBottom: spacing.sm },
+    sectionLabel: {
+      color: c.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: "900", letterSpacing: 0.8,
+      marginBottom: spacing.xs, marginTop: spacing.sm, textTransform: "uppercase",
+    },
+    row: {
+      alignItems: "center", borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: "row", gap: spacing.md, paddingVertical: 12,
+    },
+    rowPressed: { opacity: 0.7 },
+    tile: { alignItems: "center", borderRadius: radii.sm, height: 52, justifyContent: "center", width: 52 },
+    tileEmoji: { fontSize: 24 },
+    rowCopy: { flex: 1, gap: 2 },
+    rowTitle: { color: c.ink, fontFamily: fonts.body, fontSize: 16, fontWeight: "800" },
+    rowSub: { color: c.muted, fontFamily: fonts.body, fontSize: 13, fontWeight: "600" },
+    rowHint: { color: c.coral, fontFamily: fonts.body, fontSize: 12, fontWeight: "800", marginTop: 2 },
+    track: { backgroundColor: c.border, borderRadius: 2, height: 3, marginTop: 6, overflow: "hidden" },
+    trackFill: { backgroundColor: c.teal, height: 3 },
+    playBtn: {
+      alignItems: "center", borderColor: c.teal, borderRadius: 20, borderWidth: 1.5,
+      height: 40, justifyContent: "center", width: 40,
+    },
+    playBtnActive: { backgroundColor: c.teal },
+    empty: { alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.xl },
+    emptyTitle: { color: c.ink, fontFamily: fonts.display, fontSize: 20, fontWeight: "900", textAlign: "center" },
+    emptyBody: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 14, lineHeight: 20, textAlign: "center" },
+    emptyBtn: {
+      alignItems: "center", backgroundColor: c.teal, borderRadius: radii.pill, flexDirection: "row",
+      gap: spacing.xs, marginTop: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: 12,
+    },
+    emptyBtnText: { color: "#FFFFFF", fontFamily: fonts.body, fontSize: 15, fontWeight: "900" },
+    menuOverlay: { backgroundColor: "rgba(0,0,0,0.4)", flex: 1, justifyContent: "flex-end", padding: spacing.md },
+    menu: { backgroundColor: c.surface, borderRadius: radii.lg, marginBottom: spacing.xl, overflow: "hidden" },
+    menuTitle: { color: c.muted, fontFamily: fonts.body, fontSize: 13, fontWeight: "700", paddingBottom: spacing.xs, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+    menuRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, minHeight: 54, paddingHorizontal: spacing.lg },
+    menuText: { color: c.ink, fontFamily: fonts.body, fontSize: 16 },
+  });
+}

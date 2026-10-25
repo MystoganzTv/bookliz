@@ -25,7 +25,9 @@ import { WelcomeScreen } from "../screens/WelcomeScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { SettingsChoiceScreen } from "../screens/SettingsChoiceScreen";
 import { PlayerSettingsScreen } from "../screens/PlayerSettingsScreen";
-import { AudioTabScreen, ManageAudioScreen } from "../screens/ManageAudioScreen";
+import { ManageAudioScreen } from "../screens/ManageAudioScreen";
+import { AudioLibraryScreen } from "../screens/AudioLibraryScreen";
+import { AudioBookFilesScreen } from "../screens/AudioBookFilesScreen";
 import { CreditsScreen } from "../screens/CreditsScreen";
 import { FolderScreen } from "../screens/FolderScreen";
 import { PaywallScreen } from "../screens/PaywallScreen";
@@ -124,7 +126,7 @@ function AppTabs() {
       <Tabs.Screen component={BookIntakeScreen} name="Add" options={{ title: t("nav.tabs.add") }} />
       {/* Discover is parked for now (DiscoverScreen stays in the repo); the file manager has the slot. */}
       <Tabs.Screen
-        component={AudioTabScreen}
+        component={AudioLibraryScreen}
         name="Audio"
         options={{
           title: t("nav.tabs.audio"),
@@ -198,7 +200,9 @@ export function AppNavigator() {
         <Stack.Screen component={SettingsScreen} name="Settings" options={{ title: t("nav.stack.settings") }} />
         <Stack.Screen component={SettingsChoiceScreen} name="SettingsChoice" options={{ title: "" }} />
         <Stack.Screen component={PlayerSettingsScreen} name="PlayerSettings" options={{ title: t("playerSettings.title") }} />
-        <Stack.Screen component={ManageAudioScreen} name="ManageAudio" options={{ title: t("fileManager.title") }} />
+        <Stack.Screen component={ManageAudioScreen} name="ManageAudio" options={{ title: t("audioLib.storage") }} />
+        <Stack.Screen component={AudioLibraryScreen} name="AudioFolder" options={{ title: "" }} />
+        <Stack.Screen component={AudioBookFilesScreen} name="AudioBookFiles" options={{ title: "" }} />
         <Stack.Screen component={CreditsScreen} name="Credits" options={{ title: t("credits.title") }} />
         <Stack.Screen component={FolderScreen} name="Folder" options={{ title: "" }} />
         <Stack.Screen component={EditBookScreen} name="EditBook" options={{ title: t("nav.stack.editBook") }} />

@@ -7,10 +7,10 @@
  * audio with what it takes up and the ways to give space back.
  */
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Paths } from "expo-file-system";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 import { INBOX_IMPORT } from "../audio/audiobookEngine";
@@ -40,11 +40,6 @@ export function formatListenLength(sec: number, t: (key: string, vars?: Record<s
   return m ? t("fileManager.hoursMinutes", { h, m }) : t("fileManager.hours", { h });
 }
 
-/** The same manager as a bottom tab: no navigation header there, so it draws its own title. */
-export function AudioTabScreen() {
-  return <ManageAudioScreen asTab />;
-}
-
 export function ManageAudioScreen({ asTab = false }: { asTab?: boolean }) {
   const { t } = useI18n();
   const c = useColors();
@@ -59,6 +54,17 @@ export function ManageAudioScreen({ asTab = false }: { asTab?: boolean }) {
   const [actionsFor, setActionsFor] = useState<AudioInboxItem | null>(null);
   const [assigning, setAssigning] = useState<AudioInboxItem | null>(null);
   const [renaming, setRenaming] = useState<AudioInboxItem | null>(null);
+  // Opened from the Audio tab on an unassigned item: show its actions at once.
+  const route = useRoute<RouteProp<RootStackParamList, "ManageAudio">>();
+  const openItemId = route.params?.inboxItemId;
+  useEffect(() => {
+    if (!openItemId) return;
+    const item = player.inbox.find((entry) => entry.id === openItemId);
+    if (item) setActionsFor(item);
+    navigation.setParams({ inboxItemId: undefined });
+    // Only when a new id arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openItemId]);
   const { isPro } = usePro();
   const cloud = useCloudAudio(isPro);
   const watchAudio = useWatchAudio();
