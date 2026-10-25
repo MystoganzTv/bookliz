@@ -1,12 +1,13 @@
 /**
  * LegalScreen — in-app Privacy Policy & Terms of Use.
- * Rendered natively (no broken external links, works offline).
+ * This IS the full text: Bookliz has no website of its own, so nothing here
+ * defers to a page elsewhere. Rendered natively and works offline.
  * Fully localized: every heading and body comes from the i18n tree, because
  * the app ships in English and Spanish and a policy nobody can read is not one.
  */
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { useLayoutEffect, useMemo } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
 import { AppColors, fonts, spacing } from "../theme/theme";
@@ -14,6 +15,9 @@ import { useColors } from "../theme/ThemeContext";
 import { PRIVACY_SECTION_IDS, TERMS_SECTION_IDS } from "./legalSections";
 
 type LegalRoute = RouteProp<RootStackParamList, "Legal">;
+
+/** Apple's licence, which the Pro terms incorporate — the one link worth leaving the app for. */
+const APPLE_STANDARD_EULA = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
 
 type Section = { heading: string; body: string };
 
@@ -58,7 +62,15 @@ export function LegalScreen() {
 
       <View style={styles.footerRule} />
       <Text style={styles.footerNote}>Bookliz · enrique.padron853@gmail.com</Text>
-      {isPrivacy ? <Text style={styles.footerNote}>{t("legal.fullPolicy")}</Text> : null}
+      {!isPrivacy ? (
+        <Text
+          accessibilityRole="link"
+          style={[styles.footerNote, styles.footerLink]}
+          onPress={() => void Linking.openURL(APPLE_STANDARD_EULA)}
+        >
+          {t("legal.appleEula")}
+        </Text>
+      ) : null}
     </ScrollView>
   );
 }
@@ -107,6 +119,12 @@ function createStyles(c: AppColors) {
       height: 1,
       marginBottom: spacing.md,
       marginTop: spacing.xl,
+    },
+    footerLink: {
+      color: c.tealDark,
+      marginTop: 8,
+      opacity: 1,
+      textDecorationLine: "underline",
     },
     footerNote: {
       color: c.muted,
