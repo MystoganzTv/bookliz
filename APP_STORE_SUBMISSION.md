@@ -1,5 +1,9 @@
 # Bookliz — lo que falta en App Store Connect
 
+> **Estado verificado en App Store Connect — 27 sep 2026:** la versión 1.1.0 ya está publicada. La actualización **1.1.1, build 11**, se envió el 27/09/2026 a las 12:57 UTC y está **WAITING_FOR_REVIEW**. Publicación automática tras aprobación. Descripciones EN/ES corregidas para retirar el reconocimiento de portadas; novedades e instrucciones de revisión guardadas. Tres capturas de iPhone 6,5 pulgadas heredadas y completas. TypeScript limpio, 720/720 tests (46 suites) y preflight de producción aprobado. No se recompiló: la build 11 corresponde a `c0adfaa`.
+>
+> Lo que sigue es documentación histórica y puede contener pendientes ya resueltos. [Ver la versión en App Store Connect](https://appstoreconnect.apple.com/apps/6774150174/distribution/ios/version/171f5de6-6731-4506-a6a5-2da0ee49dee2).
+
 Estado al 2026-09-12, **tarde**. App **6774150174** (`com.mystodev.booklio`),
 versión **1.1.0** en *Prepare for Submission*. La build 1.0.0 (1) de mayo está
 **Expired**.
