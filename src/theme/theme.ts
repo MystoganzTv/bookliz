@@ -108,3 +108,18 @@ export const shadows = {
     elevation:     4,
   },
 };
+
+/**
+ * A colour at some opacity — for tints of the accent (`withAlpha(c.teal, 0.16)`),
+ * so they follow the accent a Pro reader picks instead of staying teal.
+ * Accepts #RGB / #RRGGBB; anything else is returned unchanged.
+ */
+export function withAlpha(color: string, alpha: number): string {
+  const hex = color.trim().replace(/^#/, "");
+  const full = hex.length === 3 ? hex.split("").map((ch) => ch + ch).join("") : hex;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return color;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}

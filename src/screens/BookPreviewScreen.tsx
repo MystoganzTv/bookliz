@@ -28,7 +28,7 @@ import { useBookliz } from "../data/BooklizContext";
 import { hapticMedium } from "../utils/haptics";
 import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
-import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
+import { AppColors, fonts, radii, shadows, spacing, withAlpha } from "../theme/theme";
 import { useTheme } from "../theme/ThemeContext";
 
 type PreviewRoute = RouteProp<RootStackParamList, "BookPreview">;
@@ -304,7 +304,7 @@ function createStyles(c: AppColors, isDark: boolean) {
     ctaRow: { flexDirection: "row", gap: spacing.sm },
     ctaBtnSplit: { flex: 1, paddingHorizontal: spacing.sm },
     ctaBtnSecondary: {
-      backgroundColor: isDark ? "rgba(20,184,166,0.16)" : "rgba(20,184,166,0.10)",
+      backgroundColor: isDark ? withAlpha(c.teal, 0.16) : withAlpha(c.teal, 0.10),
       borderColor: c.teal + "44",
       borderWidth: 1,
     },

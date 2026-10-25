@@ -6,6 +6,33 @@ type TranslationTree = {
 
 export const translations: Record<AppLocale, TranslationTree> = {
   en: {
+    appearancePro: {
+      accentTitle: "Accent colour",
+      iconTitle: "App icon",
+      accentLocked: "Accent colours are part of Bookliz Pro. Pick one to see what Pro includes.",
+      iconLocked: "Alternative icons are part of Bookliz Pro. Pick one to see what Pro includes.",
+      previewButton: "Continue reading",
+      iconUnsupportedTitle: "Not available here",
+      iconUnsupportedBody: "This device can't change the app icon.",
+      iconFailedTitle: "The icon didn't change",
+      accents: {
+        teal: "Teal",
+        ocean: "Ocean",
+        indigo: "Indigo",
+        violet: "Violet",
+        rose: "Rose",
+        amber: "Amber",
+        forest: "Forest",
+      },
+      icons: {
+        default: "Night",
+        plum: "Plum",
+        forest: "Forest",
+        ink: "Ink",
+        ember: "Ember",
+        ocean: "Ocean",
+      },
+    },
     pro: {
       close: "Close",
       restore: "Restore",
@@ -1367,6 +1394,33 @@ export const translations: Record<AppLocale, TranslationTree> = {
     },
   },
   es: {
+    appearancePro: {
+      accentTitle: "Color de acento",
+      iconTitle: "Icono de la app",
+      accentLocked: "Los colores de acento son parte de Bookliz Pro. Elige uno para ver qué incluye Pro.",
+      iconLocked: "Los iconos alternativos son parte de Bookliz Pro. Elige uno para ver qué incluye Pro.",
+      previewButton: "Seguir leyendo",
+      iconUnsupportedTitle: "No disponible aquí",
+      iconUnsupportedBody: "Este dispositivo no puede cambiar el icono de la app.",
+      iconFailedTitle: "El icono no cambió",
+      accents: {
+        teal: "Turquesa",
+        ocean: "Océano",
+        indigo: "Índigo",
+        violet: "Violeta",
+        rose: "Rosa",
+        amber: "Ámbar",
+        forest: "Bosque",
+      },
+      icons: {
+        default: "Noche",
+        plum: "Ciruela",
+        forest: "Bosque",
+        ink: "Tinta",
+        ember: "Brasa",
+        ocean: "Océano",
+      },
+    },
     pro: {
       close: "Cerrar",
       restore: "Restaurar",

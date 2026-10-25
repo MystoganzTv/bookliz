@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
-import { AppColors, fonts, radii } from "../theme/theme";
+import { AppColors, fonts, radii, withAlpha } from "../theme/theme";
 import { useColors, useTheme } from "../theme/ThemeContext";
 
 type FilterChipProps = {
@@ -35,8 +35,8 @@ function createStyles(c: AppColors, isDark: boolean) {
       justifyContent: "center",
     },
     selected: {
-      backgroundColor: isDark ? "rgba(20,184,166,0.16)" : c.navy,
-      borderColor: isDark ? "rgba(20,184,166,0.34)" : c.navy
+      backgroundColor: isDark ? withAlpha(c.teal, 0.16) : c.navy,
+      borderColor: isDark ? withAlpha(c.teal, 0.34) : c.navy
     },
     text: {
       color: c.muted,

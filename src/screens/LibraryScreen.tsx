@@ -17,7 +17,7 @@ import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
 import { Book } from "../types/models";
 import { useIsWide } from "../utils/layout";
-import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
+import { AppColors, fonts, radii, shadows, spacing, withAlpha } from "../theme/theme";
 import { buildAmazonUrl } from "../utils/amazonLink";
 import { useColors, useTheme } from "../theme/ThemeContext";
 import { needsOwnershipAnswer, wantsToAcquire } from "../data/shelfRules";
@@ -879,8 +879,8 @@ function LibraryRowCard({
 }
 
 function createStyles(c: AppColors, isDark: boolean) {
-  const activeControlBackground = isDark ? "rgba(20,184,166,0.16)" : c.navy;
-  const activeControlBorder = isDark ? "rgba(20,184,166,0.34)" : c.navy;
+  const activeControlBackground = isDark ? withAlpha(c.teal, 0.16) : c.navy;
+  const activeControlBorder = isDark ? withAlpha(c.teal, 0.34) : c.navy;
   const activeControlText = isDark ? c.ink : "#FFFFFF";
 
   return StyleSheet.create({
@@ -950,15 +950,15 @@ function createStyles(c: AppColors, isDark: boolean) {
       paddingVertical: spacing.sm,
       paddingHorizontal: spacing.md,
       borderRadius: radii.md,
-      backgroundColor: isDark ? "rgba(20,184,166,0.12)" : "rgba(20,184,166,0.10)",
+      backgroundColor: isDark ? withAlpha(c.teal, 0.12) : withAlpha(c.teal, 0.10),
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: isDark ? "rgba(20,184,166,0.30)" : "rgba(20,184,166,0.28)",
+      borderColor: isDark ? withAlpha(c.teal, 0.30) : withAlpha(c.teal, 0.28),
       marginTop: spacing.sm,
     },
     confirmBannerIcon: {
       width: 30, height: 30, borderRadius: 15,
       alignItems: "center", justifyContent: "center",
-      backgroundColor: isDark ? "rgba(20,184,166,0.16)" : "rgba(20,184,166,0.14)",
+      backgroundColor: isDark ? withAlpha(c.teal, 0.16) : withAlpha(c.teal, 0.14),
     },
     confirmBannerCopy: { flex: 1, minWidth: 0 },
     confirmBannerText: { fontFamily: fonts.body, fontSize: 13.5, color: c.ink, lineHeight: 18 },
@@ -1445,8 +1445,8 @@ function createStyles(c: AppColors, isDark: boolean) {
       textAlign: "center"
     },
     emptyButton: {
-      backgroundColor: isDark ? "rgba(20,184,166,0.16)" : c.navy,
-      borderColor: isDark ? "rgba(20,184,166,0.34)" : c.navy,
+      backgroundColor: isDark ? withAlpha(c.teal, 0.16) : c.navy,
+      borderColor: isDark ? withAlpha(c.teal, 0.34) : c.navy,
       borderWidth: 1,
       borderRadius: radii.pill,
       marginTop: spacing.sm,

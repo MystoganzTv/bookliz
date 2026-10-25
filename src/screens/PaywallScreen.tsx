@@ -15,7 +15,7 @@ import { RootStackParamList } from "../navigation/types";
 import { PRO_FEATURES, ProFeature, usePro } from "../pro/ProContext";
 import { FALLBACK_PRICES, PRO_PLANS, ProPlan, productForPlan, yearlySavingsPercent } from "../pro/proProducts";
 import { useTheme } from "../theme/ThemeContext";
-import { AppColors, fonts, radii, spacing } from "../theme/theme";
+import { AppColors, fonts, radii, spacing, withAlpha } from "../theme/theme";
 
 const FEATURE_ICONS: Record<ProFeature, keyof typeof Ionicons.glyphMap> = {
   watchStandalone: "watch-outline",
@@ -214,8 +214,8 @@ function createStyles(c: AppColors) {
     subhead: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 15, marginTop: 6, textAlign: "center" },
     features: { gap: spacing.md, marginTop: spacing.lg },
     featureRow: { borderRadius: radii.md, flexDirection: "row", gap: spacing.md, padding: spacing.sm },
-    featureRowHighlighted: { backgroundColor: "rgba(20,184,166,0.12)" },
-    featureIcon: { alignItems: "center", backgroundColor: "rgba(20,184,166,0.14)", borderRadius: 24, height: 48, justifyContent: "center", width: 48 },
+    featureRowHighlighted: { backgroundColor: withAlpha(c.teal, 0.12) },
+    featureIcon: { alignItems: "center", backgroundColor: withAlpha(c.teal, 0.14), borderRadius: 24, height: 48, justifyContent: "center", width: 48 },
     featureCopy: { flex: 1 },
     featureTitle: { color: c.ink, fontFamily: fonts.body, fontSize: 17, fontWeight: "800" },
     beta: { color: c.coral, fontFamily: fonts.body, fontSize: 12, fontWeight: "800" },

@@ -39,7 +39,7 @@ import {
 } from "../utils/notificationService";
 
 export function SettingsScreen() {
-  const { colors: c, preference: themePreference } = useTheme();
+  const { colors: c, preference: themePreference, accent } = useTheme();
   const { locale, t } = useI18n();
   const {
     resetApp,
@@ -228,6 +228,16 @@ export function SettingsScreen() {
           title={t("settings.languageTitle")}
           value={locale === "es" ? t("common.spanish") : t("common.english")}
           onPress={() => navigation.navigate("SettingsChoice", { setting: "language" })}
+        />
+        <SettingsRow
+          title={t("appearancePro.accentTitle")}
+          value={pro.isPro ? t(`appearancePro.accents.${accent}`) : t("pro.requiresPro")}
+          onPress={() => navigation.navigate("AccentPicker")}
+        />
+        <SettingsRow
+          title={t("appearancePro.iconTitle")}
+          value={pro.isPro ? undefined : t("pro.requiresPro")}
+          onPress={() => navigation.navigate("AppIconPicker")}
         />
       </SettingsGroup>
 

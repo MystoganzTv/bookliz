@@ -72,6 +72,10 @@ export type RootStackParamList = {
     authorId?: string;
     authorName: string;
   };
+  /** Settings › Accent colour (Pro). */
+  AccentPicker: undefined;
+  /** Settings › App icon (Pro). */
+  AppIconPicker: undefined;
   /** Bookliz Pro. `feature` highlights the row that brought the reader here. */
   Paywall: { feature?: ProFeature } | undefined;
   /** In-app legal documents. */

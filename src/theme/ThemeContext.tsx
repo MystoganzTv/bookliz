@@ -10,8 +10,11 @@ import React, {
 } from "react";
 import { Appearance, useColorScheme } from "react-native";
 import { AppColors, darkColors, lightColors } from "./theme";
+import { ACCENTS, AccentId, isAccentId } from "./accents";
+import { usePro } from "../pro/ProContext";
 
 const STORAGE_KEY = "@bookliz/theme";
+const ACCENT_KEY = "@bookliz/accent";
 
 /** What the screen is painted in right now. */
 type ThemeMode = "light" | "dark";
@@ -33,6 +36,9 @@ type ThemeContextValue = {
   setPreference: (preference: ThemePreference) => void;
   /** Flips between explicit light and dark (leaves "system"). */
   toggleTheme:   () => void;
+  /** Chosen accent (Pro). Painted only while Pro is active; kept if it lapses. */
+  accent:        AccentId;
+  setAccent:     (accent: AccentId) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue>({
@@ -42,16 +48,23 @@ const ThemeContext = createContext<ThemeContextValue>({
   preference:    "system",
   setPreference: () => {},
   toggleTheme:   () => {},
+  accent:        "teal",
+  setAccent:     () => {},
 });
 
 export function ThemeProvider({ children }: PropsWithChildren) {
   const [preference, setPreferenceState] = useState<ThemePreference>("system");
+  const [accent, setAccentState] = useState<AccentId>("teal");
+  const { isPro } = usePro();
   const systemScheme = useColorScheme();
 
   // Hydrate persisted preference
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
       if (isThemePreference(saved)) setPreferenceState(saved);
+    }).catch(() => {});
+    AsyncStorage.getItem(ACCENT_KEY).then((saved) => {
+      if (isAccentId(saved)) setAccentState(saved);
     }).catch(() => {});
   }, []);
 
@@ -72,6 +85,11 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     AsyncStorage.setItem(STORAGE_KEY, next).catch(() => {});
   }, []);
 
+  const setAccent = useCallback((next: AccentId) => {
+    setAccentState(next);
+    AsyncStorage.setItem(ACCENT_KEY, next).catch(() => {});
+  }, []);
+
   const mode: ThemeMode = preference === "system" ? (systemScheme === "dark" ? "dark" : "light") : preference;
 
   const toggleTheme = useCallback(() => {
@@ -80,8 +98,11 @@ export function ThemeProvider({ children }: PropsWithChildren) {
 
   const value = useMemo<ThemeContextValue>(() => {
     const isDark = mode === "dark";
-    return { mode, isDark, colors: isDark ? darkColors : lightColors, preference, setPreference, toggleTheme };
-  }, [mode, preference, setPreference, toggleTheme]);
+    const base = isDark ? darkColors : lightColors;
+    const painted = isPro && accent !== "teal" ? ACCENTS[accent] : null;
+    const colors = painted ? { ...base, teal: painted.main, tealDark: painted.dark } : base;
+    return { mode, isDark, colors, preference, setPreference, toggleTheme, accent, setAccent };
+  }, [accent, isPro, mode, preference, setAccent, setPreference, toggleTheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

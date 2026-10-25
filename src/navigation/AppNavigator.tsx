@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { fonts } from "../theme/theme";
+import { fonts, withAlpha } from "../theme/theme";
 import { AddReadingSessionScreen } from "../screens/AddReadingSessionScreen";
 import { AudioPlayerScreen } from "../screens/AudioPlayerScreen";
 import { BookIntakeScreen } from "../screens/BookIntakeScreen";
@@ -32,6 +32,7 @@ import { ManageAudioScreen } from "../screens/ManageAudioScreen";
 import { CreditsScreen } from "../screens/CreditsScreen";
 import { FolderScreen } from "../screens/FolderScreen";
 import { PaywallScreen } from "../screens/PaywallScreen";
+import { AccentPickerScreen, AppIconPickerScreen } from "../screens/ProAppearanceScreens";
 import { OnboardingWelcomeScreen } from "../screens/onboarding/OnboardingWelcomeScreen";
 import { OnboardingNameScreen } from "../screens/onboarding/OnboardingNameScreen";
 import { OnboardingGenresScreen } from "../screens/onboarding/OnboardingGenresScreen";
@@ -56,8 +57,8 @@ function AppTabs() {
   const { t } = useI18n();
   const addFrameBase = isDark ? "rgba(255,200,87,0.16)" : c.surfaceAlt;
   const addFrameBorder = isDark ? "rgba(255,200,87,0.30)" : c.border;
-  const addFrameFocused = isDark ? "rgba(20,184,166,0.22)" : c.gold;
-  const addFrameFocusedBorder = isDark ? "rgba(20,184,166,0.38)" : c.gold;
+  const addFrameFocused = isDark ? withAlpha(c.teal, 0.22) : c.gold;
+  const addFrameFocusedBorder = isDark ? withAlpha(c.teal, 0.38) : c.gold;
 
   return (
     <Tabs.Navigator
@@ -102,7 +103,7 @@ function AppTabs() {
           return (
             <View style={[
               styles.iconFrame,
-              focused && { backgroundColor: isDark ? "rgba(20,184,166,0.18)" : "rgba(20,184,166,0.10)" },
+              focused && { backgroundColor: isDark ? withAlpha(c.teal, 0.18) : withAlpha(c.teal, 0.10) },
               isAdd && { backgroundColor: addFrameBase, borderColor: addFrameBorder, borderWidth: 1 },
               isAdd && styles.addFrame,
               isAdd && focused && { backgroundColor: addFrameFocused, borderColor: addFrameFocusedBorder }
@@ -199,6 +200,8 @@ export function AppNavigator() {
         <Stack.Screen component={AuthorBooksScreen} name="AuthorBooks" options={{ headerShown: false }} />
         <Stack.Screen component={BookPreviewScreen} name="BookPreview" options={{ title: "", headerTransparent: true }} />
         <Stack.Screen component={LegalScreen} name="Legal" options={{ title: "" }} />
+        <Stack.Screen component={AccentPickerScreen} name="AccentPicker" options={{ title: t("appearancePro.accentTitle") }} />
+        <Stack.Screen component={AppIconPickerScreen} name="AppIconPicker" options={{ title: t("appearancePro.iconTitle") }} />
         <Stack.Screen component={PaywallScreen} name="Paywall" options={{ headerShown: false, presentation: "modal" }} />
         <Stack.Screen component={StatsScreen} name="Stats" options={{ title: t("nav.tabs.stats") }} />
       </Stack.Navigator>
