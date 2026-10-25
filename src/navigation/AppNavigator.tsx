@@ -32,6 +32,7 @@ import { ManageAudioScreen } from "../screens/ManageAudioScreen";
 import { CreditsScreen } from "../screens/CreditsScreen";
 import { FolderScreen } from "../screens/FolderScreen";
 import { PaywallScreen } from "../screens/PaywallScreen";
+import { YearInReviewScreen } from "../screens/YearInReviewScreen";
 import { AccentPickerScreen, AppIconPickerScreen } from "../screens/ProAppearanceScreens";
 import { OnboardingWelcomeScreen } from "../screens/onboarding/OnboardingWelcomeScreen";
 import { OnboardingNameScreen } from "../screens/onboarding/OnboardingNameScreen";
@@ -200,6 +201,7 @@ export function AppNavigator() {
         <Stack.Screen component={AuthorBooksScreen} name="AuthorBooks" options={{ headerShown: false }} />
         <Stack.Screen component={BookPreviewScreen} name="BookPreview" options={{ title: "", headerTransparent: true }} />
         <Stack.Screen component={LegalScreen} name="Legal" options={{ title: "" }} />
+        <Stack.Screen component={YearInReviewScreen} name="YearInReview" options={{ title: t("yearReview.entry") }} />
         <Stack.Screen component={AccentPickerScreen} name="AccentPicker" options={{ title: t("appearancePro.accentTitle") }} />
         <Stack.Screen component={AppIconPickerScreen} name="AppIconPicker" options={{ title: t("appearancePro.iconTitle") }} />
         <Stack.Screen component={PaywallScreen} name="Paywall" options={{ headerShown: false, presentation: "modal" }} />

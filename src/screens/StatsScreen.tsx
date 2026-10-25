@@ -9,6 +9,10 @@ import { ReadingSession } from "../types/models";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
 import { useI18n } from "../i18n/LocalizationContext";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../navigation/types";
+import { usePro } from "../pro/ProContext";
 import { localDateKey } from "../utils/dateUtils";
 
 type Tab = "books" | "pages" | "minutes";
@@ -23,6 +27,8 @@ export function StatsScreen() {
   // Sessions logged from the app carry no rating (0); only show the tile when real ratings exist.
   const hasSessionRatings = readingSessions.some((session) => (session.enjoymentRating ?? 0) > 0);
   const [activeTab, setActiveTab] = useState<Tab>("books");
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { isPro } = usePro();
 
   const unfinishedCount = books.filter((b) => b.userStatus.status === "dnf").length;
   const goalPct = Math.min(100, Math.round((overallStats.booksReadThisYear / userProfile.yearlyGoal) * 100));
@@ -106,6 +112,20 @@ export function StatsScreen() {
         <Text style={styles.title}>{t("stats.title")}</Text>
         <Text style={styles.subtitle}>{t("stats.subtitle")}</Text>
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        style={styles.yearReviewCard}
+        onPress={() => navigation.navigate("YearInReview")}
+      >
+        <Ionicons name="sparkles" size={22} color={c.gold} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.yearReviewTitle}>{t("yearReview.entry")}</Text>
+          <Text style={styles.yearReviewSub}>{t("yearReview.entrySub")}</Text>
+        </View>
+        {isPro ? null : <Text style={styles.yearReviewPro}>PRO</Text>}
+        <Ionicons name="chevron-forward" size={18} color={c.muted} />
+      </Pressable>
 
       <View style={styles.heroCard}>
         <View style={styles.heroGlowA} />
@@ -458,6 +478,20 @@ function ReadingHeatmap({ sessions, c }: { sessions: ReadingSession[]; c: AppCol
 
 function createStyles(c: AppColors) {
   return StyleSheet.create({
+    yearReviewCard: {
+      alignItems: "center",
+      backgroundColor: c.surface,
+      borderColor: c.border,
+      borderRadius: radii.lg,
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: spacing.md,
+      marginBottom: spacing.md,
+      padding: spacing.md,
+    },
+    yearReviewTitle: { color: c.ink, fontFamily: fonts.body, fontSize: 16, fontWeight: "900" },
+    yearReviewSub: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 13, marginTop: 2 },
+    yearReviewPro: { color: c.gold, fontFamily: fonts.body, fontSize: 12, fontWeight: "900" },
     header: {
       marginBottom: spacing.md
     },

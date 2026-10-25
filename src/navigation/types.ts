@@ -72,6 +72,8 @@ export type RootStackParamList = {
     authorId?: string;
     authorName: string;
   };
+  /** Your year in reading (Pro). */
+  YearInReview: undefined;
   /** Settings › Accent colour (Pro). */
   AccentPicker: undefined;
   /** Settings › App icon (Pro). */
