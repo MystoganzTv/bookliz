@@ -408,11 +408,7 @@ export function HomeScreen() {
         </View>
       ) : personalizedSections.length > 0 ? (
         <>
-          <SectionHeader
-            title="Picked for you"
-            actionLabel="Open Discover"
-            onAction={() => navigation.navigate("Discover")}
-          />
+          <SectionHeader title="Picked for you" />
           {personalizedSections.map((section) => (
             <View key={section.id} style={styles.personalizedBlock}>
               <View style={styles.personalizedHeaderRow}>

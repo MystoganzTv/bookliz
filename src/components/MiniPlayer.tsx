@@ -21,7 +21,7 @@ import { AppColors, fonts, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
 import { hapticLight } from "../utils/haptics";
 
-const TAB_ROUTES = new Set(["Home", "Library", "Discover", "Profile"]);
+const TAB_ROUTES = new Set(["Home", "Library", "Audio", "Profile"]);
 const SHOWN_ON = new Set([...TAB_ROUTES, "BookDetail"]);
 const TAB_BAR_HEIGHT = 88;
 /** Height of the reading-timer bar plus a gap, so the two stack instead of overlapping. */

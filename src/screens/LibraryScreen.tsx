@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useScrollToTop } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
-import { FlatList, Image, Linking, ListRenderItem, Pressable, ScrollView, StyleSheet, Text, TextInput, View, ViewStyle } from "react-native";
+import { FlatList, Image, ListRenderItem, Pressable, ScrollView, StyleSheet, Text, TextInput, View, ViewStyle } from "react-native";
 import { Badge } from "../components/Badge";
 import { BooklizDialog } from "../components/BooklizDialog";
 import { BookCover, FormatBadge, isMutedBook } from "../components/BookCover";
@@ -18,7 +18,6 @@ import { RootStackParamList } from "../navigation/types";
 import { Book } from "../types/models";
 import { useIsWide } from "../utils/layout";
 import { AppColors, fonts, radii, shadows, spacing, withAlpha } from "../theme/theme";
-import { buildAmazonUrl } from "../utils/amazonLink";
 import { useColors, useTheme } from "../theme/ThemeContext";
 import { needsOwnershipAnswer, wantsToAcquire } from "../data/shelfRules";
 import { normalizeBookGenres } from "../utils/genres";
@@ -49,8 +48,7 @@ export function LibraryScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { books, getAuthor, readingSessions, userLists, createUserList, deleteUserList, renameUserList, deleteBook, updateBookStatus, bookFolders, createFolder, moveBookToFolder } = useBookliz();
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
-  const { inbox: audioInbox, library: audioLibrary } = useAudiobookPlayer();
-  const audioCount = Object.keys(audioLibrary).length;
+  const { library: audioLibrary } = useAudiobookPlayer();
   const [folderSheetBook, setFolderSheetBook] = useState<Book | null>(null);
   const existingIds = useMemo(() => new Set(books.map((b) => b.id)), [books]);
   const topFolders = useMemo(() => childFolders(bookFolders, null), [bookFolders]);
@@ -71,10 +69,6 @@ export function LibraryScreen() {
   const [listSheetBookId, setListSheetBookId] = useState<string | null>(null);
   const [confirmSheetOpen, setConfirmSheetOpen] = useState(false);
   const deferredQuery = useDeferredValue(query);
-
-  const openAmazon = (book: Book, authorName: string) => {
-    void Linking.openURL(buildAmazonUrl({ isbn: book.isbn, title: book.title, authorName }));
-  };
 
   const clearFilters = () => {
     setQuery("");
@@ -250,7 +244,6 @@ export function LibraryScreen() {
             ? () => navigation.navigate("SeriesTracker", { seriesId: book.seriesId! })
             : undefined
         }
-        onBuy={() => openAmazon(book, getAuthor(book.authorId)?.name ?? "")}
       />
     ),
     [getAuthor, latestLogByBook, navigation, styles]
@@ -338,19 +331,6 @@ export function LibraryScreen() {
       {/* ── Folders — top level; a folder opens its own screen ── */}
       {books.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.foldersRail} contentContainerStyle={styles.foldersRailContent}>
-          {/* Audio files: the file manager. Always first, with what is waiting to be assigned. */}
-          <ScalePressable
-            accessibilityRole="button"
-            accessibilityLabel={t("fileManager.title")}
-            style={[styles.folderCard, audioInbox.length > 0 && styles.folderCardAttention]}
-            onPress={() => navigation.navigate("ManageAudio")}
-          >
-            <Ionicons name="headset-outline" size={20} color={c.teal} />
-            <Text style={styles.folderCardName} numberOfLines={1}>{t("fileManager.short")}</Text>
-            <Text style={[styles.folderCardCount, audioInbox.length > 0 && { color: c.tealDark, fontWeight: "800" }]}>
-              {audioInbox.length > 0 ? t("fileManager.waiting", { count: audioInbox.length }) : String(audioCount)}
-            </Text>
-          </ScalePressable>
           {topFolders.map((folder) => (
             <ScalePressable
               key={folder.id}
@@ -605,10 +585,6 @@ export function LibraryScreen() {
         onMoveToFolder={() => {
           if (contextBook) setFolderSheetBook(contextBook.book);
         }}
-        onBuy={() => {
-          if (!contextBook) return;
-          openAmazon(contextBook.book, contextBook.authorName);
-        }}
         onRemove={() => {
           if (contextBook) setDeleteTarget({ id: contextBook.book.id, title: contextBook.book.title });
         }}
@@ -798,7 +774,6 @@ function LibraryRowCard({
   onPress,
   onMenu,
   onOpenSeries,
-  onBuy,
 }: {
   book: Book;
   authorName: string;
@@ -807,7 +782,6 @@ function LibraryRowCard({
   onPress: () => void;
   onMenu: () => void;
   onOpenSeries?: () => void;
-  onBuy: () => void;
 }) {
   const { t } = useI18n();
   const c = useColors();
@@ -855,14 +829,6 @@ function LibraryRowCard({
           </View>
         ) : null}
       </View>
-
-      {/* Get button — hide if already reading or finished */}
-      {!isReading && !isRead && (
-        <Pressable accessibilityRole="button" style={styles.rowGetBtn} onPress={onBuy} hitSlop={8}>
-          <Ionicons name="cart-outline" size={13} color={c.teal} />
-          <Text style={styles.rowGetText}>Get</Text>
-        </Pressable>
-      )}
 
       {/* 3-dot menu */}
       <Pressable
@@ -997,9 +963,6 @@ function createStyles(c: AppColors, isDark: boolean) {
       color: c.muted,
       fontFamily: fonts.bodyRegular,
       fontSize: 12
-    },
-    folderCardAttention: {
-      borderColor: c.teal
     },
     folderCardNew: {
       alignItems: "flex-start",
@@ -1352,23 +1315,6 @@ function createStyles(c: AppColors, isDark: boolean) {
       fontFamily: fonts.body,
       fontSize: 12,
       fontWeight: "700",
-    },
-    rowGetBtn: {
-      alignItems: "center",
-      borderColor: c.teal + "60",
-      borderRadius: radii.pill,
-      borderWidth: 1,
-      flexDirection: "row",
-      gap: 3,
-      justifyContent: "center",
-      paddingHorizontal: 8,
-      paddingVertical: 5,
-    },
-    rowGetText: {
-      color: c.teal,
-      fontFamily: fonts.body,
-      fontSize: 11,
-      fontWeight: "800",
     },
     rowMenuBtn: {
       alignItems: "center",

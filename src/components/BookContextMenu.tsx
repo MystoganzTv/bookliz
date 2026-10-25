@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { BookCover } from "./BookCover";
 import { Book, CoreTrackingStatus } from "../types/models";
-import { wantsToAcquire } from "../data/shelfRules";
 import { AppColors, colors, fonts, radii, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
 import { useI18n } from "../i18n/LocalizationContext";
@@ -31,7 +30,6 @@ type Props = {
   onAddToList: () => void;
   /** Library folders. Absent where folders make no sense. */
   onMoveToFolder?: () => void;
-  onBuy: () => void;
   onRemove: () => void;
 };
 
@@ -48,7 +46,6 @@ export function BookContextMenu({
   onOpenSeries,
   onAddToList,
   onMoveToFolder,
-  onBuy,
   onRemove,
 }: Props) {
   const c = useColors();
@@ -77,10 +74,6 @@ export function BookContextMenu({
     [
       { key: "list",     label: t("contextMenu.addToList"), icon: "bookmark-outline" },
       { key: "folder",   label: t("folders.moveBook"),      icon: "folder-outline", hidden: !onMoveToFolder },
-      // Hidden once the reader owns a copy — offering to go buy a book that
-      // is already on their shelf is the kind of detail that makes an app
-      // feel like it is not paying attention.
-      { key: "buy",      label: t("contextMenu.buy"),       icon: "cart-outline", hidden: !wantsToAcquire(book.userStatus) },
     ],
     // Group 4 — destructive
     [
@@ -100,7 +93,6 @@ export function BookContextMenu({
         case "author":  return onViewAuthor?.();
         case "list":    return onAddToList();
         case "folder":  return onMoveToFolder?.();
-        case "buy":     return onBuy();
         case "remove":  return onRemove();
       }
     }, 180);

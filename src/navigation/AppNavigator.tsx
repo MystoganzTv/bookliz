@@ -15,7 +15,6 @@ import { ProfileScreen } from "../screens/ProfileScreen";
 import { ReadingLogScreen } from "../screens/ReadingLogScreen";
 import { SeriesTrackerScreen } from "../screens/SeriesTrackerScreen";
 import { StatsScreen } from "../screens/StatsScreen";
-import { DiscoverScreen } from "../screens/DiscoverScreen";
 import { EditProfileScreen } from "../screens/EditProfileScreen";
 import { EditBookScreen } from "../screens/EditBookScreen";
 import { AchievementsScreen } from "../screens/AchievementsScreen";
@@ -28,7 +27,7 @@ import { WelcomeScreen } from "../screens/WelcomeScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { SettingsChoiceScreen } from "../screens/SettingsChoiceScreen";
 import { PlayerSettingsScreen } from "../screens/PlayerSettingsScreen";
-import { ManageAudioScreen } from "../screens/ManageAudioScreen";
+import { AudioTabScreen, ManageAudioScreen } from "../screens/ManageAudioScreen";
 import { CreditsScreen } from "../screens/CreditsScreen";
 import { FolderScreen } from "../screens/FolderScreen";
 import { PaywallScreen } from "../screens/PaywallScreen";
@@ -38,6 +37,7 @@ import { OnboardingWelcomeScreen } from "../screens/onboarding/OnboardingWelcome
 import { OnboardingNameScreen } from "../screens/onboarding/OnboardingNameScreen";
 import { OnboardingGenresScreen } from "../screens/onboarding/OnboardingGenresScreen";
 import { useBookliz } from "../data/BooklizContext";
+import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 import { useTheme } from "../theme/ThemeContext";
 import { useI18n } from "../i18n/LocalizationContext";
 import { MainTabParamList, RootStackParamList } from "./types";
@@ -56,6 +56,8 @@ const navigationRef = createNavigationContainerRef<RootStackParamList>();
 function AppTabs() {
   const { colors: c, isDark } = useTheme();
   const { t } = useI18n();
+  // Files waiting for a book: a badge on the tab, like the old card in Library did.
+  const { inbox: audioInbox } = useAudiobookPlayer();
   const addFrameBase = isDark ? "rgba(255,200,87,0.16)" : c.surfaceAlt;
   const addFrameBorder = isDark ? "rgba(255,200,87,0.30)" : c.border;
   const addFrameFocused = isDark ? withAlpha(c.teal, 0.22) : c.gold;
@@ -97,7 +99,7 @@ function AppTabs() {
             Home: focused ? "home" : "home-outline",
             Library: focused ? "library" : "library-outline",
             Add: focused ? "add" : "add-outline",
-            Discover: focused ? "compass" : "compass-outline",
+            Audio: focused ? "headset" : "headset-outline",
             Profile: focused ? "person" : "person-outline"
           };
           const isAdd = route.name === "Add";
@@ -122,7 +124,16 @@ function AppTabs() {
       <Tabs.Screen component={HomeScreen} name="Home" options={{ title: t("nav.tabs.home") }} />
       <Tabs.Screen component={LibraryScreen} name="Library" options={{ title: t("nav.tabs.library") }} />
       <Tabs.Screen component={BookIntakeScreen} name="Add" options={{ title: t("nav.tabs.add") }} />
-      <Tabs.Screen component={DiscoverScreen} name="Discover" options={{ title: t("nav.tabs.discover") }} />
+      {/* Discover is parked for now (DiscoverScreen stays in the repo); the file manager has the slot. */}
+      <Tabs.Screen
+        component={AudioTabScreen}
+        name="Audio"
+        options={{
+          title: t("nav.tabs.audio"),
+          tabBarBadge: audioInbox.length > 0 ? audioInbox.length : undefined,
+          tabBarBadgeStyle: { backgroundColor: c.coral, fontFamily: fonts.body, fontSize: 11, fontWeight: "800" },
+        }}
+      />
       <Tabs.Screen component={ProfileScreen} name="Profile" options={{ title: t("nav.tabs.profile") }} />
     </Tabs.Navigator>
   );

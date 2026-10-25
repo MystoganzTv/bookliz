@@ -15,6 +15,9 @@ import React, {
   useState,
 } from "react";
 import { AppState } from "react-native";
+import * as Crypto from "expo-crypto";
+import { supabase } from "../lib/supabase";
+import { isComplimentaryHash, normalizeEmail } from "./complimentaryPro";
 import {
   currentEntitlements,
   getProducts,
@@ -52,6 +55,8 @@ type ProContextValue = {
   productsLoading: boolean;
   storeAvailable: boolean;
   debugPro: boolean;
+  /** Pro given to this signed-in account (see complimentaryPro.ts), not bought. */
+  complimentary: boolean;
   setDebugPro: (value: boolean) => void;
   buy: (plan: ProPlan) => Promise<PurchaseStatus>;
   restore: () => Promise<boolean>;
@@ -66,6 +71,7 @@ const ProContext = createContext<ProContextValue>({
   productsLoading: false,
   storeAvailable: false,
   debugPro: false,
+  complimentary: false,
   setDebugPro: () => {},
   buy: async () => "unavailable",
   restore: async () => false,
@@ -86,6 +92,7 @@ export function ProProvider({ children }: PropsWithChildren) {
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(isStoreKitAvailable);
   const [debugPro, setDebugProState] = useState(false);
+  const [complimentary, setComplimentary] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const mounted = useRef(true);
 
@@ -146,6 +153,34 @@ export function ProProvider({ children }: PropsWithChildren) {
     };
   }, [accept, loadProducts, refresh]);
 
+  // Complimentary Pro follows the Supabase session: on with a matching email,
+  // off again on sign-out or when another account signs in.
+  useEffect(() => {
+    if (!supabase) return;
+    let alive = true;
+    const check = async (email: string | null | undefined) => {
+      const normalized = normalizeEmail(email);
+      if (!normalized) {
+        if (alive) setComplimentary(false);
+        return;
+      }
+      try {
+        const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, normalized);
+        if (alive) setComplimentary(isComplimentaryHash(hash));
+      } catch {
+        if (alive) setComplimentary(false);
+      }
+    };
+    supabase.auth.getSession().then(({ data }) => check(data.session?.user?.email)).catch(() => {});
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      void check(session?.user?.email);
+    });
+    return () => {
+      alive = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
   const buy = useCallback(
     async (plan: ProPlan): Promise<PurchaseStatus> => {
       const result = await purchase(PRO_PRODUCT_IDS[plan]);
@@ -174,20 +209,21 @@ export function ProProvider({ children }: PropsWithChildren) {
       ? entitlements.find((row) => row.productId === PRO_PRODUCT_IDS[plan])
       : undefined;
     return {
-      isPro: (__DEV__ && debugPro) || entitlementsUnlockPro(entitlements, now),
+      isPro: complimentary || (__DEV__ && debugPro) || entitlementsUnlockPro(entitlements, now),
       plan,
       renewsAt: subscription?.expirationDate,
       products,
       productsLoading,
       storeAvailable: isStoreKitAvailable,
       debugPro,
+      complimentary,
       setDebugPro,
       buy,
       restore,
       manage: showManageSubscriptions,
       refresh,
     };
-  }, [buy, debugPro, entitlements, now, products, productsLoading, refresh, restore, setDebugPro]);
+  }, [buy, complimentary, debugPro, entitlements, now, products, productsLoading, refresh, restore, setDebugPro]);
 
   return <ProContext.Provider value={value}>{children}</ProContext.Provider>;
 }

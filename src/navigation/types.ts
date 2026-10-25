@@ -104,6 +104,7 @@ export type MainTabParamList = {
   Home: undefined;
   Library: undefined;
   Add: undefined;
-  Discover: undefined;
+  /** The audio file manager (Discover is parked). */
+  Audio: undefined;
   Profile: undefined;
 };

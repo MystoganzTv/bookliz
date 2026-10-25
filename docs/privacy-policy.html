@@ -114,24 +114,20 @@
 
   <h2>4. Book metadata lookups</h2>
   <p>To fill in titles, authors, covers, page counts and synopses, Bookliz queries two public catalogues: the <strong>Google Books API</strong> and <strong>Open Library</strong> (Internet Archive). What we send is the search text, title, author or ISBN you are looking up. We never send your email, your user ID, or anything about the rest of your library.</p>
-  <p>These requests go directly from your device to those services, so they receive your device's IP address and can apply their own logging, as any website you visit would. Their handling of that is governed by their own policies, linked in section 10.</p>
+  <p>These requests go directly from your device to those services, so they receive your device's IP address and can apply their own logging, as any website you visit would. Their handling of that is governed by their own policies, linked in section 9.</p>
 
-  <h2>5. Affiliate links</h2>
-  <p>When a book is on your wishlist, Bookliz can open it on Amazon. Those links carry our Amazon Associates tag (<code>bookliz-20</code>), which means we may earn a small commission if you buy something after following one. The price you pay is not affected.</p>
-  <p>Following such a link leaves the app and opens Amazon in your browser. From that point Amazon's own privacy policy applies and we receive nothing about you personally — only aggregate, anonymous commission reporting from Amazon.</p>
-
-  <h2>6. Notifications</h2>
+  <h2>5. Notifications</h2>
   <p>If you enable the daily reading reminder, it is scheduled locally by your device's operating system. Bookliz does not operate a push server, does not register a push token, and sends you nothing remotely.</p>
 
-  <h2>7. Bookliz Pro purchases</h2>
+  <h2>6. Bookliz Pro purchases</h2>
   <p>Bookliz Pro is sold through the App Store. Apple processes the payment; we never receive your card details, name or Apple ID. The app checks your purchase on your device with StoreKit, which tells it which Pro product is active and until when. No purchase information is sent to our servers.</p>
   <p>Subscriptions renew automatically until cancelled. You can manage or cancel them in your App Store account settings, and refunds are handled by Apple.</p>
 
-  <h2>8. Audiobooks in iCloud and on Apple Watch</h2>
+  <h2>7. Audiobooks in iCloud and on Apple Watch</h2>
   <p>If you use “Save to iCloud” (Bookliz Pro), the audio files you imported are copied to Bookliz's folder in <strong>your own iCloud Drive</strong>, under your Apple ID and Apple's <a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noopener">privacy policy</a>. That space is yours; we cannot see or access it. Deleting the files from iCloud in the app removes them from all your devices.</p>
   <p>Books you send to your Apple Watch travel directly from your iPhone to your watch. Your listening position on the watch is sent back to your iPhone so you can continue there. None of this passes through our servers.</p>
 
-  <h2>9. How we use your data</h2>
+  <h2>8. How we use your data</h2>
   <ul>
     <li>To create and maintain your account.</li>
     <li>To store your library and sync it to any device where you sign in with the same account.</li>
@@ -140,7 +136,7 @@
   </ul>
   <p>We do not profile you, build an advertising audience, or use your reading data for any purpose other than running the features above.</p>
 
-  <h2>10. Third-party services</h2>
+  <h2>9. Third-party services</h2>
   <ul>
     <li>
       <strong>Supabase</strong> (<a href="https://supabase.com/privacy" target="_blank" rel="noopener">privacy policy</a>) — our database and authentication provider. Your email, user ID and reading data are stored on Supabase infrastructure in the United States (AWS <code>us-east-1</code>).
@@ -157,31 +153,28 @@
     <li>
       <strong>Open Library / Internet Archive</strong> (<a href="https://archive.org/about/terms.php" target="_blank" rel="noopener">terms</a>) — book metadata and cover images. Receives your lookup terms and your device's IP address.
     </li>
-    <li>
-      <strong>Amazon</strong> (<a href="https://www.amazon.com/gp/help/customer/display.html?nodeId=468496" target="_blank" rel="noopener">privacy notice</a>) — only when you follow a purchase link, as described in section 5.
-    </li>
   </ul>
   <p>There is no advertising network, no analytics provider and no crash-reporting provider in this list, because the app integrates none.</p>
 
-  <h2>11. Data retention and deletion</h2>
+  <h2>10. Data retention and deletion</h2>
   <p>Your data is kept for as long as your account exists. You can delete your account at any time from <strong>Settings &rarr; Delete account</strong> inside the app. This erases your profile, books, authors, reading sessions, reviews and lists from our servers, and removes your authentication record, so the account cannot be recovered. The copy stored on your device is cleared at the same time.</p>
   <p>Deleting the app without deleting your account removes the local copy only; the synced copy remains until you delete the account or ask us to.</p>
 
-  <h2>12. Data security</h2>
+  <h2>11. Data security</h2>
   <p>All traffic between the app and Supabase is encrypted with TLS. Every table enforces PostgreSQL row-level security, so a signed-in user can read and write only rows carrying their own user ID.</p>
   <p>On your device, your library is stored unencrypted in the app's private storage area, which the operating system isolates from other apps. Your session token is held in the same private app storage; the credentials used for Google Sign In are kept in the system keychain via <code>expo-secure-store</code>. Anyone with your unlocked device and your passcode can therefore read your library, as with most apps of this kind.</p>
 
-  <h2>13. Children's privacy</h2>
+  <h2>12. Children's privacy</h2>
   <p>Bookliz is not directed at children under 13, and we do not knowingly collect personal information from them. If you believe a child has provided us with personal data, contact us and we will delete it promptly.</p>
 
-  <h2>14. Your rights</h2>
+  <h2>13. Your rights</h2>
   <p>Depending on where you live you may have the right to access, correct, export or delete the personal data we hold about you. The in-app account deletion covers the deletion right in full; for anything else, write to <a href="mailto:enrique.padron853@gmail.com">enrique.padron853@gmail.com</a> and we will respond within 30 days.</p>
   <p>If you are in the European Economic Area or the United Kingdom, you also have rights under the GDPR, including data portability and the right to complain to your local supervisory authority. If you are a California resident, note that we do not sell or share personal information as those terms are defined by the CCPA/CPRA.</p>
 
-  <h2>15. Changes to this policy</h2>
+  <h2>14. Changes to this policy</h2>
   <p>If we make material changes we will update the "Last updated" date above, and for significant changes we will show an in-app notice on your next launch.</p>
 
-  <h2>16. Contact</h2>
+  <h2>15. Contact</h2>
   <p>Questions or requests: <a href="mailto:enrique.padron853@gmail.com">enrique.padron853@gmail.com</a></p>
 
   <footer>

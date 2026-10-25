@@ -40,7 +40,12 @@ export function formatListenLength(sec: number, t: (key: string, vars?: Record<s
   return m ? t("fileManager.hoursMinutes", { h, m }) : t("fileManager.hours", { h });
 }
 
-export function ManageAudioScreen() {
+/** The same manager as a bottom tab: no navigation header there, so it draws its own title. */
+export function AudioTabScreen() {
+  return <ManageAudioScreen asTab />;
+}
+
+export function ManageAudioScreen({ asTab = false }: { asTab?: boolean }) {
   const { t } = useI18n();
   const c = useColors();
   const styles = useMemo(() => createStyles(c), [c]);
@@ -231,6 +236,12 @@ export function ManageAudioScreen() {
 
   return (
     <Screen>
+      {asTab ? (
+        <View style={styles.tabHeader}>
+          <Text style={styles.tabEyebrow}>{t("fileManager.short")}</Text>
+          <Text style={styles.tabTitle}>{t("fileManager.title")}</Text>
+        </View>
+      ) : null}
       <Pressable
         accessibilityRole="button"
         disabled={Boolean(player.importing)}
@@ -535,6 +546,24 @@ function RenameSheet({
 
 function createStyles(c: AppColors) {
   return StyleSheet.create({
+    tabHeader: {
+      marginBottom: spacing.md,
+    },
+    tabEyebrow: {
+      color: c.tealDark,
+      fontFamily: fonts.body,
+      fontSize: 11,
+      fontWeight: "900",
+      letterSpacing: 1.3,
+      textTransform: "uppercase",
+    },
+    tabTitle: {
+      color: c.ink,
+      fontFamily: fonts.display,
+      fontSize: 26,
+      fontWeight: "900",
+      marginTop: 2,
+    },
     importBtn: {
       alignItems: "center",
       backgroundColor: c.teal,

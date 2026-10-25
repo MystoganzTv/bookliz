@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   Animated,
   ImageBackground,
-  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -23,7 +22,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BookCover } from "../components/BookCover";
 import { ScalePressable } from "../components/ScalePressable";
 import { RecommendationCard } from "../components/RecommendationCard";
-import { wantsToAcquire } from "../data/shelfRules";
 import { BookStatusSheet } from "../components/BookStatusSheet";
 import { BookListSheet } from "../components/BookListSheet";
 import { FolderPickerSheet } from "../components/FolderPickerSheet";
@@ -46,7 +44,6 @@ import { RootStackParamList } from "../navigation/types";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useTheme } from "../theme/ThemeContext";
 import { useI18n } from "../i18n/LocalizationContext";
-import { buildAmazonUrl } from "../utils/amazonLink";
 import { hapticLight, hapticMedium } from "../utils/haptics";
 import { isPlaceholderText, resolveBookMetadata } from "../utils/bookMetadata";
 import { isSameLanguage } from "../utils/languageUtils";
@@ -107,11 +104,6 @@ export function BookDetailScreen() {
   const isReading = book.userStatus.status === "reading";
   const isDone = book.userStatus.status === "read";
   const isDnf = book.userStatus.status === "dnf";
-  // "Still to acquire" is an ownership question, not a reading-status one.
-  // This used to be `!isReading && !isDone && !isDnf`, which made every owned
-  // book the reader had not started yet look unacquired — the "Get on Amazon"
-  // action showed for a book already on their shelf.
-  const needsAcquiring = wantsToAcquire(book.userStatus);
   const isOwned = book.userStatus.ownership === "owned";
   const hasSessions = stats.totalSessions > 0;
   const audiobook = audioPlayer.library[book.id];
@@ -145,12 +137,6 @@ export function BookDetailScreen() {
     if (isDnf)     return { label: t("bookDetail.tryAgain"), icon: "refresh-outline" as const, onPress: () => setStatusSheetOpen(true) };
     return { label: t("bookDetail.startReading"), icon: "book-outline" as const, onPress: () => updateBookStatus(book.id, "reading", book.userStatus.rating) };
   })();
-
-  const handleBuy = () => {
-    void Linking.openURL(
-      buildAmazonUrl({ isbn: book.isbn, title: book.title, authorName: author?.name ?? "" })
-    );
-  };
 
   const relatedRecs = getRecommendationsForBook(book.id, 4)
     .map((rec) => ({ rec, recBook: getBook(rec.bookId) }))
@@ -707,10 +693,6 @@ export function BookDetailScreen() {
               // The sheet is a Modal: wait for this one to close first (iOS).
               onPress={() => { setMoreSheetOpen(false); setTimeout(() => setFolderSheetOpen(true), 350); }}
             />
-            {needsAcquiring ? (
-              <MoreAction icon="cart-outline" label={t("bookDetail.moreGetOnAmazon")} styles={styles} c={c}
-                onPress={() => { setMoreSheetOpen(false); handleBuy(); }} />
-            ) : null}
             <MoreAction
               icon={audiobook ? "swap-horizontal" : "headset-outline"}
               label={audiobook ? t("player.replaceAudio") : t("player.attachButton")}
