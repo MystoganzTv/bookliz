@@ -52,6 +52,7 @@ function cleanGenres(raw: string[]): string[] {
   return raw
     .filter((g) => !/^nyt:/i.test(g))
     .filter((g) => !/new york times/i.test(g))
+    .filter((g) => !/^uncategori[sz]ed$/i.test(g.trim()))
     .map((g) => g.replace(/\b\w/g, (ch) => ch.toUpperCase()).trim())
     .filter((g, i, arr) => arr.indexOf(g) === i)
     .slice(0, 4);
@@ -165,6 +166,15 @@ export function BookDetailScreen() {
   const primaryAction = (() => {
     // With the audio on this phone, listening IS logging: every listen becomes a session.
     if (audiobook) return { label: isListeningHere ? t("player.listening") : t("player.listen"), icon: "headset" as const, onPress: () => openPlayer() };
+    // An audiobook whose file is not here yet: the next step is adding it, never
+    // logging pages. (Finished / abandoned keep Re-read / Try again.)
+    if (book.format === "audiobook" && !isDone && !isDnf) {
+      return {
+        label: importingHere ? t("player.importing", { done: importingHere.done, total: importingHere.total }) : t("player.attachButton"),
+        icon: "add" as const,
+        onPress: () => { if (!audioPlayer.importing) void handleAttachAudio(); },
+      };
+    }
     if (isReading) return { label: t("bookDetail.logSession"), icon: "pencil" as const, onPress: () => navigation.navigate("AddReadingSession", { bookId: book.id }) };
     if (isDone)    return { label: t("bookDetail.reRead"), icon: "refresh-outline" as const, onPress: () => setStatusSheetOpen(true) };
     if (isDnf)     return { label: t("bookDetail.tryAgain"), icon: "refresh-outline" as const, onPress: () => setStatusSheetOpen(true) };
@@ -225,7 +235,8 @@ export function BookDetailScreen() {
             : book.coAuthorNames ?? []),
         ].filter(Boolean).join(" & ")}
       </Text>
-      {book.seriesName ? (
+      {/* A "series" that is just the author's name is bad catalogue data, not a series. */}
+      {book.seriesName && book.seriesName.trim().toLowerCase() !== (author?.name ?? "").trim().toLowerCase() ? (
         <View style={styles.heroSeriesBtn}>
           <Ionicons name="layers-outline" size={12} color={c.tealDark} style={{ marginRight: 4 }} />
           <Text style={styles.heroSeries}>
@@ -345,28 +356,10 @@ export function BookDetailScreen() {
           </Pressable>
         </View>
 
-        {/* ── LISTEN HERE (audiobook without its file yet) ─────────────────── */}
-        {!audiobook && book.format === "audiobook" ? (
-          <View style={[styles.card, styles.listenCard, { marginTop: spacing.md }]}>
-            <View style={styles.listenIcon}>
-              <Ionicons name="headset" size={20} color="#fff" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.listenTitle}>{t("player.attachTitle")}</Text>
-              <Text style={styles.listenBody}>{t("player.attachBody")}</Text>
-              <Pressable
-                accessibilityRole="button"
-                disabled={Boolean(audioPlayer.importing)}
-                style={[styles.listenButton, audioPlayer.importing && { opacity: 0.6 }]}
-                onPress={() => void handleAttachAudio()}
-              >
-                {importingHere ? <ActivityIndicator size="small" color={c.tealDark} /> : <Ionicons name="add" size={16} color={c.tealDark} />}
-                <Text style={styles.listenButtonText}>
-                  {importingHere ? t("player.importing", { done: importingHere.done, total: importingHere.total }) : t("player.attachButton")}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
+        {/* No "Listen in Bookliz" card: for an audiobook without its file the
+            main button above already is "Add audio file". */}
+        {!audiobook && book.format === "audiobook" && !isDone && !isDnf ? (
+          <Text style={styles.attachHint}>{t("player.attachBody")}</Text>
         ) : null}
 
         {/* ── PROGRESS ─────────────────────────────────────────────────────── */}
@@ -420,9 +413,12 @@ export function BookDetailScreen() {
         </View>
 
         {/* ── SYNOPSIS ─────────────────────────────────────────────────────── */}
+        {/* Every section below follows one pattern: serif title outside, one
+            panel style inside, same side margins, same spacing. */}
+        <View style={[styles.sectionBlock, { marginTop: spacing.lg }]}>
+          <Text style={[styles.sectionTitle, styles.sectionTitleAlone]}>{t("bookDetail.synopsis")}</Text>
         {book.synopsis && !isPlaceholderText(book.synopsis) ? (
-          <View style={[styles.card, { marginTop: spacing.md }]}>
-            <Text style={styles.eyebrow}>{t("bookDetail.synopsis")}</Text>
+          <View style={styles.panel}>
             <Pressable accessibilityRole="button" onPress={() => setSynopsisExpanded((v) => !v)}>
               <Text style={styles.synopsisText} numberOfLines={synopsisExpanded ? undefined : 4}>
                 {book.synopsis}
@@ -432,8 +428,7 @@ export function BookDetailScreen() {
           </View>
         ) : (
           /* No synopsis on this edition — offer a one-tap metadata lookup */
-          <View style={[styles.card, { marginTop: spacing.md }]}>
-            <Text style={styles.eyebrow}>{t("bookDetail.synopsis")}</Text>
+          <View style={styles.panel}>
             <Text style={styles.synopsisMissing}>
               {synopsisFetchFailed ? t("bookDetail.synopsisNotFound") : t("bookDetail.noSynopsis")}
             </Text>
@@ -478,33 +473,35 @@ export function BookDetailScreen() {
           </View>
         )}
 
-        {/* ── GENRE / META CHIPS ───────────────────────────────────────────── */}
-        <View style={[styles.metaChipRow, { marginTop: spacing.sm }]}>
-          {genres.map((g) => (
-            <View key={g} style={[styles.metaChip, { backgroundColor: c.teal + "22", borderColor: c.teal + "44" }]}>
-              <Text style={[styles.metaChipText, { color: c.teal }]}>{g}</Text>
-            </View>
-          ))}
-          {book.publishedDate ? (
-            <View style={styles.metaChip}><Text style={styles.metaChipText}>{book.publishedDate.slice(0, 4)}</Text></View>
-          ) : null}
-          {book.isBestseller ? (
-            <View style={[styles.metaChip, { backgroundColor: c.gold + "22", borderColor: c.gold + "55" }]}>
-              <Ionicons name="star" size={10} color={c.gold} style={{ marginRight: 3 }} />
-              <Text style={[styles.metaChipText, { color: c.gold }]}>{t("bookDetail.bestseller")}</Text>
-            </View>
-          ) : null}
-          {book.tags?.map((tag) => (
-            <View key={tag} style={styles.metaChip}><Text style={styles.metaChipText}>{tag}</Text></View>
-          ))}
+        {/* ── GENRE / META CHIPS ─────────────────────────────────────────────
+            Part of the synopsis section. No year chip: it repeated
+            "Published" in About this edition. No row at all when empty. */}
+        {genres.length > 0 || book.isBestseller || (book.tags?.length ?? 0) > 0 ? (
+          <View style={[styles.metaChipRow, { marginTop: spacing.sm }]}>
+            {genres.map((g) => (
+              <View key={g} style={[styles.metaChip, { backgroundColor: c.teal + "1A", borderColor: c.teal + "40" }]}>
+                <Text style={[styles.metaChipText, { color: c.tealDark }]}>{g}</Text>
+              </View>
+            ))}
+            {book.isBestseller ? (
+              <View style={[styles.metaChip, { backgroundColor: c.gold + "22", borderColor: c.gold + "55" }]}>
+                <Ionicons name="star" size={10} color={c.gold} style={{ marginRight: 3 }} />
+                <Text style={[styles.metaChipText, { color: c.gold }]}>{t("bookDetail.bestseller")}</Text>
+              </View>
+            ) : null}
+            {book.tags?.map((tag) => (
+              <View key={tag} style={styles.metaChip}><Text style={styles.metaChipText}>{tag}</Text></View>
+            ))}
+          </View>
+        ) : null}
         </View>
 
         {/* ── D: AUTHOR CARD ───────────────────────────────────────────────── */}
         {author ? (
           <View style={[styles.sectionBlock, { marginTop: spacing.lg }]}>
-            <Text style={styles.sectionTitle}>{t("bookDetail.author")}</Text>
+            <Text style={[styles.sectionTitle, styles.sectionTitleAlone]}>{t("bookDetail.author")}</Text>
             <Pressable accessibilityRole="button"
-              style={[styles.authorCard, { marginTop: spacing.sm }]}
+              style={styles.authorCard}
               onPress={() => navigation.navigate("AuthorBooks", { authorId: book.authorId, authorName: author.name })}
             >
               <View style={styles.authorAvatar}>
@@ -523,12 +520,14 @@ export function BookDetailScreen() {
         <View style={[styles.sectionBlock, { marginTop: spacing.lg }]}>
           <View style={styles.sectionBlockHeader}>
             <Text style={styles.sectionTitle}>{t("bookDetail.yourReview")}</Text>
-            <Pressable accessibilityRole="button" onPress={() => navigation.navigate("WriteReview", { bookId: book.id })}>
-              <Text style={styles.sectionAction}>{review ? t("bookDetail.edit") : t("bookDetail.write")}</Text>
-            </Pressable>
+            {review ? (
+              <Pressable accessibilityRole="button" onPress={() => navigation.navigate("WriteReview", { bookId: book.id })}>
+                <Text style={styles.sectionAction}>{t("bookDetail.edit")}</Text>
+              </Pressable>
+            ) : null}
           </View>
           {review ? (
-            <Pressable accessibilityRole="button" style={styles.card} onPress={() => navigation.navigate("WriteReview", { bookId: book.id })}>
+            <Pressable accessibilityRole="button" style={styles.panel} onPress={() => navigation.navigate("WriteReview", { bookId: book.id })}>
               <View style={styles.reviewStars}>
                 {[1,2,3,4,5].map((n) => (
                   <Ionicons key={n} name={n <= review.rating ? "star" : "star-outline"} size={16} color={n <= review.rating ? c.gold : c.border} />
@@ -539,9 +538,10 @@ export function BookDetailScreen() {
               {review.body ? <Text style={styles.reviewBody} numberOfLines={4}>{review.body}</Text> : null}
             </Pressable>
           ) : (
-            <Pressable accessibilityRole="button" style={styles.reviewEmpty} onPress={() => navigation.navigate("WriteReview", { bookId: book.id })}>
-              <Ionicons name="create-outline" size={22} color={c.muted} />
+            <Pressable accessibilityRole="button" style={[styles.panel, styles.reviewEmpty]} onPress={() => navigation.navigate("WriteReview", { bookId: book.id })}>
+              <Ionicons name="create-outline" size={20} color={c.tealDark} />
               <Text style={styles.reviewEmptyText}>{t("bookDetail.noReviewYet")}</Text>
+              <Ionicons name="chevron-forward" size={16} color={c.muted} />
             </Pressable>
           )}
         </View>
@@ -609,7 +609,7 @@ export function BookDetailScreen() {
               <Text style={styles.sectionTitle}>{t("bookDetail.audioFiles")}</Text>
               <Text style={styles.mutedSm}>{formatBytes(audioBytes)}</Text>
             </View>
-            <View style={[styles.card, { marginTop: spacing.sm, paddingHorizontal: 0, paddingVertical: 0 }]}>
+            <View style={[styles.panel, { paddingHorizontal: 0, paddingVertical: 0 }]}>
               {visibleFiles.map((file, i) => (
                 <View key={file.index} style={[styles.fileRow, i < visibleFiles.length - 1 && styles.editionRowDivider]}>
                   <Ionicons name={file.removed ? "remove-circle-outline" : "musical-note-outline"} size={18} color={file.removed ? c.border : c.teal} />
@@ -653,7 +653,7 @@ export function BookDetailScreen() {
                 <Text style={styles.sectionAction}>{t("bookDetail.edit")}</Text>
               </Pressable>
             </View>
-            <View style={styles.card}>
+            <View style={styles.panel}>
               <Text style={styles.notesText}>{book.userStatus.notes}</Text>
             </View>
           </View>
@@ -690,8 +690,8 @@ export function BookDetailScreen() {
           if (rows.length === 0) return null;
           return (
             <View style={[styles.sectionBlock, { marginTop: spacing.lg }]}>
-              <Text style={styles.sectionTitle}>{t("bookDetail.aboutEdition")}</Text>
-              <View style={[styles.card, { marginTop: spacing.sm, paddingHorizontal: 0, paddingVertical: 0 }]}>
+              <Text style={[styles.sectionTitle, styles.sectionTitleAlone]}>{t("bookDetail.aboutEdition")}</Text>
+              <View style={[styles.panel, { paddingHorizontal: 0, paddingVertical: 0 }]}>
                 {rows.map((row, i) => (
                   <View key={row.label} style={[styles.editionRow, i < rows.length - 1 && styles.editionRowDivider]}>
                     <Text style={styles.editionLabel}>{row.label}</Text>
@@ -862,6 +862,10 @@ function createStyles(c: AppColors, isDark: boolean) {
     },
     primaryBtnText: { color: "#FFFFFF", fontFamily: fonts.body, fontSize: 14, fontWeight: "900" },
 
+    attachHint: {
+      color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 13, lineHeight: 18,
+      marginHorizontal: spacing.lg, marginTop: spacing.sm, textAlign: "center",
+    },
     // Listen-here card
     listenCard: { alignItems: "flex-start", flexDirection: "row", gap: spacing.sm },
     listenIcon: { alignItems: "center", backgroundColor: c.teal, borderRadius: 18, height: 36, justifyContent: "center", width: 36 },
@@ -882,6 +886,11 @@ function createStyles(c: AppColors, isDark: boolean) {
     card: {
       ...shadows.card, backgroundColor: c.surface, borderColor: c.border,
       borderRadius: radii.sm, borderWidth: 1, marginHorizontal: spacing.md, padding: spacing.md,
+    },
+    // The same box for use inside a sectionBlock, which already has the side margin.
+    panel: {
+      ...shadows.card, backgroundColor: c.surface, borderColor: c.border,
+      borderRadius: radii.sm, borderWidth: 1, padding: spacing.md,
     },
     eyebrow: {
       color: c.muted, fontFamily: fonts.body, fontSize: 11, fontWeight: "900",
@@ -937,7 +946,7 @@ function createStyles(c: AppColors, isDark: boolean) {
     findSynopsisText: { color: c.tealDark, fontFamily: fonts.body, fontSize: 12, fontWeight: "800" },
 
     // Meta chips
-    metaChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginHorizontal: spacing.md },
+    metaChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     metaChip: {
       alignItems: "center", backgroundColor: c.surfaceAlt, borderColor: c.border,
       borderRadius: radii.pill, borderWidth: 1, flexDirection: "row",
@@ -949,7 +958,9 @@ function createStyles(c: AppColors, isDark: boolean) {
     sectionBlock: { marginHorizontal: spacing.md },
     sectionBlockHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.sm },
     sectionTitle: { color: c.ink, fontFamily: fonts.display, fontSize: 20, fontWeight: "900" },
-    sectionAction: { color: c.gold, fontFamily: fonts.body, fontSize: 13, fontWeight: "800" },
+    sectionTitleAlone: { marginBottom: spacing.sm },
+    // Teal like every other tappable text on this screen ("Read more", "Find synopsis").
+    sectionAction: { color: c.tealDark, fontFamily: fonts.body, fontSize: 13, fontWeight: "800" },
 
     // Pages per day
     weekNav: { alignItems: "center", flexDirection: "row", gap: spacing.md },
@@ -959,12 +970,8 @@ function createStyles(c: AppColors, isDark: boolean) {
     reviewStars: { alignItems: "center", flexDirection: "row", gap: 3, marginBottom: spacing.sm },
     reviewTitle: { color: c.ink, fontFamily: fonts.display, fontSize: 16, fontWeight: "800", lineHeight: 21 },
     reviewBody: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 13, lineHeight: 20, marginTop: 6 },
-    reviewEmpty: {
-      alignItems: "center", backgroundColor: c.surface, borderColor: c.border,
-      borderRadius: radii.sm, borderStyle: "dashed", borderWidth: 1,
-      flexDirection: "row", gap: spacing.sm, padding: spacing.md,
-    },
-    reviewEmptyText: { color: c.muted, fontFamily: fonts.body, fontSize: 13, fontWeight: "800" },
+    reviewEmpty: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
+    reviewEmptyText: { color: c.ink, flex: 1, fontFamily: fonts.body, fontSize: 14, fontWeight: "700" },
 
     // Shared small text
     mutedSm: { color: c.muted, fontFamily: fonts.body, fontSize: 11, fontWeight: "700" },

@@ -1,3 +1,4 @@
+import { useAttachAudio } from "../audio/useAttachAudio";
 import { Ionicons } from "@expo/vector-icons";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -122,6 +123,7 @@ export function HomeScreen() {
   const { library: audioLibrary } = useAudiobookPlayer();
   const continueHasAudio = Boolean(continueBook && audioLibrary[continueBook.id]);
   const continueIsAudiobook = continueBook?.format === "audiobook";
+  const attachAudio = useAttachAudio();
   const goalPct = Math.min(100, Math.round((overallStats.booksReadThisYear / userProfile.yearlyGoal) * 100));
   const remaining = userProfile.yearlyGoal - overallStats.booksReadThisYear;
   const streakMsg = getStreakMessage(overallStats.currentStreak, c, t);
@@ -361,7 +363,7 @@ export function HomeScreen() {
                   continueHasAudio
                     ? navigation.navigate("AudioPlayer", { bookId: continueBook.id })
                     : continueIsAudiobook
-                      ? navigation.navigate("BookDetail", { bookId: continueBook.id })
+                      ? void attachAudio(continueBook.id)
                       : navigation.navigate("AddReadingSession", { bookId: continueBook.id })
                 }
               >
