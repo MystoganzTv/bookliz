@@ -55,7 +55,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "BF41E257C37B3F52C45DFA32"
             BuildableName = "BooklizWatch.app"
-            BlueprintName = "BooklizWatch"
             ReferencedContainer = "container:Booklio.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -72,7 +71,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "BF41E257C37B3F52C45DFA32"
             BuildableName = "BooklizWatch.app"
-            BlueprintName = "BooklizWatch"
             ReferencedContainer = "container:Booklio.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
