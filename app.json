@@ -8,9 +8,9 @@
     "icon": "./assets/brand/bookliz-icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/brand/bookliz-splash.png",
+      "image": "./assets/brand/splash-blank.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FAF7F2"
+      "backgroundColor": "#0F172A"
     },
     "assetBundlePatterns": [
       "assets/**/*"
@@ -42,6 +42,18 @@
               "com.microsoft.waveform-audio",
               "org.xiph.flac"
             ]
+          },
+          {
+            "CFBundleTypeName": "Ebook",
+            "CFBundleTypeRole": "Viewer",
+            "LSHandlerRank": "Alternate",
+            "LSItemContentTypes": [
+              "org.idpf.epub-container",
+              "com.adobe.pdf",
+              "public.plain-text",
+              "com.mystodev.booklio.cbz",
+              "com.mystodev.booklio.cbr"
+            ]
           }
         ],
         "UTImportedTypeDeclarations": [
@@ -58,6 +70,31 @@
               ],
               "public.mime-type": [
                 "audio/x-m4b"
+              ]
+            }
+          },
+          {
+            "UTTypeIdentifier": "com.mystodev.booklio.cbz",
+            "UTTypeDescription": "Comic book archive (ZIP)",
+            "UTTypeConformsTo": [
+              "public.zip-archive",
+              "public.data"
+            ],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": [
+                "cbz"
+              ]
+            }
+          },
+          {
+            "UTTypeIdentifier": "com.mystodev.booklio.cbr",
+            "UTTypeDescription": "Comic book archive",
+            "UTTypeConformsTo": [
+              "public.data"
+            ],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": [
+                "cbr"
               ]
             }
           }

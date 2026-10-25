@@ -184,7 +184,15 @@ type BooklizContextValue = {
   clearBookLanguages: (bookIds: readonly string[]) => void;
   updateBookFormat: (bookId: string, format: Book["format"]) => void;
   /** Set only the page count — for "log session" on a book that never had one. */
+  /** True once the saved library has loaded (the animated splash waits for it). */
+  hydrated: boolean;
   updateBookPages: (bookId: string, pages: number) => void;
+  /**
+   * Progress straight from the ebook reader, for a book with no page count
+   * (pages are what sessions are measured in). Never moves backwards; 100
+   * marks the book read.
+   */
+  setBookProgress: (bookId: string, percent: number) => void;
   /** Listening length in minutes — set from the audio file itself when one is attached in the player. */
   updateBookDuration: (bookId: string, minutes: number) => void;
   updateBookSynopsis: (bookId: string, synopsis: string) => void;
@@ -1620,6 +1628,27 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       setBooks((current) => current.map((b) => (b.id === bookId ? { ...b, format } : b)));
     };
 
+    const setBookProgress = (bookId: string, percent: number) => {
+      const safe = Math.min(100, Math.max(0, Math.round(percent)));
+      const today = localDateKey();
+      setBooks((current) =>
+        current.map((b) => {
+          if (b.id !== bookId || safe <= b.userStatus.progressPercent) return b;
+          const done = safe >= 100;
+          return normalizeReadState({
+            ...b,
+            userStatus: {
+              ...b.userStatus,
+              status: done ? "read" : "reading",
+              progressPercent: safe,
+              startDate: b.userStatus.startDate || today,
+              finishDate: done ? today : b.userStatus.finishDate,
+            },
+          });
+        })
+      );
+    };
+
     const updateBookPages = (bookId: string, pages: number) => {
       const safe = Math.max(0, Math.round(pages));
       if (!safe) return;
@@ -2179,6 +2208,8 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       clearBookLanguages,
       updateBookFormat,
       updateBookPages,
+      setBookProgress,
+      hydrated,
       updateBookDuration,
       updateBookSynopsis,
       updateUserProfile,
@@ -2207,7 +2238,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       clearSeriesCompletion: () => setSeriesJustCompleted(null),
       readingIdentity
     };
-  }, [authors, books, conflictBackup, onboardingComplete, readingSessions, readingIdentity, repositoryStatus, resolvedProfile, reviews, seriesJustCompleted, userLists, bookFolders]);
+  }, [authors, books, conflictBackup, onboardingComplete, readingSessions, readingIdentity, repositoryStatus, resolvedProfile, reviews, seriesJustCompleted, userLists, bookFolders, hydrated]);
 
   if (!hydrated) return null;
 

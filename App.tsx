@@ -8,9 +8,12 @@ import {
   Nunito_800ExtraBold,
   Nunito_900Black
 } from "@expo-google-fonts/nunito";
-import { BooklizProvider } from "./src/data/BooklizContext";
+import { BooklizProvider, useBookliz } from "./src/data/BooklizContext";
+import { AnimatedSplash } from "./src/components/AnimatedSplash";
+import { useState } from "react";
 import { ReadingTimerProvider } from "./src/data/ReadingTimerContext";
 import { AudiobookPlayerProvider } from "./src/audio/AudiobookPlayerContext";
+import { EbookProvider } from "./src/ebook/EbookContext";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
 import { AppNavigator } from "./src/navigation/AppNavigator";
 import { LocalizationProvider } from "./src/i18n/LocalizationContext";
@@ -22,10 +25,14 @@ import { LinkedAccountProBridge } from "./src/pro/LinkedAccountProBridge";
 
 function Root() {
   const { isDark } = useTheme();
+  const { hydrated } = useBookliz();
+  // The animated splash covers the app until the library has loaded, then lifts away.
+  const [splashDone, setSplashDone] = useState(false);
   return (
     <>
-      <StatusBar style={isDark ? "light" : "dark"} />
+      <StatusBar style={splashDone ? (isDark ? "light" : "dark") : "light"} />
       <AppNavigator />
+      {splashDone ? null : <AnimatedSplash ready={hydrated} onDone={() => setSplashDone(true)} />}
     </>
   );
 }
@@ -54,7 +61,9 @@ export default function App() {
                 <LinkedAccountProBridge />
                 <ReadingTimerProvider>
                   <AudiobookPlayerProvider>
-                    <Root />
+                    <EbookProvider>
+                      <Root />
+                    </EbookProvider>
                   </AudiobookPlayerProvider>
                 </ReadingTimerProvider>
               </BooklizProvider>
