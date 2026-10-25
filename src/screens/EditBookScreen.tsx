@@ -15,14 +15,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { useDialog } from "../components/DialogProvider";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
   Modal,
   Pressable,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -71,20 +74,9 @@ const FORMAT_OPTIONS: { value: ReadingFormat; labelKey: string; icon: keyof type
   { value: "manga",                labelKey: "editBook.fmtManga",       icon: "language-outline" },
 ];
 
-const STATUS_OPTIONS: { value: CoreTrackingStatus; labelKey: string }[] = [
-  { value: "reading",          labelKey: "editBook.statusReading" },
-  { value: "read",             labelKey: "editBook.statusRead" },
-  { value: "want-to-read",     labelKey: "editBook.statusWant" },
-  { value: "wishlist",         labelKey: "editBook.statusWishlist" },
-  { value: "want-to-buy",      labelKey: "editBook.statusBuy" },
-  { value: "dnf",              labelKey: "editBook.statusDnf" },
-  { value: "upcoming-release", labelKey: "editBook.statusUpcoming" },
-];
 
-const OWNERSHIP_OPTIONS: { value: OwnershipStatus; labelKey: string }[] = [
-  { value: "owned",     labelKey: "editBook.ownershipOwned" },
-  { value: "not-owned", labelKey: "editBook.ownershipNotOwned" },
-];
+
+const LANGUAGE_CHOICES = ["English", "Spanish", "French", "German", "Italian", "Portuguese"];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -145,6 +137,11 @@ export function EditBookScreen() {
   const [editionKey,      setEditionKey]      = useState(book?.editionKey);
   const [isFetching,      setIsFetching]      = useState(false);
   const [formatOpen,      setFormatOpen]      = useState(false);
+  // ISBN, cover, genres and tags: rarely touched, folded by default.
+  const [detailsOpen,     setDetailsOpen]     = useState(false);
+  const [otherLangOpen,   setOtherLangOpen]   = useState(false);
+  const [coverSheetOpen,  setCoverSheetOpen]  = useState(false);
+  const [coverDraft,      setCoverDraft]      = useState("");
   // Language → edition picker sheet (two groups: exact = applicable;
   // seriesSiblings = other volumes of the same series, shown but blocked).
   const EMPTY_GROUPS: GroupedEditionCandidates = { exact: [], seriesSiblings: [] };
@@ -260,11 +257,6 @@ export function EditBookScreen() {
   //     BooklizContext's quick status sheet does — ownership is now an explicit
   //     control on this very screen, and overriding a choice the user just made
   //     two cards above would be the most surprising behaviour of all.
-  const selectStatus = (next: CoreTrackingStatus) => {
-    setStatus(next);
-    if (next === "wishlist")     setWishlist(true);
-    if (next === "want-to-buy")  setWantToBuy(true);
-  };
 
   // ── fetch metadata ─────────────────────────────────────────────────────────
   const fetchInfo = async () => {
@@ -332,8 +324,19 @@ export function EditBookScreen() {
     );
   };
 
+  const saveRef = useRef<() => void>(() => {});
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable accessibilityRole="button" hitSlop={10} onPress={() => saveRef.current()} style={styles.headerSave}>
+          <Text style={styles.headerSaveText}>{t("common.save")}</Text>
+        </Pressable>
+      ),
+    });
+  }, [navigation, styles, t]);
+
   if (!book) {
-    return <Screen><Text style={{ color: c.muted, fontFamily: fonts.body, padding: spacing.lg }}>Book not found.</Text></Screen>;
+    return <Screen><Text style={{ color: c.muted, fontFamily: fonts.body, padding: spacing.lg }}>{t("bookDetail.notFound")}</Text></Screen>;
   }
 
   const previewBook = {
@@ -404,7 +407,7 @@ export function EditBookScreen() {
   const onDelete = () => {
     dialog.confirm({
       title: t("editBook.deleteTitle"),
-      body: `Bookliz will remove ${title || book.title} and all its data from your library.`,
+      body: t("editBook.deleteBodyNamed", { title: title || book.title }),
       confirmLabel: t("editBook.deleteConfirm"),
       destructive: true,
       onConfirm: () => {
@@ -414,210 +417,179 @@ export function EditBookScreen() {
     });
   };
 
+  saveRef.current = onSave;
+  const formatLabelKey = FORMAT_OPTIONS.find((o) => o.value === format)?.labelKey;
+
   return (
     <Screen>
-      {/* ── HERO HEADER ─────────────────────────────────────────────────── */}
-      <View style={styles.hero}>
-        <BookCover book={previewBook} size="md" />
-        <View style={styles.heroCopy}>
-          <Text style={styles.heroEyebrow}>Edit book</Text>
-          <Text style={styles.heroTitle} numberOfLines={3}>{title || book.title}</Text>
-          <Text style={styles.heroAuthor} numberOfLines={1}>{authorName || t("editBook.unknownAuthor")}</Text>
-        </View>
+      {/* ── HERO: tap the cover to change it; title / author edited in place ── */}
+      <View style={styles.heroDeluxe}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("editBook.changeCover")}
+          onPress={() => { setCoverDraft(coverImageUri); setCoverSheetOpen(true); }}
+        >
+          <BookCover book={previewBook} size="md" />
+          <View style={styles.coverBadge}>
+            <Ionicons name="camera-outline" size={14} color="#FFFFFF" />
+          </View>
+        </Pressable>
+        <TextInput
+          value={title}
+          onChangeText={setTitle}
+          placeholder={t("editBook.titlePlaceholder")}
+          placeholderTextColor={c.muted}
+          multiline
+          scrollEnabled={false}
+          style={styles.heroTitleInput}
+        />
+        <TextInput
+          value={authorName}
+          onChangeText={setAuthorName}
+          placeholder={t("editBook.authorPlaceholder")}
+          placeholderTextColor={c.muted}
+          style={styles.heroAuthorInput}
+        />
+        <Pressable accessibilityRole="button" style={[styles.fetchPill, isFetching && styles.fetchBtnBusy]} onPress={fetchInfo} disabled={isFetching}>
+          {isFetching
+            ? <ActivityIndicator size="small" color={c.tealDark} />
+            : <Ionicons name="sparkles-outline" size={15} color={c.tealDark} />}
+          <Text style={styles.fetchPillText}>{isFetching ? t("editBook.fetchBtnSearching") : t("editBook.fetchShort")}</Text>
+        </Pressable>
       </View>
 
-      {/* ── FETCH BUTTON ─────────────────────────────────────────────────── */}
-      <Pressable accessibilityRole="button" style={[styles.fetchBtn, isFetching && styles.fetchBtnBusy]} onPress={fetchInfo} disabled={isFetching}>
-        {isFetching
-          ? <ActivityIndicator size="small" color={c.teal} />
-          : <Ionicons name="cloud-download-outline" size={16} color={c.teal} />}
-        <Text style={styles.fetchBtnText}>{isFetching ? t("editBook.fetchBtnSearching") : t("editBook.fetchBtn")}</Text>
-      </Pressable>
-
-      {/* ══ BOOK INFO ════════════════════════════════════════════════════════ */}
-      <FieldCard icon="text-outline" label={t("editBook.labelTitle")} c={c} styles={styles}>
-        <PlainInput value={title} onChangeText={setTitle} placeholder={t("editBook.titlePlaceholder")} styles={styles} c={c} />
-      </FieldCard>
-
-      <FieldCard icon="person-outline" label={t("editBook.labelAuthor")} c={c} styles={styles}>
-        <PlainInput value={authorName} onChangeText={setAuthorName} placeholder="Author name" styles={styles} c={c} />
-      </FieldCard>
-
-      <FieldCard icon="layers-outline" label={t("editBook.labelSeries")} c={c} styles={styles}>
-        <View style={styles.seriesRow}>
-          <View style={{ flex: 1 }}>
-            <PlainInput value={seriesName} onChangeText={setSeriesName} placeholder="Series name" styles={styles} c={c} />
-          </View>
-          <View style={styles.seriesNumWrap}>
-            <PlainInput value={seriesNumber} onChangeText={setSeriesNumber} placeholder="#" keyboardType="number-pad" styles={styles} c={c} />
-          </View>
-        </View>
-      </FieldCard>
-
-      {/* ══ FORMAT ═══════════════════════════════════════════════════════════ */}
-      <FieldCard icon="book-outline" label={t("editBook.labelFormat")} c={c} styles={styles}>
-        {/* Trigger row */}
-        <Pressable accessibilityRole="button" style={styles.dropdownTrigger} onPress={() => setFormatOpen((v) => !v)}>
-          <Text style={styles.dropdownValue}>
-            {(() => { const k = FORMAT_OPTIONS.find((o) => o.value === format)?.labelKey; return k ? t(k) : t("editBook.fmtSelect"); })()}
-          </Text>
-          <Ionicons
-            name={formatOpen ? "chevron-up" : "chevron-down"}
-            size={16}
-            color={c.muted}
+      {/* ══ THE BOOK ═══════════════════════════════════════════════════════
+          Reading status, rating and "I own it" live in the book's status
+          sheet; this screen edits the book itself. */}
+      <Text style={styles.groupHeader}>{t("editBook.sectionBook")}</Text>
+      <View style={styles.group}>
+        <View style={styles.groupRow}>
+          <IconTile icon="layers" color={c.teal} styles={styles} />
+          <Text style={styles.rowLabel}>{t("editBook.labelSeries")}</Text>
+          <TextInput
+            value={seriesName}
+            onChangeText={setSeriesName}
+            placeholder={t("editBook.seriesPlaceholder")}
+            placeholderTextColor={c.muted}
+            style={styles.rowInput}
           />
+          <TextInput
+            value={seriesNumber}
+            onChangeText={setSeriesNumber}
+            placeholder="#"
+            placeholderTextColor={c.muted}
+            keyboardType="number-pad"
+            style={[styles.rowInput, styles.rowInputNarrow]}
+          />
+        </View>
+        <Pressable accessibilityRole="button" style={[styles.groupRow, styles.groupDivider]} onPress={() => setFormatOpen((v) => !v)}>
+          <IconTile icon={FORMAT_OPTIONS.find((o) => o.value === format)?.icon ?? "book"} color={c.coral} styles={styles} />
+          <Text style={styles.rowLabel}>{t("editBook.labelFormat")}</Text>
+          <Text style={styles.rowValue}>{formatLabelKey ? t(formatLabelKey) : t("editBook.fmtSelect")}</Text>
+          <Ionicons name={formatOpen ? "chevron-up" : "chevron-forward"} size={16} color={c.muted} />
         </Pressable>
-        {/* Expanded list */}
-        {formatOpen && (
-          <View style={styles.dropdownList}>
-            {FORMAT_OPTIONS.map((opt, i) => (
-              <Pressable accessibilityRole="button"
+        {formatOpen ? (
+          <View style={styles.optionList}>
+            {FORMAT_OPTIONS.map((opt) => (
+              <Pressable
+                accessibilityRole="button"
                 key={opt.value}
-                style={[
-                  styles.dropdownItem,
-                  i < FORMAT_OPTIONS.length - 1 && styles.dropdownItemBorder,
-                ]}
+                style={styles.optionRow}
                 onPress={() => { setFormat(opt.value); setFormatOpen(false); }}
               >
-                <Ionicons name={opt.icon} size={15} color={format === opt.value ? c.teal : c.muted} />
-                <Text style={[styles.dropdownItemText, format === opt.value && { color: c.teal, fontWeight: "900" }]}>
-                  {t(opt.labelKey)}
-                </Text>
-                {format === opt.value && (
-                  <Ionicons name="checkmark" size={16} color={c.teal} style={{ marginLeft: "auto" }} />
-                )}
+                <Text style={[styles.optionText, format === opt.value && { color: c.tealDark, fontWeight: "900" }]}>{t(opt.labelKey)}</Text>
+                {format === opt.value ? <Ionicons name="checkmark" size={18} color={c.teal} /> : null}
               </Pressable>
             ))}
           </View>
+        ) : null}
+        {format === "audiobook" ? (
+          <View style={[styles.groupRow, styles.groupDivider]}>
+            <IconTile icon="time" color={c.gold} styles={styles} />
+            <Text style={styles.rowLabel}>{t("editBook.labelDuration")}</Text>
+            <TextInput
+              value={durationHours}
+              onChangeText={setDurationHours}
+              placeholder="0"
+              placeholderTextColor={c.muted}
+              keyboardType="number-pad"
+              style={[styles.rowInput, styles.rowInputNarrow]}
+            />
+            <Text style={styles.rowUnit}>h</Text>
+            <TextInput
+              value={durationMins}
+              onChangeText={setDurationMins}
+              placeholder="0"
+              placeholderTextColor={c.muted}
+              keyboardType="number-pad"
+              style={[styles.rowInput, styles.rowInputNarrow]}
+            />
+            <Text style={styles.rowUnit}>min</Text>
+          </View>
+        ) : (
+          <View style={[styles.groupRow, styles.groupDivider]}>
+            <IconTile icon="document-text" color={c.gold} styles={styles} />
+            <Text style={styles.rowLabel}>{t("editBook.labelPages")}</Text>
+            <TextInput
+              value={pages}
+              onChangeText={setPages}
+              placeholder={t("editBook.unknownShort")}
+              placeholderTextColor={c.muted}
+              keyboardType="number-pad"
+              style={styles.rowInput}
+            />
+          </View>
         )}
-      </FieldCard>
-
-      {/* ══ RATING ═══════════════════════════════════════════════════════════ */}
-      <FieldCard icon="star-outline" label={t("editBook.labelRating")} c={c} styles={styles}>
-        <StarRating value={rating} onChange={setRating} styles={styles} c={c} />
-      </FieldCard>
-
-      {/* ══ READING STATUS ═══════════════════════════════════════════════════ */}
-      <FieldCard icon="bookmark-outline" label={t("editBook.labelStatus")} c={c} styles={styles}>
-        <View style={styles.langChipRow}>
-          {STATUS_OPTIONS.map((opt) => (
-            <ToggleChip
-              key={opt.value}
-              label={t(opt.labelKey)}
-              active={status === opt.value}
-              onPress={() => selectStatus(opt.value)}
-              styles={styles}
-              c={c}
-            />
-          ))}
-        </View>
-      </FieldCard>
-
-      {/* ══ OWNERSHIP ════════════════════════════════════════════════════════ */}
-      <FieldCard icon="home-outline" label={t("editBook.labelOwnership")} c={c} styles={styles}>
-        <View style={styles.toggleRow}>
-          {OWNERSHIP_OPTIONS.map((opt) => (
-            <ToggleChip
-              key={opt.value}
-              label={t(opt.labelKey)}
-              active={ownership === opt.value}
-              onPress={() => setOwnership(opt.value)}
-              styles={styles}
-              c={c}
-            />
-          ))}
-        </View>
-      </FieldCard>
-
-      {/* ══ WISHLIST / WANT-TO-BUY FLAGS ═════════════════════════════════════ */}
-      {/* Independent of `status` — see selectStatus() above. */}
-      <FieldCard icon="heart-outline" label={t("editBook.labelWishlistFlags")} c={c} styles={styles}>
-        <View style={styles.toggleRow}>
-          <ToggleChip
-            label={t("editBook.toggleWishlist")}
-            active={wishlist}
-            onPress={() => setWishlist((v) => !v)}
-            styles={styles}
-            c={c}
-          />
-          <ToggleChip
-            label={t("editBook.toggleWantToBuy")}
-            active={wantToBuy}
-            onPress={() => setWantToBuy((v) => !v)}
-            styles={styles}
-            c={c}
-          />
-        </View>
-        <Text style={styles.langHint}>{t("editBook.wishlistHint")}</Text>
-      </FieldCard>
-
-      {/* ══ DETAILS ══════════════════════════════════════════════════════════ */}
-      <FieldCard icon="document-text-outline" label={t("editBook.labelPages")} c={c} styles={styles}>
-        <PlainInput value={pages} onChangeText={setPages} placeholder={t("editBook.pagesPlaceholder")} keyboardType="number-pad" styles={styles} c={c} />
-      </FieldCard>
-
-      {/* Only for audiobooks — a printed book has no running time, and asking
-          for one would invite a number that means nothing. */}
-      {format === "audiobook" ? (
-        <FieldCard icon="headset-outline" label={t("editBook.labelDuration")} c={c} styles={styles}>
-          <View style={styles.isbnRow}>
-            <View style={{ flex: 1 }}>
-              <PlainInput
-                value={durationHours}
-                onChangeText={setDurationHours}
-                placeholder={t("editBook.durationHours")}
-                keyboardType="number-pad"
-                styles={styles}
-                c={c}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <PlainInput
-                value={durationMins}
-                onChangeText={setDurationMins}
-                placeholder={t("editBook.durationMinutes")}
-                keyboardType="number-pad"
-                styles={styles}
-                c={c}
-              />
-            </View>
+        <View style={[styles.groupBlock, styles.groupDivider]}>
+          <View style={styles.blockHead}>
+            <IconTile icon="globe" color={c.navy} styles={styles} />
+            <Text style={styles.rowLabel}>{t("editBook.labelLanguage")}</Text>
           </View>
-          <Text style={styles.langHint}>{t("editBook.durationHint")}</Text>
-        </FieldCard>
+          <View style={styles.chipFlow}>
+            {[...LANGUAGE_CHOICES, ...(language.trim() && !LANGUAGE_CHOICES.some((l) => l.toLowerCase() === language.trim().toLowerCase()) ? [language.trim()] : [])].map((lang) => {
+              const active = language.trim().toLowerCase() === lang.toLowerCase();
+              return (
+                <Pressable
+                  key={lang}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={[styles.segmentItem, active && styles.segmentItemActive]}
+                  onPress={() => void handleLanguagePick(lang)}
+                >
+                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{lang}</Text>
+                </Pressable>
+              );
+            })}
+            <Pressable accessibilityRole="button" style={styles.segmentItem} onPress={() => setOtherLangOpen((v) => !v)}>
+              <Text style={styles.segmentText}>{t("editBook.otherLanguage")}</Text>
+            </Pressable>
+          </View>
+          {otherLangOpen ? (
+            <TextInput
+              autoFocus
+              value={language}
+              onChangeText={setLanguage}
+              placeholder={t("editBook.labelLanguage")}
+              placeholderTextColor={c.muted}
+              style={styles.inlineField}
+            />
+          ) : null}
+          <Text style={styles.groupHint}>{t("editBook.langHint")}</Text>
+        </View>
+      </View>
+
+      {/* Only when the reader does not own it: the one shelf flag no other
+          screen sets (the status sheet handles status, rating and owned). */}
+      {ownership !== "owned" ? (
+        <View style={[styles.group, { marginTop: spacing.md }]}>
+          <View style={styles.groupRow}>
+            <IconTile icon="cart" color={c.green} styles={styles} />
+            <Text style={styles.rowLabel}>{t("editBook.toggleWantToBuy")}</Text>
+            <View style={{ flex: 1 }} />
+            <Switch value={wantToBuy} onValueChange={setWantToBuy} trackColor={{ true: c.teal, false: c.border }} />
+          </View>
+        </View>
       ) : null}
-
-      <FieldCard icon="barcode-outline" label={t("editBook.labelIsbn")} c={c} styles={styles}>
-        <View style={styles.isbnRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.isbnLabel}>ISBN-13</Text>
-            <PlainInput value={isbn13} onChangeText={setIsbn13} placeholder="9780000000000" keyboardType="number-pad" styles={styles} c={c} />
-          </View>
-          <View style={[styles.isbnDivider, { backgroundColor: c.border }]} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.isbnLabel}>ISBN-10</Text>
-            <PlainInput value={isbn10} onChangeText={setIsbn10} placeholder="0000000000" keyboardType="number-pad" styles={styles} c={c} />
-          </View>
-        </View>
-      </FieldCard>
-
-      <FieldCard icon="language-outline" label={t("editBook.labelLanguage")} c={c} styles={styles}>
-        <View style={styles.langChipRow}>
-          {["English", "Spanish", "French", "German", "Italian", "Portuguese"].map((lang) => {
-            const active = language.trim().toLowerCase() === lang.toLowerCase();
-            return (
-              <Pressable accessibilityRole="button"
-                key={lang}
-                style={[styles.toggleChip, active && styles.toggleChipActive]}
-                onPress={() => void handleLanguagePick(lang)}
-              >
-                <Text style={[styles.toggleChipText, active && styles.toggleChipTextActive]}>{lang}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <PlainInput value={language} onChangeText={setLanguage} placeholder={t("editBook.labelLanguage")} styles={styles} c={c} />
-        <Text style={styles.langHint}>{t("editBook.langHint")}</Text>
-      </FieldCard>
 
       {/* ── Edition picker: editions available in the chosen language ──────── */}
       <Modal
@@ -713,68 +685,96 @@ export function EditBookScreen() {
         </Pressable>
       </Modal>
 
-      <FieldCard icon="image-outline" label={t("editBook.labelCover")} c={c} styles={styles}>
-        <PlainInput value={coverImageUri} onChangeText={setCoverImageUri} placeholder="https://…" autoCapitalize="none" styles={styles} c={c} />
-      </FieldCard>
 
-      {/* ══ GENRES & TAGS ════════════════════════════════════════════════════ */}
-      <FieldCard icon="pricetags-outline" label={t("editBook.labelGenres")} c={c} styles={styles}>
-        <ChipEditor
-          chips={genres}
-          onChipsChange={setGenres}
-          placeholder={t("editBook.genrePlaceholder")}
-          styles={styles}
-          c={c}
-        />
-        <Text style={styles.langHint}>{t("editBook.genreHint")}</Text>
-      </FieldCard>
-
-      <FieldCard icon="bookmarks-outline" label={t("editBook.labelTags")} c={c} styles={styles}>
-        <ChipEditor
-          chips={tags}
-          onChipsChange={setTags}
-          placeholder={t("editBook.tagPlaceholder")}
-          styles={styles}
-          c={c}
-        />
-      </FieldCard>
-
-      {/* ══ NOTES & QUOTES ═══════════════════════════════════════════════════ */}
-      <FieldCard icon="create-outline" label={t("editBook.labelNotes")} c={c} styles={styles}>
-        <PlainInput
-          value={notes}
-          onChangeText={setNotes}
-          placeholder={t("editBook.notesPlaceholder")}
-          multiline
-          styles={styles}
-          c={c}
-        />
-      </FieldCard>
-
-      <FieldCard icon="chatbubble-ellipses-outline" label={t("editBook.labelQuotes")} c={c} styles={styles}>
-        <ChipEditor
-          chips={favoriteQuotes}
-          onChipsChange={setFavoriteQuotes}
-          placeholder={t("editBook.quotePlaceholder")}
-          styles={styles}
-          c={c}
-        />
-      </FieldCard>
-
-      {/* ══ SAVE ═════════════════════════════════════════════════════════════ */}
-      <Pressable accessibilityRole="button" style={styles.saveBtn} onPress={onSave}>
-        <Ionicons name="checkmark" size={18} color="#fff" />
-        <Text style={styles.saveBtnText}>{t("editBook.saveBtn")}</Text>
+      {/* ══ EDITION DETAILS (folded) ════════════════════════════════════════ */}
+      <Pressable accessibilityRole="button" style={styles.foldToggle} onPress={() => setDetailsOpen((v) => !v)}>
+        <Text style={styles.groupHeaderInline}>{t("editBook.sectionEdition")}</Text>
+        <Ionicons name={detailsOpen ? "chevron-up" : "chevron-down"} size={16} color={c.muted} />
       </Pressable>
+      {detailsOpen ? (
+        <View style={styles.group}>
+          <View style={styles.groupRow}>
+            <IconTile icon="barcode" color={c.muted} styles={styles} />
+            <Text style={styles.rowLabel}>ISBN-13</Text>
+            <TextInput value={isbn13} onChangeText={setIsbn13} placeholder={t("editBook.unknownShort")} placeholderTextColor={c.muted} keyboardType="number-pad" style={styles.rowInput} />
+          </View>
+          <View style={[styles.groupRow, styles.groupDivider]}>
+            <IconTile icon="barcode-outline" color={c.muted} styles={styles} />
+            <Text style={styles.rowLabel}>ISBN-10</Text>
+            <TextInput value={isbn10} onChangeText={setIsbn10} placeholder={t("editBook.unknownShort")} placeholderTextColor={c.muted} keyboardType="number-pad" style={styles.rowInput} />
+          </View>
+          <View style={[styles.groupBlock, styles.groupDivider]}>
+            <View style={styles.blockHead}>
+              <IconTile icon="pricetags" color={c.teal} styles={styles} />
+              <Text style={styles.rowLabel}>{t("editBook.labelGenres")}</Text>
+            </View>
+            <ChipEditor chips={genres} onChipsChange={setGenres} placeholder={t("editBook.genrePlaceholder")} styles={styles} c={c} />
+          </View>
+          <View style={[styles.groupBlock, styles.groupDivider]}>
+            <View style={styles.blockHead}>
+              <IconTile icon="bookmarks" color={c.coral} styles={styles} />
+              <Text style={styles.rowLabel}>{t("editBook.labelTags")}</Text>
+            </View>
+            <ChipEditor chips={tags} onChipsChange={setTags} placeholder={t("editBook.tagPlaceholder")} styles={styles} c={c} />
+          </View>
+        </View>
+      ) : null}
 
-      {/* ══ DANGER ZONE ══════════════════════════════════════════════════════ */}
-      <View style={styles.dangerZone}>
-        <Text style={styles.dangerEyebrow}>{t("settings.dangerEyebrow")}</Text>
-        <Text style={styles.dangerTitle}>{t("editBook.deleteTitle")}</Text>
-        <Text style={styles.dangerBody}>{t("editBook.deleteBody")}</Text>
-        <Pressable accessibilityRole="button" style={styles.deleteBtn} onPress={onDelete}>
-          <Ionicons name="trash-outline" size={16} color={c.coral} />
-          <Text style={styles.deleteBtnText}>{t("editBook.deleteConfirm")}</Text>
+      {/* ══ NOTES & QUOTES ══════════════════════════════════════════════════ */}
+      <Text style={styles.groupHeader}>{t("editBook.sectionNotes")}</Text>
+      <View style={styles.group}>
+        <View style={styles.groupBlock}>
+          <TextInput
+            value={notes}
+            onChangeText={setNotes}
+            placeholder={t("editBook.notesPlaceholder")}
+            placeholderTextColor={c.muted}
+            multiline
+            style={styles.notesInput}
+          />
+        </View>
+        <View style={[styles.groupBlock, styles.groupDivider]}>
+          <Text style={styles.rowLabel}>{t("editBook.labelQuotes")}</Text>
+          <ChipEditor chips={favoriteQuotes} onChipsChange={setFavoriteQuotes} placeholder={t("editBook.quotePlaceholder")} styles={styles} c={c} />
+        </View>
+      </View>
+
+      {/* ── Change cover ── */}
+      <Modal visible={coverSheetOpen} transparent animationType="fade" onRequestClose={() => setCoverSheetOpen(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.coverOverlay}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t("common.cancel")} style={StyleSheet.absoluteFill} onPress={() => setCoverSheetOpen(false)} />
+          <View style={styles.coverSheet}>
+            <Text style={styles.coverSheetTitle}>{t("editBook.changeCover")}</Text>
+            <Text style={styles.groupHint}>{t("editBook.coverHint")}</Text>
+            <TextInput
+              autoFocus
+              value={coverDraft}
+              onChangeText={setCoverDraft}
+              placeholder="https://…"
+              placeholderTextColor={c.muted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              style={styles.inlineField}
+            />
+            <View style={styles.coverActions}>
+              {coverImageUri ? (
+                <Pressable accessibilityRole="button" style={styles.coverGhost} onPress={() => { setCoverImageUri(""); setCoverSheetOpen(false); }}>
+                  <Text style={[styles.coverGhostText, { color: c.danger }]}>{t("editBook.removeCover")}</Text>
+                </Pressable>
+              ) : null}
+              <Pressable accessibilityRole="button" style={styles.coverPrimary} onPress={() => { setCoverImageUri(coverDraft.trim()); setCoverSheetOpen(false); }}>
+                <Text style={styles.coverPrimaryText}>{t("common.save")}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ══ DELETE ══════════════════════════════════════════════════════════ */}
+      <View style={[styles.group, { marginTop: spacing.xl }]}>
+        <Pressable accessibilityRole="button" style={styles.deleteRow} onPress={onDelete}>
+          <Text style={styles.deleteRowText}>{t("editBook.deleteRow")}</Text>
         </Pressable>
       </View>
     </Screen>
@@ -783,47 +783,14 @@ export function EditBookScreen() {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-/** Section card: icon + teal bold label + children */
-function FieldCard({
-  icon, label, children, c, styles,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  children: React.ReactNode;
-  c: AppColors;
-  styles: ReturnType<typeof createStyles>;
+/** Settings-style rounded colour square with a white glyph. */
+function IconTile({ icon, color, styles }: {
+  icon: keyof typeof Ionicons.glyphMap; color: string; styles: ReturnType<typeof createStyles>;
 }) {
   return (
-    <View style={styles.fieldCard}>
-      <View style={styles.fieldCardHeader}>
-        <Ionicons name={icon} size={17} color={c.teal} />
-        <Text style={styles.fieldCardLabel}>{label}</Text>
-      </View>
-      {children}
+    <View style={[styles.iconTile, { backgroundColor: color }]}>
+      <Ionicons name={icon} size={16} color="#FFFFFF" />
     </View>
-  );
-}
-
-/** Plain text input — no border of its own, sits inside the card */
-function PlainInput({
-  value, onChangeText, placeholder, keyboardType = "default",
-  autoCapitalize = "sentences", multiline = false, styles, c,
-}: {
-  value: string; onChangeText: (v: string) => void; placeholder?: string;
-  keyboardType?: "default" | "number-pad" | "numeric"; autoCapitalize?: "none" | "sentences" | "words";
-  multiline?: boolean; styles: ReturnType<typeof createStyles>; c: AppColors;
-}) {
-  return (
-    <TextInput
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={placeholder}
-      placeholderTextColor={c.muted}
-      keyboardType={keyboardType}
-      autoCapitalize={autoCapitalize}
-      multiline={multiline}
-      style={[styles.plainInput, multiline && styles.plainInputMulti]}
-    />
   );
 }
 
@@ -882,60 +849,85 @@ function ChipEditor({
   );
 }
 
-/** Toggle chip (boolean) */
-function ToggleChip({
-  label, active, onPress, styles, c,
-}: {
-  label: string; active: boolean; onPress: () => void;
-  styles: ReturnType<typeof createStyles>; c: AppColors;
-}) {
-  return (
-    <Pressable accessibilityRole="button"
-      style={[styles.toggleChip, active && styles.toggleChipActive]}
-      onPress={onPress}
-    >
-      {active ? <Ionicons name="checkmark-circle" size={14} color={c.teal} style={{ marginRight: 4 }} /> : null}
-      <Text style={[styles.toggleChipText, active && styles.toggleChipTextActive]}>{label}</Text>
-    </Pressable>
-  );
-}
-
-/** Star rating — tap a star to set 1-5, tap same star to clear */
-function StarRating({
-  value, onChange, styles, c,
-}: {
-  value: number; onChange: (v: number) => void;
-  styles: ReturnType<typeof createStyles>; c: AppColors;
-}) {
-  const { t } = useI18n();
-  return (
-    <View style={styles.starsRow}>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <Pressable
-          key={n}
-          onPress={() => onChange(value === n ? 0 : n)}
-          hitSlop={6}
-          accessibilityRole="button"
-          accessibilityLabel={t("a11y.rateStars", { count: n })}
-        >
-          <Ionicons
-            name={n <= value ? "star" : "star-outline"}
-            size={32}
-            color={n <= value ? c.gold : c.border}
-          />
-        </Pressable>
-      ))}
-      {value === 0 ? (
-        <Text style={[styles.ratingLabel, { color: c.muted }]}>Tap to rate</Text>
-      ) : null}
-    </View>
-  );
-}
-
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 function createStyles(c: AppColors) {
   return StyleSheet.create({
+    // ── Deluxe layout ─────────────────────────────────────────────────────
+    headerSave: { paddingHorizontal: 4 },
+    headerSaveText: { color: c.tealDark, fontFamily: fonts.body, fontSize: 17, fontWeight: "900" },
+    heroDeluxe: { alignItems: "center", gap: spacing.sm, marginBottom: spacing.lg, paddingTop: spacing.sm },
+    heroTitleInput: {
+      color: c.ink, fontFamily: fonts.display, fontSize: 24, fontWeight: "900", lineHeight: 29,
+      marginTop: spacing.sm, minWidth: 200, paddingVertical: 0, textAlign: "center",
+    },
+    heroAuthorInput: {
+      color: c.muted, fontFamily: fonts.body, fontSize: 16, fontWeight: "700", minWidth: 160,
+      paddingVertical: 0, textAlign: "center",
+    },
+    fetchPill: {
+      alignItems: "center", backgroundColor: c.teal + "14", borderColor: c.teal + "33", borderRadius: radii.pill,
+      borderWidth: 1, flexDirection: "row", gap: 6, marginTop: spacing.xs, paddingHorizontal: 14, paddingVertical: 8,
+    },
+    fetchPillText: { color: c.tealDark, fontFamily: fonts.body, fontSize: 13, fontWeight: "800" },
+    groupHeader: {
+      color: c.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: "900", letterSpacing: 0.8,
+      marginBottom: spacing.xs, marginTop: spacing.lg, paddingHorizontal: spacing.md, textTransform: "uppercase",
+    },
+    groupHeaderInline: {
+      color: c.muted, flex: 1, fontFamily: fonts.body, fontSize: 12, fontWeight: "900", letterSpacing: 0.8,
+      textTransform: "uppercase",
+    },
+    foldToggle: {
+      alignItems: "center", flexDirection: "row", marginBottom: spacing.xs, marginTop: spacing.lg,
+      paddingHorizontal: spacing.md, paddingVertical: 4,
+    },
+    group: {
+      backgroundColor: c.surface, borderColor: c.border, borderRadius: radii.md, borderWidth: 1, overflow: "hidden",
+    },
+    groupRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm, minHeight: 52, paddingHorizontal: spacing.md },
+    groupBlock: { gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: 12 },
+    groupDivider: { borderTopColor: c.border, borderTopWidth: StyleSheet.hairlineWidth },
+    groupHint: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 12, lineHeight: 17 },
+    rowLabel: { color: c.ink, fontFamily: fonts.body, fontSize: 16, fontWeight: "600" },
+    iconTile: { alignItems: "center", borderRadius: 7, height: 28, justifyContent: "center", width: 28 },
+    blockHead: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
+    chipFlow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+    inlineField: {
+      backgroundColor: c.surfaceAlt, borderColor: c.border, borderRadius: radii.sm, borderWidth: 1, color: c.ink,
+      fontFamily: fonts.body, fontSize: 15, paddingHorizontal: spacing.md, paddingVertical: 10,
+    },
+    coverBadge: {
+      alignItems: "center", backgroundColor: c.tealDark, borderColor: c.bg, borderRadius: 14, borderWidth: 2,
+      bottom: -6, height: 28, justifyContent: "center", position: "absolute", right: -6, width: 28,
+    },
+    coverOverlay: { backgroundColor: "rgba(0,0,0,0.4)", flex: 1, justifyContent: "flex-end", padding: spacing.md },
+    coverSheet: { backgroundColor: c.surface, borderRadius: radii.lg, gap: spacing.sm, marginBottom: spacing.xl, padding: spacing.lg },
+    coverSheetTitle: { color: c.ink, fontFamily: fonts.display, fontSize: 18, fontWeight: "900" },
+    coverActions: { flexDirection: "row", gap: spacing.sm, justifyContent: "flex-end", marginTop: spacing.xs },
+    coverGhost: { justifyContent: "center", paddingHorizontal: spacing.md, paddingVertical: 10 },
+    coverGhostText: { fontFamily: fonts.body, fontSize: 15, fontWeight: "800" },
+    coverPrimary: { backgroundColor: c.teal, borderRadius: radii.pill, paddingHorizontal: spacing.lg, paddingVertical: 10 },
+    coverPrimaryText: { color: "#FFFFFF", fontFamily: fonts.body, fontSize: 15, fontWeight: "900" },
+    rowValue: { color: c.muted, flex: 1, fontFamily: fonts.body, fontSize: 16, fontWeight: "600", textAlign: "right" },
+    rowInput: { color: c.muted, flex: 1, fontFamily: fonts.body, fontSize: 16, fontWeight: "600", paddingVertical: 14, textAlign: "right" },
+    rowInputNarrow: { flex: 0, minWidth: 44 },
+    rowUnit: { color: c.muted, fontFamily: fonts.body, fontSize: 14, fontWeight: "700" },
+    segment: { gap: 6 },
+    segmentItem: {
+      backgroundColor: c.surfaceAlt, borderColor: c.border, borderRadius: radii.pill, borderWidth: 1,
+      paddingHorizontal: 14, paddingVertical: 8,
+    },
+    segmentItemActive: { backgroundColor: c.teal, borderColor: c.teal },
+    segmentText: { color: c.ink, fontFamily: fonts.body, fontSize: 14, fontWeight: "800" },
+    segmentTextActive: { color: "#FFFFFF" },
+    optionList: { backgroundColor: c.surfaceAlt, borderTopColor: c.border, borderTopWidth: StyleSheet.hairlineWidth },
+    optionRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm, minHeight: 44, paddingLeft: 56, paddingRight: spacing.md },
+    optionText: { color: c.ink, flex: 1, fontFamily: fonts.body, fontSize: 15 },
+    notesInput: { color: c.ink, fontFamily: fonts.bodyRegular, fontSize: 15, lineHeight: 21, minHeight: 80, textAlignVertical: "top" },
+    deleteRow: { alignItems: "center", minHeight: 52, justifyContent: "center" },
+    deleteRowText: { color: c.danger, fontFamily: fonts.body, fontSize: 16, fontWeight: "800" },
+
     // Hero
     hero: {
       ...shadows.card,
