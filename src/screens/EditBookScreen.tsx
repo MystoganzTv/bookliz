@@ -318,6 +318,13 @@ export function EditBookScreen() {
       return;
     }
 
+    // Nothing new, but the edition facts are still missing: say that, not
+    // "all fields already filled".
+    if (!filled.length && (isBlank(isbn) || isBlank(pages))) {
+      dialog.alert(t("editBook.fetchNoResult"), t("editBook.fetchNoResultBody"));
+      return;
+    }
+
     dialog.alert(
       filled.length ? t("editBook.fetchUpdated") : t("editBook.fetchAllFilled"),
       filled.length ? `Updated: ${filled.join(", ")}.` : t("editBook.fetchAllFilledBody")

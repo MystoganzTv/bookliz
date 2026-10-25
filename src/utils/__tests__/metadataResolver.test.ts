@@ -72,7 +72,7 @@ beforeEach(() => {
 
 describe("resolveMetadata cache TTL", () => {
   it("caches a complete result (with synopsis) for 7 days", async () => {
-    fetchByKeyword.mockResolvedValue({ books: [gbBook({ description: LONG_SYNOPSIS })], totalItems: 1 });
+    fetchByKeyword.mockResolvedValue({ books: [gbBook({ description: LONG_SYNOPSIS, pageCount: 412 })], totalItems: 1 });
     const before = Date.now();
 
     const result = await resolveMetadata({ isbn: ISBN });
@@ -80,7 +80,7 @@ describe("resolveMetadata cache TTL", () => {
     expect(result?.synopsis).toBe(LONG_SYNOPSIS);
     expect(writeCache).toHaveBeenCalledTimes(1);
     const [key, envelope] = writeCache.mock.calls[0]!;
-    expect(String(key)).toMatch(/^meta3-/); // new prefix: old envelopes are ignored
+    expect(String(key)).toMatch(/^meta4-/); // new prefix: old envelopes are ignored
     expect(envelope.data.title).toBe("Dune");
     expect(envelope.expiresAt).toBeGreaterThanOrEqual(before + 7 * DAY);
     expect(envelope.expiresAt).toBeLessThanOrEqual(Date.now() + 7 * DAY);
@@ -279,5 +279,16 @@ describe("resolveMetadata — Open Library search hit vs work (title/author path
     expect(result?.synopsis).toBe(ENGLISH_SYNOPSIS);
     // The search hit's own cover still outranks the work's (ol-search > ol-work).
     expect(result?.coverImageUri).toContain("1234");
+  });
+});
+
+
+describe("resolveMetadata cache TTL — edition facts", () => {
+  it("caches a result without a page count only briefly, even with a synopsis", async () => {
+    fetchByKeyword.mockResolvedValue({ books: [gbBook({ description: LONG_SYNOPSIS, pageCount: undefined })], totalItems: 1 });
+    const before = Date.now();
+    await resolveMetadata({ isbn: ISBN });
+    const [, envelope] = writeCache.mock.calls[0]!;
+    expect(envelope.expiresAt).toBeLessThan(before + 2 * 60 * 60 * 1000);
   });
 });

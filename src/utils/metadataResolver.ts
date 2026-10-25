@@ -57,8 +57,10 @@ const CACHE_TTL = 7 * 24 * HOURS;
 /** Partial result (no synopsis): 1 hour — long enough to dedupe a burst of
  *  lookups, short enough that a provider hiccup doesn't pin a thin record. */
 const CACHE_TTL_PARTIAL = 1 * HOURS;
-/** Cache-key prefix. Bumped from "meta-" so pre-TTL envelopes are ignored. */
-const CACHE_PREFIX = "meta3";
+/** Cache-key prefix. meta4 (2026-10-25): every meta3 entry written while
+ *  Google Books answered intitle:/inauthor: with 0 lacks ISBN and pages, and
+ *  would have kept "Fill in from the web" empty for up to 7 days. */
+const CACHE_PREFIX = "meta4";
 
 /** Cached value carries its own expiry — TTL is decided per entry at write time. */
 type CachedMetadata = { data: BookMetadata; expiresAt: number };
@@ -333,7 +335,11 @@ export async function resolveMetadata(input: ResolveInput): Promise<BookMetadata
     !transientFailure &&
     (!wantedLang || norm(result.language) === wantedLang);
   if (cacheable) {
-    const ttlMs = (result.synopsis?.trim().length ?? 0) > 0 ? CACHE_TTL : CACHE_TTL_PARTIAL;
+    // Full only with a synopsis AND the edition facts (ISBN, pages): a record
+    // missing them is exactly what a provider outage produces.
+    const complete =
+      (result.synopsis?.trim().length ?? 0) > 0 && Boolean(result.isbn) && (result.pages ?? 0) > 0;
+    const ttlMs = complete ? CACHE_TTL : CACHE_TTL_PARTIAL;
     const envelope: CachedMetadata = { data: result, expiresAt: Date.now() + ttlMs };
     void writeCache(cacheKey, envelope);
   }
