@@ -14,7 +14,6 @@ struct BooklizWatchApp: App {
     WindowGroup {
       RootView()
         .environmentObject(link)
-        .tint(.bookliz)
     }
   }
 }

@@ -5,8 +5,10 @@ struct LibraryView: View {
   @EnvironmentObject private var link: PhoneLink
   @Environment(\.dismiss) private var dismiss
   let state: WatchState
-  /// Shown as the first screen (nothing playing) rather than pushed from now playing.
+  /// Shown as a page (nothing playing, or the page after now playing) rather than pushed.
   let isRoot: Bool
+  /// Called after a book is sent to the phone — the root uses it to flip back to now playing.
+  var onOpened: (() -> Void)? = nil
 
   var body: some View {
     Group {
@@ -27,7 +29,7 @@ struct LibraryView: View {
         List(state.library) { item in
           Button {
             link.send("open", ["bookId": item.bookId])
-            if !isRoot { dismiss() }
+            if isRoot { onOpened?() } else { dismiss() }
           } label: {
             HStack(spacing: 8) {
               cover(item.coverUrl)

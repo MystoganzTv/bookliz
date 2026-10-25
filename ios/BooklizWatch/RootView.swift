@@ -2,14 +2,24 @@ import SwiftUI
 
 struct RootView: View {
   @EnvironmentObject private var link: PhoneLink
+  @State private var page = 0
 
   var body: some View {
     NavigationStack {
       // Two pages, turned with the Digital Crown: listening, then reading.
-      TabView {
+      // Pages, turned with the Digital Crown: now playing, the audiobooks, reading.
+      TabView(selection: $page) {
         audioPage
+          .tag(0)
+        if let state = link.state, state.now != nil {
+          // Picking a book here starts it on the phone; come back up to see it play.
+          LibraryView(state: state, isRoot: true, onOpened: { withAnimation { page = 0 } })
+            .containerBackground(Color.bookliz.opacity(0.35).gradient, for: .tabView)
+            .tag(1)
+        }
         ReadingView(reading: link.state?.reading)
           .containerBackground(Color.bookliz.gradient, for: .tabView)
+          .tag(2)
       }
       .tabViewStyle(.verticalPage)
     }
