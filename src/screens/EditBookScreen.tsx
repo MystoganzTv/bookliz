@@ -893,7 +893,7 @@ function createStyles(c: AppColors) {
     fetchPillText: { color: c.tealDark, fontFamily: fonts.body, fontSize: 13, fontWeight: "800" },
     groupHeader: {
       color: c.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: "900", letterSpacing: 0.8,
-      marginBottom: spacing.xs, marginTop: spacing.lg, paddingHorizontal: spacing.md, textTransform: "uppercase",
+      marginBottom: spacing.xs, marginTop: spacing.lg, textTransform: "uppercase",
     },
     groupHeaderInline: {
       color: c.muted, flex: 1, fontFamily: fonts.body, fontSize: 12, fontWeight: "900", letterSpacing: 0.8,
@@ -901,13 +901,16 @@ function createStyles(c: AppColors) {
     },
     foldToggle: {
       alignItems: "center", flexDirection: "row", marginBottom: spacing.xs, marginTop: spacing.lg,
-      paddingHorizontal: spacing.md, paddingVertical: 4,
+      paddingVertical: 4,
     },
     group: {
-      backgroundColor: c.surface, borderColor: c.border, borderRadius: radii.md, borderWidth: 1, overflow: "hidden",
+      overflow: "hidden",
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderColor: c.border,
     },
-    groupRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm, minHeight: 52, paddingHorizontal: spacing.md },
-    groupBlock: { gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: 12 },
+    groupRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm, minHeight: 52 },
+    groupBlock: { gap: spacing.sm, paddingVertical: 12 },
     groupDivider: { borderTopColor: c.border, borderTopWidth: StyleSheet.hairlineWidth },
     groupHint: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 12, lineHeight: 17 },
     rowLabel: { color: c.ink, fontFamily: fonts.body, fontSize: 16, fontWeight: "600" },
@@ -915,8 +918,13 @@ function createStyles(c: AppColors) {
     blockHead: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
     chipFlow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
     inlineField: {
-      backgroundColor: c.surfaceAlt, borderColor: c.border, borderRadius: radii.sm, borderWidth: 1, color: c.ink,
-      fontFamily: fonts.body, fontSize: 15, paddingHorizontal: spacing.md, paddingVertical: 10,
+      backgroundColor: c.surfaceAlt,
+      borderRadius: radii.sm,
+      color: c.ink,
+      fontFamily: fonts.body,
+      fontSize: 15,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 10,
     },
     coverBadge: {
       alignItems: "center", backgroundColor: c.tealDark, borderColor: c.bg, borderRadius: 14, borderWidth: 2,
@@ -984,13 +992,9 @@ function createStyles(c: AppColors) {
 
     // Field card
     fieldCard: {
-      ...shadows.card,
-      backgroundColor: c.surface,
-      borderColor: c.border,
-      borderRadius: radii.sm,
-      borderWidth: 1,
-      marginBottom: spacing.sm,
-      padding: spacing.md,
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     fieldCardHeader: {
       alignItems: "center",

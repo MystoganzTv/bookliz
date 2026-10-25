@@ -1,9 +1,7 @@
 /**
- * Grouped settings list — the iOS "inset grouped" pattern (the one BookPlayer
- * and the system Settings app use).
- *
- * A group is a short header, a rounded block of one-line rows, and an optional
- * footer. The explanation of a setting lives in the footer, not in a paragraph
+ * Grouped settings list — open sections, not boxes: a short header, one-line
+ * rows between hairlines, aligned with the screen's own gutter, and an
+ * optional footer. The explanation of a setting lives in the footer, not in a paragraph
  * on every row: the row says WHAT it is and its current value, the footer says
  * WHY you would change it. Rows that lead somewhere show their value and a
  * chevron; rows that are a yes/no carry a Switch.
@@ -180,19 +178,18 @@ function createStyles(c: AppColors) {
       fontSize: 13,
       fontWeight: "700",
       marginBottom: 7,
-      paddingHorizontal: spacing.md,
+      paddingHorizontal: 0,
     },
     block: {
-      backgroundColor: c.surface,
-      borderColor: c.border,
-      borderRadius: radii.md,
-      borderWidth: StyleSheet.hairlineWidth,
       overflow: "hidden",
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderColor: c.border,
     },
     separator: {
       backgroundColor: c.border,
       height: StyleSheet.hairlineWidth,
-      marginLeft: spacing.md,
+      marginLeft: 0,
     },
     footer: {
       color: c.muted,
@@ -200,22 +197,22 @@ function createStyles(c: AppColors) {
       fontSize: 12.5,
       lineHeight: 18,
       marginTop: 7,
-      paddingHorizontal: spacing.md,
+      paddingHorizontal: 0,
     },
     footerWrap: {
       marginTop: 7,
-      paddingHorizontal: spacing.md,
+      paddingHorizontal: 0,
     },
     row: {
       alignItems: "center",
       flexDirection: "row",
       gap: spacing.sm,
       minHeight: 50,
-      paddingHorizontal: spacing.md,
+      paddingHorizontal: 0,
       paddingVertical: 11,
     },
     rowPressed: {
-      backgroundColor: c.surfaceAlt,
+      opacity: 0.55,
     },
     rowCopy: {
       flex: 1,

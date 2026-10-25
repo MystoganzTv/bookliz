@@ -77,8 +77,8 @@ export const ATMOSPHERES: Record<ThemedEditionId, Atmosphere> = {
   },
   workers: {
     motifs: ["hammer", "wrench", "cog", "factory", "account-hard-hat", "tools", "hammer-wrench"],
-    light: { bg: "#F6F4F1", surface: "#FDFCFA", surfaceAlt: "#ECE8E2", border: "#DDD7CE", ink: "#1D2226", muted: "#62686C", navBg: "#FDFCFA", navText: "#1D2226", teal: "#BF322E", tealDark: "#A32824", coral: "#2C6987", gold: "#E3A92F", navy: "#1F2328", wash: "#F0D3CB" },
-    dark:  { bg: "#131619", surface: "#1C2024", surfaceAlt: "#262B30", border: "#31373D", ink: "#F1EEEA", muted: "#ABAFB2", navBg: "#0F1214", navText: "#F1EEEA", teal: "#D2423C", tealDark: "#C43D37", coral: "#4D9CC2", gold: "#F2BB45", navy: "#343A42", wash: "#4A1F1D" },
+    light: { bg: "#F4F5F7", surface: "#FCFCFD", surfaceAlt: "#E8EBEF", border: "#D7DCE2", ink: "#1A2230", muted: "#5B6370", navBg: "#FCFCFD", navText: "#1A2230", teal: "#2D5F8F", tealDark: "#244E77", coral: "#B5650A", gold: "#E9A920", navy: "#1B2A3D", wash: "#DCE5EF" },
+    dark:  { bg: "#11161D", surface: "#1A212B", surfaceAlt: "#242D39", border: "#2F3946", ink: "#EEF1F5", muted: "#A6AEB9", navBg: "#0E1218", navText: "#EEF1F5", teal: "#3D74AA", tealDark: "#3A6FA3", coral: "#F0A030", gold: "#F5C04A", navy: "#2A3D57", wash: "#1E3550" },
   },
   halloween: {
     motifs: ["skull", "ghost", "pumpkin", "bat", "spider", "spider-web", "coffin", "candle"],

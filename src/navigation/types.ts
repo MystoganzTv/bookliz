@@ -77,9 +77,8 @@ export type RootStackParamList = {
   /** Your year in reading (Pro). */
   YearInReview: undefined;
   /** Settings › Accent colour (Pro). */
-  AccentPicker: undefined;
   /** Settings › App icon (Pro). */
-  AppIconPicker: undefined;
+  Themes: undefined;
   /** Bookliz Pro. `feature` highlights the row that brought the reader here. */
   Paywall: { feature?: ProFeature } | undefined;
   /** In-app legal documents. */

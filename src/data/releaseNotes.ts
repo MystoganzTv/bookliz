@@ -28,7 +28,7 @@ export const RELEASE_NOTES: ReleaseEntry[] = [
           "Listen on Apple Watch without your iPhone: send an audiobook to the watch and go (Pro)",
           "Audiobooks in iCloud: save your audio files and download them on your other devices (Pro)",
           "Your year in reading: hours, streaks, best books, authors and genres (Pro)",
-          "Accent colours and alternative app icons (Pro)",
+          "Accent colors and alternative app icons (Pro)",
         ],
       },
     ],

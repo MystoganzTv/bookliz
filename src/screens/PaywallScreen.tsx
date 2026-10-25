@@ -21,8 +21,7 @@ const FEATURE_ICONS: Record<ProFeature, keyof typeof Ionicons.glyphMap> = {
   watchStandalone: "watch-outline",
   cloudAudio: "cloud-upload-outline",
   yearInReview: "sparkles-outline",
-  accentThemes: "color-palette-outline",
-  appIcons: "apps-outline",
+  appIcons: "color-palette-outline",
   readerFonts: "text-outline",
 };
 

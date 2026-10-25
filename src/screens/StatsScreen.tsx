@@ -480,14 +480,11 @@ function createStyles(c: AppColors) {
   return StyleSheet.create({
     yearReviewCard: {
       alignItems: "center",
-      backgroundColor: c.surface,
-      borderColor: c.border,
-      borderRadius: radii.lg,
-      borderWidth: 1,
       flexDirection: "row",
       gap: spacing.md,
-      marginBottom: spacing.md,
-      padding: spacing.md,
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     yearReviewTitle: { color: c.ink, fontFamily: fonts.body, fontSize: 16, fontWeight: "900" },
     yearReviewSub: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 13, marginTop: 2 },
@@ -598,13 +595,9 @@ function createStyles(c: AppColors) {
     heroStatVal: { color: "#FFFFFF", fontFamily: fonts.display, fontSize: 18, fontWeight: "900" },
     heroStatLbl: { color: "rgba(255,255,255,0.58)", fontFamily: fonts.body, fontSize: 10, fontWeight: "800", marginTop: 2 },
     chartCard: {
-      ...shadows.card,
-      backgroundColor: c.surface,
-      borderColor: c.border,
-      borderRadius: radii.lg,
-      borderWidth: 1,
-      marginBottom: spacing.md,
-      padding: spacing.md
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     chartHeader: {
       alignItems: "center",
@@ -657,12 +650,10 @@ function createStyles(c: AppColors) {
     },
     insightTile: {
       backgroundColor: c.surfaceAlt,
-      borderColor: c.border,
       borderRadius: radii.md,
-      borderWidth: 1,
       flex: 1,
       minWidth: "30%",
-      padding: spacing.sm + 2
+      padding: spacing.sm + 2,
     },
     insightIconWrap: {
       alignItems: "center",
@@ -688,12 +679,10 @@ function createStyles(c: AppColors) {
     },
     collectorTile: {
       backgroundColor: c.surfaceAlt,
-      borderColor: c.border,
       borderRadius: radii.md,
-      borderWidth: 1,
       flex: 1,
       minWidth: "47%",
-      padding: spacing.sm + 2
+      padding: spacing.sm + 2,
     },
     collectorValue: {
       fontFamily: fonts.display,
@@ -716,13 +705,10 @@ function createStyles(c: AppColors) {
       marginTop: 4
     },
     yearCard: {
-      ...shadows.card,
       backgroundColor: c.surfaceAlt,
-      borderColor: c.border,
       borderRadius: radii.lg,
-      borderWidth: 1,
       marginBottom: spacing.md,
-      padding: spacing.lg
+      padding: spacing.lg,
     },
     yearTop: {
       alignItems: "center",
@@ -787,13 +773,10 @@ function createStyles(c: AppColors) {
     },
     emptyState: {
       alignItems: "center",
-      backgroundColor: c.surface,
-      borderColor: c.border,
-      borderRadius: radii.lg,
-      borderWidth: 1,
       gap: spacing.sm,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: 54
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     emptyIconWrap: {
       alignItems: "center",

@@ -39,7 +39,7 @@ import {
 } from "../utils/notificationService";
 
 export function SettingsScreen() {
-  const { colors: c, preference: themePreference, accent } = useTheme();
+  const { colors: c, preference: themePreference, editionPreference } = useTheme();
   const { locale, t } = useI18n();
   const {
     resetApp,
@@ -236,14 +236,9 @@ export function SettingsScreen() {
           onPress={() => navigation.navigate("SettingsChoice", { setting: "language" })}
         />
         <SettingsRow
-          title={t("appearancePro.accentTitle")}
-          value={pro.isPro ? t(`appearancePro.accents.${accent}`) : t("pro.requiresPro")}
-          onPress={() => navigation.navigate("AccentPicker")}
-        />
-        <SettingsRow
           title={t("appearancePro.iconTitle")}
-          value={pro.isPro ? undefined : t("pro.requiresPro")}
-          onPress={() => navigation.navigate("AppIconPicker")}
+          value={pro.isPro ? t(`appearancePro.editions.${editionPreference}`) : t("pro.requiresPro")}
+          onPress={() => navigation.navigate("Themes")}
         />
         <SettingsToggleRow
           title={t("settings.openingSound")}

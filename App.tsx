@@ -21,6 +21,7 @@ import { DialogProvider } from "./src/components/DialogProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import { ProProvider } from "./src/pro/ProContext";
+import { ThemeIconSync } from "./src/pro/ThemeIconSync";
 import { LinkedAccountProBridge } from "./src/pro/LinkedAccountProBridge";
 
 function Root() {
@@ -59,6 +60,7 @@ export default function App() {
             <DialogProvider>
               <BooklizProvider>
                 <LinkedAccountProBridge />
+                <ThemeIconSync />
                 <ReadingTimerProvider>
                   <AudiobookPlayerProvider>
                     <EbookProvider>

@@ -10,13 +10,14 @@ import React, {
 } from "react";
 import { AppState, Appearance, useColorScheme } from "react-native";
 import { AppColors, darkColors, lightColors } from "./theme";
-import { ACCENTS, AccentId, isAccentId } from "./accents";
 import { Atmosphere, atmosphereFor, paintAtmosphere } from "./atmospheres";
 import { usePro } from "../pro/ProContext";
 import { EditionId, EditionPreference, Hemisphere, isEditionPreference, isHemisphere, resolveEdition } from "../pro/editions";
+import { ClassicIconId, isClassicIconId } from "../pro/appIcons";
 
 const STORAGE_KEY = "@bookliz/theme";
-const ACCENT_KEY = "@bookliz/accent";
+const ICON_FOLLOWS_KEY = "@bookliz/icon-follows-theme";
+const CLASSIC_ICON_KEY = "@bookliz/classic-icon";
 const EDITION_KEY = "@bookliz/edition";
 const HEMISPHERE_KEY = "@bookliz/hemisphere";
 
@@ -40,9 +41,15 @@ type ThemeContextValue = {
   setPreference: (preference: ThemePreference) => void;
   /** Flips between explicit light and dark (leaves "system"). */
   toggleTheme:   () => void;
-  /** Chosen accent (Pro). Painted only while Pro is active; kept if it lapses. */
-  accent:        AccentId;
-  setAccent:     (accent: AccentId) => void;
+  /**
+   * A theme is a package: picking one also sets the matching home-screen icon
+   * (ThemeIconSync does it) unless the reader turns this off.
+   */
+  iconFollowsTheme: boolean;
+  setIconFollowsTheme: (follows: boolean) => void;
+  /** Classic has six icon colourways; this is the one that goes with it. */
+  classicIcon: ClassicIconId;
+  setClassicIcon: (icon: ClassicIconId) => void;
   /**
    * The edition in force (Pro + chosen or automatic). It repaints `colors`
    * through `paintAtmosphere`; `atmosphere` carries what isn't a colour token
@@ -63,8 +70,10 @@ const ThemeContext = createContext<ThemeContextValue>({
   preference:    "system",
   setPreference: () => {},
   toggleTheme:   () => {},
-  accent:        "teal",
-  setAccent:     () => {},
+  iconFollowsTheme: true,
+  setIconFollowsTheme: () => {},
+  classicIcon: "default",
+  setClassicIcon: () => {},
   edition: "classic",
   atmosphere: null,
   editionPreference: "classic",
@@ -75,7 +84,8 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export function ThemeProvider({ children }: PropsWithChildren) {
   const [preference, setPreferenceState] = useState<ThemePreference>("system");
-  const [accent, setAccentState] = useState<AccentId>("teal");
+  const [iconFollowsTheme, setIconFollowsState] = useState(true);
+  const [classicIcon, setClassicIconState] = useState<ClassicIconId>("default");
   const [editionPreference, setEditionState] = useState<EditionPreference>("classic");
   const [hemisphere, setHemisphereState] = useState<Hemisphere>("north");
   const [calendarDate, setCalendarDate] = useState(() => new Date());
@@ -88,8 +98,11 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
       if (isThemePreference(saved)) setPreferenceState(saved);
     }).catch(() => {});
-    AsyncStorage.getItem(ACCENT_KEY).then((saved) => {
-      if (isAccentId(saved)) setAccentState(saved);
+    AsyncStorage.getItem(ICON_FOLLOWS_KEY).then((saved) => {
+      if (saved === "false") setIconFollowsState(false);
+    }).catch(() => {});
+    AsyncStorage.getItem(CLASSIC_ICON_KEY).then((saved) => {
+      if (isClassicIconId(saved)) setClassicIconState(saved);
     }).catch(() => {});
     AsyncStorage.getItem(EDITION_KEY).then((saved) => {
       if (isEditionPreference(saved)) setEditionState(saved);
@@ -130,9 +143,14 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     AsyncStorage.setItem(STORAGE_KEY, next).catch(() => {});
   }, []);
 
-  const setAccent = useCallback((next: AccentId) => {
-    setAccentState(next);
-    AsyncStorage.setItem(ACCENT_KEY, next).catch(() => {});
+  const setIconFollowsTheme = useCallback((next: boolean) => {
+    setIconFollowsState(next);
+    AsyncStorage.setItem(ICON_FOLLOWS_KEY, String(next)).catch(() => {});
+  }, []);
+
+  const setClassicIcon = useCallback((next: ClassicIconId) => {
+    setClassicIconState(next);
+    AsyncStorage.setItem(CLASSIC_ICON_KEY, next).catch(() => {});
   }, []);
 
   const setEditionPreference = useCallback((next: EditionPreference) => {
@@ -154,15 +172,12 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   const value = useMemo<ThemeContextValue>(() => {
     const isDark = mode === "dark";
     const edition = resolveEdition(editionPreference, isPro, calendarDate, hemisphere);
-    // The atmosphere paints first (bg, surfaces, text tints, its own accent);
-    // an accent the reader picked on purpose (anything but the stock teal)
-    // still wins over the atmosphere's accent.
-    const base = paintAtmosphere(isDark ? darkColors : lightColors, edition, isDark);
-    const painted = isPro && accent !== "teal" ? ACCENTS[accent] : null;
-    const colors = painted ? { ...base, teal: painted.main, tealDark: painted.dark } : base;
-    return { mode, isDark, colors, preference, setPreference, toggleTheme, accent, setAccent,
+    const colors = paintAtmosphere(isDark ? darkColors : lightColors, edition, isDark);
+    return { mode, isDark, colors, preference, setPreference, toggleTheme,
+      iconFollowsTheme, setIconFollowsTheme, classicIcon, setClassicIcon,
       edition, atmosphere: atmosphereFor(edition), editionPreference, setEditionPreference, hemisphere, setHemisphere };
-  }, [accent, isPro, mode, preference, setAccent, setPreference, toggleTheme, editionPreference, calendarDate, setEditionPreference, hemisphere, setHemisphere]);
+  }, [isPro, mode, preference, setPreference, toggleTheme, iconFollowsTheme, setIconFollowsTheme, classicIcon, setClassicIcon,
+    editionPreference, calendarDate, setEditionPreference, hemisphere, setHemisphere]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

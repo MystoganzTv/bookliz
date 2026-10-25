@@ -42,9 +42,9 @@ const CACHE_KEY = "@bookliz/pro-entitlements";
 /** Development-only switch (Settings > Debug) to try Pro without buying. */
 export const DEBUG_PRO_KEY = "@bookliz/pro-debug";
 
-export type ProFeature = "watchStandalone" | "cloudAudio" | "appIcons" | "accentThemes" | "yearInReview" | "readerFonts";
+export type ProFeature = "watchStandalone" | "cloudAudio" | "appIcons" | "yearInReview" | "readerFonts";
 
-export const PRO_FEATURES: ProFeature[] = ["watchStandalone", "cloudAudio", "yearInReview", "readerFonts", "accentThemes", "appIcons"];
+export const PRO_FEATURES: ProFeature[] = ["watchStandalone", "cloudAudio", "yearInReview", "readerFonts", "appIcons"];
 
 type ProContextValue = {
   isPro: boolean;

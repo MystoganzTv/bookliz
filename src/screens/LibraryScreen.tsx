@@ -931,14 +931,12 @@ function createStyles(c: AppColors, isDark: boolean) {
     },
     folderCard: {
       backgroundColor: c.surface,
-      borderColor: c.border,
       borderRadius: radii.md,
-      borderWidth: 1,
       justifyContent: "space-between",
       minHeight: 78,
       paddingHorizontal: 12,
       paddingVertical: 10,
-      width: 116
+      width: 116,
     },
     folderCardEmoji: {
       fontSize: 20
@@ -1365,15 +1363,12 @@ function createStyles(c: AppColors, isDark: boolean) {
     },
     emptyState: {
       alignItems: "center",
-      backgroundColor: c.surfaceAlt,
-      borderColor: c.border,
-      borderRadius: radii.lg,
       borderStyle: "dashed",
-      borderWidth: 1,
       gap: spacing.xs,
       marginTop: spacing.sm,
-      paddingHorizontal: spacing.md,
-      paddingVertical: 52
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     emptyTitle: {
       color: c.ink,

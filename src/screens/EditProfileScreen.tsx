@@ -279,18 +279,15 @@ function createStyles(c: AppColors) {
       marginBottom: 6
     },
     input: {
-      ...shadows.card,
       backgroundColor: c.surface,
-      borderColor: c.border,
       borderRadius: radii.md,
-      borderWidth: 1,
       color: c.ink,
       fontFamily: fonts.body,
       fontSize: 15,
       fontWeight: "700",
       minHeight: 50,
       paddingHorizontal: spacing.md,
-      paddingVertical: 13
+      paddingVertical: 13,
     },
     textArea: {
       minHeight: 90,

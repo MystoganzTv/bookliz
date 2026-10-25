@@ -935,13 +935,16 @@ function createStyles(c: AppColors, isDark: boolean) {
 
     // Shared card
     card: {
-      ...shadows.card, backgroundColor: c.surface, borderColor: c.border,
-      borderRadius: radii.sm, borderWidth: 1, marginHorizontal: spacing.md, padding: spacing.md,
+      marginHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     // The same box for use inside a sectionBlock, which already has the side margin.
     panel: {
-      ...shadows.card, backgroundColor: c.surface, borderColor: c.border,
-      borderRadius: radii.sm, borderWidth: 1, padding: spacing.md,
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     eyebrow: {
       color: c.muted, fontFamily: fonts.body, fontSize: 11, fontWeight: "900",
@@ -957,9 +960,12 @@ function createStyles(c: AppColors, isDark: boolean) {
 
     // Stats
     statsStrip: {
-      ...shadows.card, alignItems: "center", backgroundColor: c.surface, borderColor: c.border,
-      borderRadius: radii.sm, borderWidth: 1, flexDirection: "row",
-      marginHorizontal: spacing.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm,
+      alignItems: "center",
+      flexDirection: "row",
+      marginHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     statItem: { alignItems: "center", flex: 1, gap: 2 },
     statVal: { fontFamily: fonts.display, fontSize: 20, fontWeight: "900" },
@@ -1028,13 +1034,10 @@ function createStyles(c: AppColors, isDark: boolean) {
     mutedSm: { color: c.muted, fontFamily: fonts.body, fontSize: 11, fontWeight: "700" },
     notesText: { color: c.ink, fontFamily: fonts.bodyRegular, fontSize: 14, lineHeight: 22 },
     quoteCard: {
-      ...shadows.card,
       backgroundColor: c.surface,
-      borderColor: c.gold + "44",
       borderLeftColor: c.gold,
       borderLeftWidth: 3,
       borderRadius: radii.sm,
-      borderWidth: 1,
       flexDirection: "row",
       gap: spacing.sm,
       padding: spacing.md,
@@ -1044,15 +1047,12 @@ function createStyles(c: AppColors, isDark: boolean) {
 
     // D — Author card
     authorCard: {
-      ...shadows.card,
       alignItems: "center",
-      backgroundColor: c.surface,
-      borderColor: c.border,
-      borderRadius: radii.sm,
-      borderWidth: 1,
       flexDirection: "row",
       gap: spacing.md,
-      padding: spacing.md,
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     authorAvatar: {
       alignItems: "center",

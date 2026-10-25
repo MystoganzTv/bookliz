@@ -327,13 +327,9 @@ function createStyles(c: AppColors) {
     marginTop: 2
   },
   overallCard: {
-    ...shadows.card,
-    backgroundColor: c.surface,
-    borderColor: c.border,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    marginBottom: spacing.lg,
-    padding: spacing.md
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: c.border,
   },
   overallRow: {
     alignItems: "flex-end",
@@ -432,12 +428,10 @@ function createStyles(c: AppColors) {
   // ── Unlocked card ──────────────────────────────────────────────────────
   unlockedCard: {
     backgroundColor: c.surface,
-    borderColor: c.border,
     borderLeftWidth: 4,
     borderRadius: radii.md,
-    borderWidth: 1,
     marginBottom: spacing.sm,
-    padding: spacing.md
+    padding: spacing.md,
   },
   unlockedTop: {
     flexDirection: "row",
@@ -527,11 +521,10 @@ function createStyles(c: AppColors) {
   },
   // ── Locked rows ────────────────────────────────────────────────────────
   lockedList: {
-    backgroundColor: c.surface,
+    overflow: "hidden",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: c.border,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    overflow: "hidden"
   },
   lockedRow: {
     backgroundColor: c.surface,

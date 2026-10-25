@@ -1,4 +1,3 @@
-import { ACCENT_IDS, ACCENTS, isAccentId } from "../accents";
 import { withAlpha } from "../theme";
 
 describe("withAlpha", () => {
@@ -12,14 +11,3 @@ describe("withAlpha", () => {
   });
 });
 
-describe("accents", () => {
-  it("teal is the default and every accent has both shades", () => {
-    expect(ACCENTS.teal.main).toBe("#14B8A6");
-    for (const id of ACCENT_IDS) {
-      expect(ACCENTS[id].main).toMatch(/^#[0-9A-F]{6}$/);
-      expect(ACCENTS[id].dark).toMatch(/^#[0-9A-F]{6}$/);
-    }
-    expect(isAccentId("violet")).toBe(true);
-    expect(isAccentId("pink")).toBe(false);
-  });
-});

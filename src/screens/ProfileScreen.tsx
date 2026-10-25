@@ -656,13 +656,9 @@ function createStyles(c: AppColors) {
       fontWeight: "800"
     },
     identityCard: {
-      ...shadows.card,
-      backgroundColor: c.surface,
-      borderColor: c.border,
-      borderRadius: radii.lg,
-      borderWidth: 1,
-      marginBottom: spacing.md,
-      padding: spacing.md
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     identityHeader: {
       alignItems: "center",
@@ -698,12 +694,9 @@ function createStyles(c: AppColors) {
       marginTop: 6
     },
     goalCard: {
-      backgroundColor: c.surface,
-      borderColor: c.border,
-      borderRadius: radii.lg,
-      borderWidth: 1,
-      marginBottom: spacing.md,
-      padding: spacing.md
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     goalRow: {
       alignItems: "center",
@@ -756,12 +749,10 @@ function createStyles(c: AppColors) {
     },
     futureLevelCard: {
       backgroundColor: c.surfaceAlt,
-      borderColor: c.border,
       borderRadius: radii.md,
-      borderWidth: 1,
       minHeight: 108,
       padding: spacing.md,
-      width: 160
+      width: 160,
     },
     futureLevelBooks: {
       color: c.tealDark,
@@ -786,17 +777,12 @@ function createStyles(c: AppColors) {
       marginTop: 6
     },
     statsNavCard: {
-      ...shadows.card,
       alignItems: "center",
-      backgroundColor: c.surface,
-      borderColor: c.border,
-      borderRadius: radii.sm,
-      borderWidth: 1,
       flexDirection: "row",
       gap: spacing.sm,
-      marginBottom: spacing.sm,
-      paddingHorizontal: spacing.md,
-      paddingVertical: 14,
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     statsNavLabel: {
       color: c.ink,
@@ -805,13 +791,9 @@ function createStyles(c: AppColors) {
       fontWeight: "900",
     },
     achievementsCard: {
-      ...shadows.card,
-      backgroundColor: c.surface,
-      borderColor: c.border,
-      borderRadius: radii.lg,
-      borderWidth: 1,
-      marginBottom: spacing.md,
-      padding: spacing.md
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     achievementsCardTop: {
       alignItems: "center",

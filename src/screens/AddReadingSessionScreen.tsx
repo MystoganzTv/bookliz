@@ -670,16 +670,12 @@ function createStyles(c: AppColors, isDark: boolean) {
       marginBottom: spacing.md
     },
     bookCard: {
-      ...shadows.card,
       alignItems: "center",
-      backgroundColor: c.surface,
-      borderColor: c.border,
-      borderRadius: radii.lg,
-      borderWidth: 1,
       flexDirection: "row",
       gap: spacing.md,
-      marginBottom: spacing.md,
-      padding: spacing.md
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     bookInfo: {
       flex: 1
@@ -733,12 +729,9 @@ function createStyles(c: AppColors, isDark: boolean) {
       fontWeight: "900"
     },
     card: {
-      backgroundColor: c.surface,
-      borderColor: c.border,
-      borderRadius: radii.lg,
-      borderWidth: 1,
-      marginBottom: spacing.md,
-      padding: spacing.md
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     cardTitle: {
       color: c.ink,
@@ -747,15 +740,10 @@ function createStyles(c: AppColors, isDark: boolean) {
       fontWeight: "900"
     },
     mainCard: {
-      ...shadows.card,
       alignItems: "center",
-      backgroundColor: c.surface,
-      borderColor: c.border,
-      borderRadius: radii.lg,
-      borderWidth: 1,
-      marginBottom: spacing.md,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.lg
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.border,
     },
     sectionLabel: {
       color: c.muted,
@@ -892,16 +880,14 @@ function createStyles(c: AppColors, isDark: boolean) {
     },
     input: {
       backgroundColor: c.surfaceAlt,
-      borderColor: c.border,
       borderRadius: radii.md,
-      borderWidth: 1,
       color: c.ink,
       fontFamily: fonts.body,
       fontSize: 16,
       fontWeight: "800",
       marginTop: spacing.sm,
       paddingHorizontal: spacing.md,
-      paddingVertical: 12
+      paddingVertical: 12,
     },
     inlineRow: {
       alignItems: "center",

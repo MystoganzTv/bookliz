@@ -250,14 +250,12 @@ function createStyles(c: AppColors) {
   },
   input: {
     backgroundColor: c.surface,
-    borderColor: c.border,
     borderRadius: radii.md,
-    borderWidth: 1,
     color: c.ink,
     fontFamily: fonts.body,
     fontSize: 15,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    paddingVertical: spacing.sm,
   },
   inputMultiline: {
     height: 160,
