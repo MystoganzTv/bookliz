@@ -1,0 +1,101 @@
+{
+  "identifier" : "6C0B7A52-2C41-4C7B-9E0E-4C1F1C7B0A01",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "59.99",
+      "familyShareable" : false,
+      "internalID" : "6C0B7A52-2C41-4C7B-9E0E-4C1F1C7B0A02",
+      "localizations" : [
+        {
+          "description" : "Every Bookliz Pro feature, forever.",
+          "displayName" : "Bookliz Pro Lifetime",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Todo Bookliz Pro, para siempre.",
+          "displayName" : "Bookliz Pro de por vida",
+          "locale" : "es_ES"
+        }
+      ],
+      "productID" : "com.mystodev.booklio.pro.lifetime",
+      "referenceName" : "Bookliz Pro Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "6C0B7A52-2C41-4C7B-9E0E-4C1F1C7B0A10",
+      "localizations" : [
+
+      ],
+      "name" : "Bookliz Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "29.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6C0B7A52-2C41-4C7B-9E0E-4C1F1C7B0A11",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Every Bookliz Pro feature, billed yearly.",
+              "displayName" : "Bookliz Pro Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.mystodev.booklio.pro.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Bookliz Pro Yearly",
+          "subscriptionGroupID" : "6C0B7A52-2C41-4C7B-9E0E-4C1F1C7B0A10",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "3.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6C0B7A52-2C41-4C7B-9E0E-4C1F1C7B0A12",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Every Bookliz Pro feature, billed monthly.",
+              "displayName" : "Bookliz Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.mystodev.booklio.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Bookliz Pro Monthly",
+          "subscriptionGroupID" : "6C0B7A52-2C41-4C7B-9E0E-4C1F1C7B0A10",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

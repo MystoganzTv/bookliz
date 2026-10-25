@@ -17,6 +17,7 @@ import { LocalizationProvider } from "./src/i18n/LocalizationContext";
 import { DialogProvider } from "./src/components/DialogProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
+import { ProProvider } from "./src/pro/ProContext";
 
 function Root() {
   const { isDark } = useTheme();
@@ -45,6 +46,7 @@ export default function App() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <LocalizationProvider>
+          <ProProvider>
           <ThemeProvider>
             <DialogProvider>
               <BooklizProvider>
@@ -56,6 +58,7 @@ export default function App() {
               </BooklizProvider>
             </DialogProvider>
           </ThemeProvider>
+          </ProProvider>
         </LocalizationProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

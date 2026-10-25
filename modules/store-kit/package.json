@@ -1,0 +1,7 @@
+{
+  "name": "store-kit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bookliz Pro purchases on StoreKit 2: products, purchase, restore, current entitlements and live updates.",
+  "main": "index.ts"
+}

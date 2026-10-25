@@ -27,6 +27,7 @@ import { findContradictedLanguages } from "../data/languageRepair";
 import { SHORTCUT_LINKS } from "../shortcuts/shortcutLinks";
 import { buildDebugInfo, SUPPORT_EMAIL } from "../support/debugInfo";
 import { useI18n } from "../i18n/LocalizationContext";
+import { usePro } from "../pro/ProContext";
 import { RootStackParamList } from "../navigation/types";
 import { useTheme } from "../theme/ThemeContext";
 import { AppColors, fonts, radii, spacing } from "../theme/theme";
@@ -56,6 +57,7 @@ export function SettingsScreen() {
   const dialog = useDialog();
   const audioPlayer = useAudiobookPlayer();
   const playerPrefs = usePlayerPrefs();
+  const pro = usePro();
   const styles = useMemo(() => createStyles(c), [c]);
 
   const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>({ enabled: false, hour: 20, minute: 0 });
@@ -203,6 +205,17 @@ export function SettingsScreen() {
           </Pressable>
         ) : null}
       </View>
+
+      {/* ── Bookliz Pro ───────────────────────────────────────────────────── */}
+      <SettingsGroup footer={pro.isPro ? undefined : t("pro.settingsFooter")}>
+        <SettingsRow
+          title={t("pro.settingsRow")}
+          value={pro.isPro ? t("pro.settingsActive") : undefined}
+          accessory={pro.isPro ? undefined : <Ionicons name="sparkles" size={18} color={c.gold} />}
+          chevron
+          onPress={() => navigation.navigate("Paywall")}
+        />
+      </SettingsGroup>
 
       {/* ── Appearance ───────────────────────────────────────────────────── */}
       <SettingsGroup header={t("settings.appearanceTitle")}>
@@ -390,6 +403,12 @@ export function SettingsScreen() {
       </SettingsGroup>
 
       {/* ── Legal ────────────────────────────────────────────────────────── */}
+      {__DEV__ ? (
+        <SettingsGroup header="Developer" footer="Development builds only: unlocks every Pro feature without buying, to test them.">
+          <SettingsToggleRow title="Pretend Pro is active" value={pro.debugPro} onValueChange={pro.setDebugPro} />
+        </SettingsGroup>
+      ) : null}
+
       <SettingsGroup header={t("settings.legalTitle")}>
         <SettingsRow title={t("legal.privacyTitle")} onPress={() => navigation.navigate("Legal", { doc: "privacy" })} />
         <SettingsRow title={t("legal.termsTitle")} onPress={() => navigation.navigate("Legal", { doc: "terms" })} />

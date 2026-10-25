@@ -1,3 +1,5 @@
+import type { ProFeature } from "../pro/ProContext";
+
 export type RootStackParamList = {
   OnboardingWelcome: undefined;
   OnboardingName: undefined;
@@ -70,6 +72,8 @@ export type RootStackParamList = {
     authorId?: string;
     authorName: string;
   };
+  /** Bookliz Pro. `feature` highlights the row that brought the reader here. */
+  Paywall: { feature?: ProFeature } | undefined;
   /** In-app legal documents. */
   Legal: { doc: "privacy" | "terms" };
   /** Rich preview for a catalog book (not yet in the library). */

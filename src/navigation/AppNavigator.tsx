@@ -31,6 +31,7 @@ import { PlayerSettingsScreen } from "../screens/PlayerSettingsScreen";
 import { ManageAudioScreen } from "../screens/ManageAudioScreen";
 import { CreditsScreen } from "../screens/CreditsScreen";
 import { FolderScreen } from "../screens/FolderScreen";
+import { PaywallScreen } from "../screens/PaywallScreen";
 import { OnboardingWelcomeScreen } from "../screens/onboarding/OnboardingWelcomeScreen";
 import { OnboardingNameScreen } from "../screens/onboarding/OnboardingNameScreen";
 import { OnboardingGenresScreen } from "../screens/onboarding/OnboardingGenresScreen";
@@ -198,6 +199,7 @@ export function AppNavigator() {
         <Stack.Screen component={AuthorBooksScreen} name="AuthorBooks" options={{ headerShown: false }} />
         <Stack.Screen component={BookPreviewScreen} name="BookPreview" options={{ title: "", headerTransparent: true }} />
         <Stack.Screen component={LegalScreen} name="Legal" options={{ title: "" }} />
+        <Stack.Screen component={PaywallScreen} name="Paywall" options={{ headerShown: false, presentation: "modal" }} />
         <Stack.Screen component={StatsScreen} name="Stats" options={{ title: t("nav.tabs.stats") }} />
       </Stack.Navigator>
       {/* Shown once per app version after onboarding is complete */}
