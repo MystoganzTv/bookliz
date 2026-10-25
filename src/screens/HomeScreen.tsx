@@ -10,7 +10,6 @@ import { Screen } from "../components/Screen";
 import { SectionHeader } from "../components/SectionHeader";
 import { SessionRow } from "../components/SessionRow";
 import { useBookliz } from "../data/BooklizContext";
-import { formatElapsed, useReadingTimer } from "../data/ReadingTimerContext";
 import { useI18n } from "../i18n/LocalizationContext";
 import { useIsWide } from "../utils/layout";
 import { MainTabParamList, RootStackParamList } from "../navigation/types";
@@ -118,12 +117,11 @@ export function HomeScreen() {
     [tasteProfile]
   );
 
-  const { isRunning, bookId: timerBookId, elapsedMs, startedAt: timerStartedAt, start: startTimer, stop: stopTimer } = useReadingTimer();
   const continueBook = books.find((b) => b.userStatus.status === "reading") ?? null;
-  const timerIsForContinue = isRunning && continueBook && timerBookId === continueBook.id;
   // A book whose audio plays here logs itself while you listen: offer Listen, not Log / Timer.
   const { library: audioLibrary } = useAudiobookPlayer();
   const continueHasAudio = Boolean(continueBook && audioLibrary[continueBook.id]);
+  const continueIsAudiobook = continueBook?.format === "audiobook";
   const goalPct = Math.min(100, Math.round((overallStats.booksReadThisYear / userProfile.yearlyGoal) * 100));
   const remaining = userProfile.yearlyGoal - overallStats.booksReadThisYear;
   const streakMsg = getStreakMessage(overallStats.currentStreak, c, t);
@@ -336,7 +334,11 @@ export function HomeScreen() {
         <View style={isWide ? styles.column : undefined}>
       {/* Continue reading */}
       {continueBook ? (
-        <View style={styles.continueCard}>
+        <Pressable
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.continueCard, pressed && { opacity: 0.85 }]}
+          onPress={() => navigation.navigate("BookDetail", { bookId: continueBook.id })}
+        >
           <BookCover book={continueBook} size="sm" hideProgress style={styles.continueCover} />
           <View style={styles.continueCopy}>
             <Text style={styles.sectionEyebrow}>{t("home.continueReading")}</Text>
@@ -349,42 +351,33 @@ export function HomeScreen() {
               <Text style={styles.progressMiniPct}>{continueBook.userStatus.progressPercent}%</Text>
             </View>
             <View style={styles.continueActions}>
+              {/* One action, matched to the book: listen when its audio is
+                  here, add the audio when it is an audiobook without it, log
+                  pages otherwise. No timer: listening logs itself, and the
+                  reading timer was dropped. */}
               <Pressable accessibilityRole="button"
                 style={styles.primaryButton}
                 onPress={() =>
                   continueHasAudio
                     ? navigation.navigate("AudioPlayer", { bookId: continueBook.id })
-                    : navigation.navigate("AddReadingSession", { bookId: continueBook.id })
+                    : continueIsAudiobook
+                      ? navigation.navigate("BookDetail", { bookId: continueBook.id })
+                      : navigation.navigate("AddReadingSession", { bookId: continueBook.id })
                 }
               >
-                <Ionicons name={continueHasAudio ? "headset" : "pencil"} size={13} color={c.navText} style={{ marginRight: 6 }} />
-                <Text style={styles.primaryButtonText}>{continueHasAudio ? t("player.listen") : t("home.logSession")}</Text>
-              </Pressable>
-              {continueHasAudio ? null : (
-              <Pressable accessibilityRole="button"
-                style={[styles.timerButton, timerIsForContinue && { backgroundColor: c.coral + "22", borderColor: c.coral }]}
-                onPress={() => {
-                  if (timerIsForContinue) {
-                    const mins = stopTimer();
-                    navigation.navigate("AddReadingSession", { bookId: continueBook.id, prefillMinutes: mins, prefillStartedAt: timerStartedAt ?? undefined });
-                  } else {
-                    startTimer(continueBook.id);
-                  }
-                }}
-              >
                 <Ionicons
-                  name={timerIsForContinue ? "stop-circle" : "timer-outline"}
-                  size={15}
-                  color={timerIsForContinue ? c.coral : c.ink}
+                  name={continueHasAudio ? "headset" : continueIsAudiobook ? "add" : "pencil"}
+                  size={13}
+                  color={c.navText}
+                  style={{ marginRight: 6 }}
                 />
-                <Text style={[styles.timerButtonText, timerIsForContinue && { color: c.coral }]}>
-                  {timerIsForContinue ? formatElapsed(elapsedMs) : t("home.timerButton")}
+                <Text style={styles.primaryButtonText}>
+                  {continueHasAudio ? t("player.listen") : continueIsAudiobook ? t("player.attachButton") : t("home.logSession")}
                 </Text>
               </Pressable>
-              )}
             </View>
           </View>
-        </View>
+        </Pressable>
       ) : (
         <Pressable accessibilityRole="button" style={styles.emptyCard} onPress={() => navigation.navigate("Add")}>
           <Ionicons name="book-outline" size={28} color={c.teal} />
