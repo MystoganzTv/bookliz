@@ -25,6 +25,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, Easing, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useI18n } from "../i18n/LocalizationContext";
 import { playOpeningSound } from "../audio/splashSound";
+import type { EditionId } from "../pro/editions";
+import { readSplashEdition } from "../theme/splashTheme";
+import { ThemedSplash } from "./splash/ThemedSplash";
+import { SPLASH_SCENES } from "./splash/themedScenes";
 
 const NAVY = "#0F172A";
 /** Shortest time on screen: long enough for the entrance to finish, so a fast launch never cuts it off. */
@@ -59,7 +63,30 @@ const RINGS = [
 const native = true;
 const ease = Easing.out(Easing.cubic);
 
-export function AnimatedSplash({ ready, onDone }: { ready: boolean; onDone: () => void }) {
+type SplashProps = { ready: boolean; onDone: () => void };
+
+/**
+ * Picks the splash for the theme this launch opens with: the hand-built
+ * Classic sunrise below, or the theme's pop-up scene (splash/ThemedSplash).
+ * The note it reads is left by ThemeContext on the previous run; while it is
+ * read (a few ms) the screen stays the launch navy, so nothing flashes.
+ */
+export function AnimatedSplash(props: SplashProps) {
+  const [edition, setEdition] = useState<EditionId | null>(null);
+  useEffect(() => {
+    let alive = true;
+    // Never hold the launch hostage to storage: after 400 ms, Classic it is.
+    const fallback = setTimeout(() => alive && setEdition((current) => current ?? "classic"), 400);
+    void readSplashEdition().then((value) => alive && setEdition((current) => current ?? value));
+    return () => { alive = false; clearTimeout(fallback); };
+  }, []);
+  if (edition === null) return <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.root]} />;
+  const scene = edition === "classic" ? undefined : SPLASH_SCENES[edition];
+  if (edition === "classic" || !scene) return <ClassicSplash {...props} />;
+  return <ThemedSplash edition={edition} scene={scene} {...props} />;
+}
+
+function ClassicSplash({ ready, onDone }: SplashProps) {
   const { t } = useI18n();
   const { width } = useWindowDimensions();
   const size = Math.min(width * 0.82, 340);

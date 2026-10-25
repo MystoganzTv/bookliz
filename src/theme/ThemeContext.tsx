@@ -14,6 +14,7 @@ import { Atmosphere, atmosphereFor, paintAtmosphere } from "./atmospheres";
 import { usePro } from "../pro/ProContext";
 import { EditionId, EditionPreference, Hemisphere, isEditionPreference, isHemisphere, resolveEdition } from "../pro/editions";
 import { ClassicIconId, isClassicIconId } from "../pro/appIcons";
+import { writeSplashTheme } from "./splashTheme";
 
 const STORAGE_KEY = "@bookliz/theme";
 const ICON_FOLLOWS_KEY = "@bookliz/icon-follows-theme";
@@ -89,27 +90,31 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   const [editionPreference, setEditionState] = useState<EditionPreference>("classic");
   const [hemisphere, setHemisphereState] = useState<Hemisphere>("north");
   const [calendarDate, setCalendarDate] = useState(() => new Date());
+  const [hydrated, setHydrated] = useState(false);
   const calendarDay = calendarDate.toDateString();
   const { isPro } = usePro();
   const systemScheme = useColorScheme();
 
   // Hydrate persisted preference
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
-      if (isThemePreference(saved)) setPreferenceState(saved);
-    }).catch(() => {});
-    AsyncStorage.getItem(ICON_FOLLOWS_KEY).then((saved) => {
-      if (saved === "false") setIconFollowsState(false);
-    }).catch(() => {});
-    AsyncStorage.getItem(CLASSIC_ICON_KEY).then((saved) => {
-      if (isClassicIconId(saved)) setClassicIconState(saved);
-    }).catch(() => {});
-    AsyncStorage.getItem(EDITION_KEY).then((saved) => {
-      if (isEditionPreference(saved)) setEditionState(saved);
-    }).catch(() => {});
-    AsyncStorage.getItem(HEMISPHERE_KEY).then((saved) => {
-      if (isHemisphere(saved)) setHemisphereState(saved);
-    }).catch(() => {});
+    const reads = [
+      AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
+        if (isThemePreference(saved)) setPreferenceState(saved);
+      }).catch(() => {}),
+      AsyncStorage.getItem(ICON_FOLLOWS_KEY).then((saved) => {
+        if (saved === "false") setIconFollowsState(false);
+      }).catch(() => {}),
+      AsyncStorage.getItem(CLASSIC_ICON_KEY).then((saved) => {
+        if (isClassicIconId(saved)) setClassicIconState(saved);
+      }).catch(() => {}),
+      AsyncStorage.getItem(EDITION_KEY).then((saved) => {
+        if (isEditionPreference(saved)) setEditionState(saved);
+      }).catch(() => {}),
+      AsyncStorage.getItem(HEMISPHERE_KEY).then((saved) => {
+        if (isHemisphere(saved)) setHemisphereState(saved);
+      }).catch(() => {}),
+    ];
+    void Promise.all(reads).then(() => setHydrated(true));
   }, []);
 
   // Refresh after returning to the app and across midnight while it stays open.
@@ -162,6 +167,14 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     setHemisphereState(next);
     AsyncStorage.setItem(HEMISPHERE_KEY, next).catch(() => {});
   }, []);
+
+  // Leave a note for the next launch's splash. Debounced so the brief
+  // not-yet-Pro moment of a cold start is overwritten before it is saved.
+  useEffect(() => {
+    if (!hydrated) return;
+    const timer = setTimeout(() => writeSplashTheme({ preference: editionPreference, hemisphere, pro: isPro }), 1500);
+    return () => clearTimeout(timer);
+  }, [hydrated, editionPreference, hemisphere, isPro]);
 
   const mode: ThemeMode = preference === "system" ? (systemScheme === "dark" ? "dark" : "light") : preference;
 

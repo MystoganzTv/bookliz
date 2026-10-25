@@ -98,9 +98,9 @@ export function ProfileScreen() {
 
   return (
     <Screen wide>
+      {/* Open header on the screen's own background (and its theme), not a
+          navy card of its own: the profile belongs to the same page as the rest. */}
       <View style={styles.hero}>
-        <View style={styles.heroGlowLarge} />
-        <View style={styles.heroGlowSmall} />
 
         <View style={styles.heroTop}>
           <View style={styles.avatarWrap}>
@@ -143,7 +143,7 @@ export function ProfileScreen() {
               accessibilityRole="button"
               accessibilityLabel={t("a11y.editProfile")}
             >
-              <Ionicons name="pencil" size={14} color="#FFFFFF" />
+              <Ionicons name="pencil" size={15} color={c.ink} />
             </Pressable>
             <Pressable
               style={styles.editButton}
@@ -151,14 +151,14 @@ export function ProfileScreen() {
               accessibilityRole="button"
               accessibilityLabel={t("a11y.openSettings")}
             >
-              <Ionicons name="settings-outline" size={14} color="#FFFFFF" />
+              <Ionicons name="settings-outline" size={15} color={c.ink} />
             </Pressable>
           </View>
         </View>
 
         <View style={styles.heroStatsRow}>
-          {identityStats.map((item) => (
-            <View key={item.label} style={styles.heroStatCard}>
+          {identityStats.map((item, index) => (
+            <View key={item.label} style={[styles.heroStatCard, index > 0 && styles.heroStatDivided]}>
               <Text style={styles.heroStatValue}>{item.value}</Text>
               <Text style={styles.heroStatLabel}>{item.label}</Text>
             </View>
@@ -206,15 +206,18 @@ export function ProfileScreen() {
         <View style={styles.goalTrack}>
           <View style={[styles.goalFill, { width: `${nextLevelProgress}%` }]} />
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.futureLevelsRow}>
+        {/* The next rungs as a short ladder of lines, not a rail of cards. */}
+        <View style={styles.futureLevelsRow}>
           {futureLevels.map((futureLevel) => (
             <View key={futureLevel.title} style={styles.futureLevelCard}>
               <Text style={styles.futureLevelBooks}>{t("profile.futureBooks", { count: futureLevel.minBooks })}</Text>
-              <Text style={styles.futureLevelTitle}>{futureLevel.title}</Text>
-              <Text style={styles.futureLevelNote}>{futureLevel.note}</Text>
+              <View style={styles.futureLevelCopy}>
+                <Text style={styles.futureLevelTitle}>{futureLevel.title}</Text>
+                <Text style={styles.futureLevelNote}>{futureLevel.note}</Text>
+              </View>
             </View>
           ))}
-        </ScrollView>
+        </View>
       </View>
 
       <View style={styles.goalCard}>
@@ -455,31 +458,11 @@ function createStyles(c: AppColors) {
       flex: 1,
     },
     hero: {
-      ...shadows.card,
-      backgroundColor: c.navy,
-      borderRadius: radii.lg,
-      marginBottom: spacing.md,
-      overflow: "hidden",
-      padding: spacing.lg,
-      position: "relative"
-    },
-    heroGlowLarge: {
-      backgroundColor: c.teal + "24",
-      borderRadius: 180,
-      height: 220,
-      position: "absolute",
-      right: -60,
-      top: -30,
-      width: 220
-    },
-    heroGlowSmall: {
-      backgroundColor: c.gold + "24",
-      borderRadius: 90,
-      bottom: -30,
-      height: 120,
-      left: -20,
-      position: "absolute",
-      width: 120
+      borderBottomColor: c.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      paddingBottom: spacing.lg,
+      paddingTop: spacing.sm,
+      position: "relative",
     },
     heroTop: {
       alignItems: "center",
@@ -503,11 +486,11 @@ function createStyles(c: AppColors) {
       width: 76
     },
     avatarImage: {
-      borderColor: "rgba(255,255,255,0.16)",
+      borderColor: c.border,
       borderRadius: 38,
-      borderWidth: 2,
+      borderWidth: 1,
       height: 76,
-      width: 76
+      width: 76,
     },
     avatarText: {
       color: c.navy,
@@ -518,7 +501,7 @@ function createStyles(c: AppColors) {
     rankMedallion: {
       alignItems: "center",
       backgroundColor: c.gold,
-      borderColor: c.navy,
+      borderColor: c.bg,
       borderRadius: radii.pill,
       borderWidth: 2,
       bottom: -4,
@@ -526,7 +509,7 @@ function createStyles(c: AppColors) {
       justifyContent: "center",
       position: "absolute",
       right: -4,
-      width: 24
+      width: 24,
     },
     heroCopy: {
       flex: 1
@@ -537,11 +520,11 @@ function createStyles(c: AppColors) {
       gap: 8
     },
     name: {
-      color: "#FFFFFF",
+      color: c.ink,
       flexShrink: 1,
       fontFamily: fonts.display,
-      fontSize: 24,
-      fontWeight: "900"
+      fontSize: 26,
+      fontWeight: "900",
     },
     proBadge: {
       alignItems: "center",
@@ -574,86 +557,76 @@ function createStyles(c: AppColors) {
       textTransform: "uppercase"
     },
     level: {
-      color: c.gold,
+      color: c.tealDark,
       fontFamily: fonts.display,
-      fontSize: 20,
+      fontSize: 19,
       fontWeight: "900",
-      marginTop: 2
+      marginTop: 2,
     },
     levelNote: {
-      color: "rgba(255,255,255,0.80)",
+      color: c.muted,
       fontFamily: fonts.bodyRegular,
-      fontSize: 12,
+      fontSize: 13,
       lineHeight: 18,
-      marginTop: 4
+      marginTop: 2,
     },
     email: {
-      color: "rgba(255,255,255,0.68)",
+      color: c.muted,
       fontFamily: fonts.bodyRegular,
       fontSize: 12,
-      marginTop: 6
+      marginTop: 4,
     },
     editButton: {
       alignItems: "center",
       alignSelf: "flex-start",
-      backgroundColor: "rgba(255,255,255,0.12)",
-      borderColor: "rgba(255,255,255,0.18)",
+      backgroundColor: c.surfaceAlt,
       borderRadius: radii.pill,
-      borderWidth: 1,
       justifyContent: "center",
-      padding: 10
+      padding: 10,
     },
     heroStatsRow: {
       flexDirection: "row",
-      gap: spacing.sm,
-      marginTop: spacing.md,
-      zIndex: 1
+      marginTop: spacing.lg,
     },
     heroStatCard: {
-      backgroundColor: "rgba(255,255,255,0.08)",
-      borderColor: "rgba(255,255,255,0.10)",
-      borderRadius: radii.md,
-      borderWidth: 1,
+      alignItems: "center",
       flex: 1,
-      paddingHorizontal: spacing.md,
-      paddingVertical: 12
+      paddingVertical: 2,
+    },
+    heroStatDivided: {
+      borderLeftColor: c.border,
+      borderLeftWidth: StyleSheet.hairlineWidth,
     },
     heroStatValue: {
-      color: "#FFFFFF",
+      color: c.ink,
       fontFamily: fonts.display,
-      fontSize: 20,
-      fontWeight: "900"
+      fontSize: 22,
+      fontWeight: "900",
     },
     heroStatLabel: {
-      color: "rgba(255,255,255,0.70)",
+      color: c.muted,
       fontFamily: fonts.body,
       fontSize: 11,
       fontWeight: "800",
       letterSpacing: 0.8,
       marginTop: 2,
-      textTransform: "uppercase"
+      textTransform: "uppercase",
     },
     heroFooter: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: spacing.sm,
-      marginTop: spacing.md,
-      zIndex: 1
+      gap: 6,
+      marginTop: spacing.lg,
     },
     heroFooterPill: {
       alignItems: "center",
-      backgroundColor: "rgba(255,255,255,0.08)",
-      borderRadius: radii.pill,
       flexDirection: "row",
-      gap: 6,
-      paddingHorizontal: 12,
-      paddingVertical: 8
+      gap: 8,
     },
     heroFooterText: {
-      color: "#FFFFFF",
+      color: c.muted,
+      flexShrink: 1,
       fontFamily: fonts.body,
-      fontSize: 11,
-      fontWeight: "800"
+      fontSize: 13,
+      fontWeight: "700",
     },
     identityCard: {
       paddingVertical: spacing.md,
@@ -744,15 +717,15 @@ function createStyles(c: AppColors) {
       marginTop: 8
     },
     futureLevelsRow: {
-      gap: spacing.sm,
-      paddingTop: spacing.md
+      marginTop: spacing.md,
     },
     futureLevelCard: {
-      backgroundColor: c.surfaceAlt,
-      borderRadius: radii.md,
-      minHeight: 108,
-      padding: spacing.md,
-      width: 160,
+      alignItems: "flex-start",
+      borderTopColor: c.border,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      flexDirection: "row",
+      gap: spacing.md,
+      paddingVertical: spacing.sm,
     },
     futureLevelBooks: {
       color: c.tealDark,
@@ -760,21 +733,23 @@ function createStyles(c: AppColors) {
       fontSize: 11,
       fontWeight: "900",
       letterSpacing: 0.8,
-      textTransform: "uppercase"
+      marginTop: 3,
+      textTransform: "uppercase",
+      width: 64,
     },
+    futureLevelCopy: { flex: 1 },
     futureLevelTitle: {
       color: c.ink,
       fontFamily: fonts.display,
-      fontSize: 18,
+      fontSize: 16,
       fontWeight: "900",
-      marginTop: 6
     },
     futureLevelNote: {
       color: c.muted,
       fontFamily: fonts.bodyRegular,
       fontSize: 12,
       lineHeight: 17,
-      marginTop: 6
+      marginTop: 2,
     },
     statsNavCard: {
       alignItems: "center",
@@ -884,10 +859,9 @@ function createStyles(c: AppColors) {
       marginBottom: spacing.sm
     },
     nextUnlockCard: {
-      backgroundColor: c.surfaceAlt,
-      borderRadius: radii.md,
-      marginTop: spacing.sm,
-      padding: spacing.sm
+      borderTopColor: c.border,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      paddingVertical: spacing.sm,
     },
     nextUnlockHeader: {
       alignItems: "center",
@@ -962,13 +936,9 @@ function createStyles(c: AppColors) {
     },
     tagPillGenre: {
       backgroundColor: c.surfaceAlt,
-      borderColor: c.border,
-      borderWidth: 1
     },
     tagPillAuthor: {
-      backgroundColor: c.surface,
-      borderColor: c.border,
-      borderWidth: 1
+      backgroundColor: c.surfaceAlt,
     },
     tagText: {
       fontFamily: fonts.body,
