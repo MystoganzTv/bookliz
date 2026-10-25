@@ -185,6 +185,21 @@ describe("buildWatchReading", () => {
     });
     expect(r.today).toEqual({ minutes: 35, streak: 5, booksThisYear: 12, yearlyGoal: 36 });
     expect(r.books.map((b) => b.bookId)).toEqual(["a", "c"]);
+  });
+
+  it("does not offer the reading timer for books whose audio plays in Bookliz", () => {
+    const r = buildWatchReading({
+      now,
+      books: [reading("a", "reading"), reading("c", "reading")],
+      sessions: [],
+      streak: 0,
+      booksThisYear: 0,
+      yearlyGoal: 0,
+      timer: { bookId: null, startedAt: null, isRunning: false },
+      authorName: () => "",
+      audioBookIds: new Set(["c"]),
+    });
+    expect(r.books.map((b) => b.bookId)).toEqual(["a"]);
     expect(r.timer).toBeNull();
   });
 

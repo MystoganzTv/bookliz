@@ -26,6 +26,7 @@ import { buildUserTasteProfile } from "../services/userTasteProfile";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { HOURS, readCache, writeCache } from "../utils/discoverCache";
 import { useColors, useTheme } from "../theme/ThemeContext";
+import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 
 const booklizLogoLight = require("../../assets/brand/bookliz-logo.png");
 const booklizLogoDark = require("../../assets/brand/bookliz-logo-dark.png");
@@ -120,6 +121,9 @@ export function HomeScreen() {
   const { isRunning, bookId: timerBookId, elapsedMs, startedAt: timerStartedAt, start: startTimer, stop: stopTimer } = useReadingTimer();
   const continueBook = books.find((b) => b.userStatus.status === "reading") ?? null;
   const timerIsForContinue = isRunning && continueBook && timerBookId === continueBook.id;
+  // A book whose audio plays here logs itself while you listen: offer Listen, not Log / Timer.
+  const { library: audioLibrary } = useAudiobookPlayer();
+  const continueHasAudio = Boolean(continueBook && audioLibrary[continueBook.id]);
   const goalPct = Math.min(100, Math.round((overallStats.booksReadThisYear / userProfile.yearlyGoal) * 100));
   const remaining = userProfile.yearlyGoal - overallStats.booksReadThisYear;
   const streakMsg = getStreakMessage(overallStats.currentStreak, c, t);
@@ -347,11 +351,16 @@ export function HomeScreen() {
             <View style={styles.continueActions}>
               <Pressable accessibilityRole="button"
                 style={styles.primaryButton}
-                onPress={() => navigation.navigate("AddReadingSession", { bookId: continueBook.id })}
+                onPress={() =>
+                  continueHasAudio
+                    ? navigation.navigate("AudioPlayer", { bookId: continueBook.id })
+                    : navigation.navigate("AddReadingSession", { bookId: continueBook.id })
+                }
               >
-                <Ionicons name="pencil" size={13} color={c.navText} style={{ marginRight: 6 }} />
-                <Text style={styles.primaryButtonText}>{t("home.logSession")}</Text>
+                <Ionicons name={continueHasAudio ? "headset" : "pencil"} size={13} color={c.navText} style={{ marginRight: 6 }} />
+                <Text style={styles.primaryButtonText}>{continueHasAudio ? t("player.listen") : t("home.logSession")}</Text>
               </Pressable>
+              {continueHasAudio ? null : (
               <Pressable accessibilityRole="button"
                 style={[styles.timerButton, timerIsForContinue && { backgroundColor: c.coral + "22", borderColor: c.coral }]}
                 onPress={() => {
@@ -369,9 +378,10 @@ export function HomeScreen() {
                   color={timerIsForContinue ? c.coral : c.ink}
                 />
                 <Text style={[styles.timerButtonText, timerIsForContinue && { color: c.coral }]}>
-                  {timerIsForContinue ? formatElapsed(elapsedMs) : "Timer"}
+                  {timerIsForContinue ? formatElapsed(elapsedMs) : t("home.timerButton")}
                 </Text>
               </Pressable>
+              )}
             </View>
           </View>
         </View>

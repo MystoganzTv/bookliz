@@ -585,6 +585,7 @@ export function LibraryScreen() {
         onUpdateStatus={() => {
           if (contextBook) setStatusSheetBook(contextBook.book);
         }}
+        canLogSession={!(contextBook && audioLibrary[contextBook.book.id])}
         onLogSession={() => {
           if (contextBook) navigation.navigate("AddReadingSession", { bookId: contextBook.book.id });
         }}

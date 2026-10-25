@@ -9,7 +9,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Application from "expo-application";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Image, Linking, Platform, Share, StyleSheet, Text, View } from "react-native";
+import { Image, Linking, Platform, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 import { loadIncludeAudioInBackup, setIncludeAudioInBackup } from "../audio/audioBackup";
@@ -178,14 +178,29 @@ export function SettingsScreen() {
             {userProfile.name || t("settings.identityFallbackName")}
           </Text>
           <Text style={styles.identityEmail} numberOfLines={1}>
-            {userProfile.email || t("settings.identityNoAccount")}
+            {userProfile.email ||
+              (userProfile.authProvider
+                ? t("settings.identityVia", { provider: userProfile.authProvider === "apple" ? "Apple" : "Google" })
+                : t("settings.identityNoAccount"))}
           </Text>
         </View>
-        {userProfile.email ? (
+        {/* Linked ≠ syncing: the badge says which. Linked comes from the device's
+            profile, syncing from a live cloud session — see
+            ProfileScreen.getRepositoryCopy for why the two can disagree. */}
+        {repositoryStatus.remoteEnabled && repositoryStatus.cloudSignedIn ? (
           <View style={styles.identityBadge}>
-            <Ionicons name="checkmark-circle" size={14} color={c.teal} />
-            <Text style={styles.identityBadgeText}>{t("settings.identityConnected")}</Text>
+            <Ionicons name="cloud-done-outline" size={14} color={c.teal} />
+            <Text style={styles.identityBadgeText}>{t("settings.identitySyncing")}</Text>
           </View>
+        ) : userProfile.authProvider ? (
+          <Pressable
+            accessibilityRole="button"
+            style={[styles.identityBadge, styles.identityBadgeWarn]}
+            onPress={() => dialog.alert(t("profile.cloudSyncPending"), t("profile.cloudSyncPendingBody"))}
+          >
+            <Ionicons name="cloud-offline-outline" size={14} color={c.coral} />
+            <Text style={[styles.identityBadgeText, { color: c.coral }]}>{t("settings.identityNotSyncing")}</Text>
+          </Pressable>
         ) : null}
       </View>
 
@@ -504,6 +519,10 @@ function createStyles(c: AppColors) {
       gap: 4,
       paddingHorizontal: 8,
       paddingVertical: 4,
+    },
+    identityBadgeWarn: {
+      backgroundColor: c.coral + "14",
+      borderColor: c.coral + "55",
     },
     identityBadgeText: {
       color: c.tealDark,

@@ -22,7 +22,8 @@ import { buildWatchReading } from "./watchState";
 type NavRef = NavigationContainerRefWithCurrent<RootStackParamList>;
 
 export function WatchSyncBridge({ navigation }: { navigation: NavRef }) {
-  const { engine } = useAudiobookPlayer();
+  const { engine, library: audioLibrary } = useAudiobookPlayer();
+  const audioBookIds = useMemo(() => new Set(Object.keys(audioLibrary)), [audioLibrary]);
   const { locale } = useI18n();
   const { books, readingSessions, overallStats, userProfile, getBook, getAuthor } = useBookliz();
   const timer = useReadingTimer();
@@ -41,8 +42,10 @@ export function WatchSyncBridge({ navigation }: { navigation: NavRef }) {
         yearlyGoal: userProfile.yearlyGoal,
         timer: { bookId: timer.bookId, startedAt: timer.startedAt, isRunning: timer.isRunning },
         authorName,
+        audioBookIds,
       }),
     [
+      audioBookIds,
       books,
       readingSessions,
       overallStats.currentStreak,

@@ -491,14 +491,6 @@ export function AudioPlayerScreen() {
 
       <PlayerSheet open={sheet === "more"} onClose={() => setSheet(null)} colors={P}>
         <Text style={styles.sheetHint}>{t("player.autoLogged")}</Text>
-        <SheetRow
-          icon="create-outline"
-          label={t("player.logManually")}
-          onPress={() => {
-            setSheet(null);
-            navigation.navigate("AddReadingSession", { bookId });
-          }}
-        />
         {listened.count ? (
           <SheetRow
             icon="cut-outline"

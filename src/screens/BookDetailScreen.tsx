@@ -288,7 +288,8 @@ export function BookDetailScreen() {
               color={hasOpinion ? c.gold : c.ink}
             />
           </Pressable>
-          {/* Timer button */}
+          {/* Timer button — not for a book whose audio plays here: listening logs itself. */}
+          {audiobook ? null : (
           <Pressable
             style={[styles.iconBtn, isRunning && timerBookId === book.id && { backgroundColor: c.coral + "22", borderColor: c.coral }]}
             accessibilityRole="button"
@@ -309,6 +310,7 @@ export function BookDetailScreen() {
               color={isRunning && timerBookId === book.id ? c.coral : c.ink}
             />
           </Pressable>
+          )}
           {/* Everything else lives in the "more" sheet — keeps the row breathable */}
           <Pressable
             style={styles.iconBtn}
@@ -708,10 +710,6 @@ export function BookDetailScreen() {
             {needsAcquiring ? (
               <MoreAction icon="cart-outline" label={t("bookDetail.moreGetOnAmazon")} styles={styles} c={c}
                 onPress={() => { setMoreSheetOpen(false); handleBuy(); }} />
-            ) : null}
-            {audiobook ? (
-              <MoreAction icon="pencil" label={t("bookDetail.logSession")} styles={styles} c={c}
-                onPress={() => { setMoreSheetOpen(false); navigation.navigate("AddReadingSession", { bookId: book.id }); }} />
             ) : null}
             <MoreAction
               icon={audiobook ? "swap-horizontal" : "headset-outline"}

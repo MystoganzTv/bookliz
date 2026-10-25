@@ -154,6 +154,8 @@ export interface WatchReadingInput {
   yearlyGoal: number;
   timer: { bookId: string | null; startedAt: number | null; isRunning: boolean };
   authorName: (book: Book) => string;
+  /** Books whose audio plays in Bookliz: listening logs them, so they are not offered for the reading timer. */
+  audioBookIds?: ReadonlySet<string>;
 }
 
 const MAX_READING_BOOKS = 12;
@@ -176,7 +178,7 @@ export function buildWatchReading(input: WatchReadingInput): WatchReading {
         ? { bookId: timerBook.id, title: trim(timerBook.title, 120), startedAt: input.timer.startedAt }
         : null,
     books: input.books
-      .filter((b) => b.userStatus?.status === "reading")
+      .filter((b) => b.userStatus?.status === "reading" && !input.audioBookIds?.has(b.id))
       .slice(0, MAX_READING_BOOKS)
       .map((b) => ({ bookId: b.id, title: trim(b.title, 120), author: trim(input.authorName(b), 80), coverUrl: remoteCover(b.coverImageUri) })),
   };
