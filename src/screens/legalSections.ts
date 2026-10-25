@@ -9,9 +9,9 @@
  * the static t("…") check in i18nParity.
  */
 export const PRIVACY_SECTION_IDS = [
-  "local", "sync", "metadata", "camera", "purchases", "noAds", "rights",
+  "local", "sync", "metadata", "camera", "pro", "icloud", "purchases", "noAds", "rights",
 ] as const;
 
 export const TERMS_SECTION_IDS = [
-  "acceptance", "personalUse", "content", "bookData", "availability", "liability", "changes",
+  "acceptance", "personalUse", "content", "bookData", "availability", "pro", "liability", "changes",
 ] as const;
