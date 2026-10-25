@@ -2,6 +2,9 @@ require File.join(File.dirname(`node --print "require.resolve('expo/package.json
 require File.join(File.dirname(`node --print "require.resolve('react-native/package.json')"`), "scripts/react_native_pods")
 
 require 'json'
+# Our own native modules (modules/*/ios). Their warnings stay visible.
+BOOKLIZ_OWN_PODS = %w[AirPlayButton AppIcon FileBackup ICloudAudio NowPlaying StoreKitBridge WatchBridge].freeze
+
 podfile_properties = JSON.parse(File.read(File.join(__dir__, 'Podfile.properties.json'))) rescue {}
 
 ENV['RCT_NEW_ARCH_ENABLED'] = '0' if podfile_properties['newArchEnabled'] == 'false'
@@ -79,6 +82,15 @@ target 'Booklio' do
         numeric = current.is_a?(String) && current.match?(/\A\d+(\.\d+)*\z/)
         if !numeric || Gem::Version.new(current) < Gem::Version.new('15.1')
           build_configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
+        end
+
+        # Third-party code: its ~500 warnings (nullability, deprecations) are
+        # not ours to fix and buried the app's own. Silence them in pods only;
+        # the app target and our own modules/ (BOOKLIZ_OWN_PODS) keep every
+        # warning.
+        unless BOOKLIZ_OWN_PODS.include?(target.name)
+          build_configuration.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
+          build_configuration.build_settings['SWIFT_SUPPRESS_WARNINGS'] = 'YES'
         end
       end
     end
