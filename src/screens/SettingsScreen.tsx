@@ -9,7 +9,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Application from "expo-application";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Image, Linking, Platform, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 import { loadIncludeAudioInBackup, setIncludeAudioInBackup } from "../audio/audioBackup";
@@ -24,7 +24,6 @@ import { Screen } from "../components/Screen";
 import { SettingsGroup, SettingsRow, SettingsToggleRow } from "../components/settings/SettingsList";
 import { useBookliz } from "../data/BooklizContext";
 import { findContradictedLanguages } from "../data/languageRepair";
-import { SHORTCUT_LINKS } from "../shortcuts/shortcutLinks";
 import { buildDebugInfo, SUPPORT_EMAIL } from "../support/debugInfo";
 import { useI18n } from "../i18n/LocalizationContext";
 import { usePro } from "../pro/ProContext";
@@ -312,20 +311,6 @@ export function SettingsScreen() {
         />
       </SettingsGroup>
 
-      {/* ── Shortcuts ────────────────────────────────────────────────────── */}
-      <SettingsGroup header={t("shortcuts.header")} footer={t("shortcuts.footer")}>
-        {SHORTCUT_LINKS.map((link) => (
-          <SettingsRow
-            key={link.id}
-            title={t(`shortcuts.${link.id}`)}
-            subtitle={link.url}
-            chevron={false}
-            accessory={<Ionicons name="share-outline" size={18} color={c.muted} />}
-            onPress={() => { void Share.share({ message: link.url }).catch(() => {}); }}
-          />
-        ))}
-      </SettingsGroup>
-
       {/* ── Account ──────────────────────────────────────────────────────── */}
       <Text style={styles.looseHeader} accessibilityRole="header">{t("settings.accountTitle")}</Text>
       <View style={styles.accountWrap}>
@@ -404,12 +389,6 @@ export function SettingsScreen() {
       {/* ── Support ──────────────────────────────────────────────────────── */}
       <SettingsGroup header={t("support.header")} footer={t("support.footer")}>
         <SettingsRow title={t("support.email")} subtitle={SUPPORT_EMAIL} chevron={false} onPress={emailSupport} />
-        <SettingsRow
-          title={t("support.debug")}
-          chevron={false}
-          onPress={() => { void Share.share({ message: debugText() }).catch(() => {}); }}
-        />
-        <SettingsRow title={t("credits.title")} onPress={() => navigation.navigate("Credits")} />
       </SettingsGroup>
 
       {/* ── Legal ────────────────────────────────────────────────────────── */}
