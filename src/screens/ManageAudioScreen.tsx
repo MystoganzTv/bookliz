@@ -88,7 +88,9 @@ export function ManageAudioScreen() {
       if (item) hapticSuccess();
     } catch (error) {
       const problem = error instanceof AudioImportError ? error.problem : "unreadable";
-      dialog.alert(t(`player.errors.${problem}Title`), t(`player.errors.${problem}Body`));
+      const detail = error instanceof AudioImportError ? error.detail : error instanceof Error ? error.message : undefined;
+      const body = t(`player.errors.${problem}Body`);
+      dialog.alert(t(`player.errors.${problem}Title`), detail ? `${body}\n\n${t("auth.errorDetail", { detail })}` : body);
     }
   };
 

@@ -53,7 +53,9 @@ export function useIncomingAudio(navigation: NavigationContainerRefWithCurrent<R
         }
         const problem = error instanceof AudioImportError ? error.problem : "unreadable";
         const key = problem === "locked" ? "locked" : problem === "space" ? "space" : problem === "unsupported" ? "unsupported" : "unreadable";
-        dialog.alert(t(`player.errors.${key}Title`), t(`player.errors.${key}Body`));
+        const detail = error instanceof AudioImportError ? error.detail : error instanceof Error ? error.message : undefined;
+        const body = t(`player.errors.${key}Body`);
+        dialog.alert(t(`player.errors.${key}Title`), detail ? `${body}\n\n${t("auth.errorDetail", { detail })}` : body);
       }
     };
 

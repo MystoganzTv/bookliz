@@ -39,10 +39,21 @@ export type AudioImportProblem =
   | "space";
 
 export class AudioImportError extends Error {
-  constructor(public readonly problem: AudioImportProblem, public readonly fileName?: string) {
-    super(`${problem}${fileName ? `: ${fileName}` : ""}`);
+  constructor(
+    public readonly problem: AudioImportProblem,
+    public readonly fileName?: string,
+    /** The underlying error, shown under the message so a failure can be diagnosed from a screenshot. */
+    public readonly detail?: string
+  ) {
+    super(`${problem}${fileName ? `: ${fileName}` : ""}${detail ? ` (${detail})` : ""}`);
     this.name = "AudioImportError";
   }
+}
+
+/** Any thrown value as a short string for AudioImportError.detail. */
+export function errorDetail(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  return raw.length > 240 ? `${raw.slice(0, 239)}…` : raw;
 }
 
 export interface PickedAudio {
@@ -116,7 +127,12 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** The length AVPlayer reports once the file is ready. 0 = could not open it. */
 async function probeDuration(uri: string, timeoutMs = 20_000): Promise<number> {
-  const player = createAudioPlayer({ uri }, { updateInterval: 1000 });
+  let player: ReturnType<typeof createAudioPlayer>;
+  try {
+    player = createAudioPlayer({ uri }, { updateInterval: 1000 });
+  } catch {
+    return 0;
+  }
   try {
     const started = Date.now();
     while (Date.now() - started < timeoutMs) {
@@ -125,7 +141,11 @@ async function probeDuration(uri: string, timeoutMs = 20_000): Promise<number> {
     }
     return 0;
   } finally {
-    player.remove();
+    try {
+      player.remove();
+    } catch {
+      // already released
+    }
   }
 }
 
@@ -187,7 +207,7 @@ export async function importAudioFiles(
     for (let i = 0; i < audio.length; i++) {
       const source = audio[i];
       const destination = new File(folder, safeFileName(i, source.name));
-      new File(source.uri).move(destination);
+      placeFile(source, destination);
       const info = isMp4FileName(source.name) ? mp4Info(destination) : { durationSec: null, chapters: [] };
       const measured = await probeDuration(destination.uri);
       const durationSec = measured > 0 ? measured : 0;
@@ -199,7 +219,32 @@ export async function importAudioFiles(
     return { folder: folderName, tracks, chapters: buildChapters(tracks, embedded), totalSec: totalDuration(tracks) };
   } catch (error) {
     deleteAudioFolder(folderName);
-    throw error;
+    if (error instanceof AudioImportError) throw error;
+    throw new AudioImportError("unreadable", undefined, errorDetail(error));
+  }
+}
+
+/**
+ * Put the picked file in the book's folder: a move (no second copy of a big
+ * audiobook), falling back to copy + delete when the system refuses the move
+ * (a source on another volume, or a picker copy the app may read but not move).
+ */
+function placeFile(source: PickedAudio, destination: File) {
+  const from = new File(source.uri);
+  try {
+    from.move(destination);
+    return;
+  } catch (moveError) {
+    try {
+      from.copy(destination);
+    } catch (copyError) {
+      throw new AudioImportError("unreadable", source.name, `${errorDetail(moveError)} / ${errorDetail(copyError)}`);
+    }
+    try {
+      from.delete();
+    } catch {
+      // The copy is in place; a leftover picker copy is the system's to clean up.
+    }
   }
 }
 

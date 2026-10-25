@@ -26,7 +26,8 @@ export function useAttachAudio() {
           ],
           space: [t("player.errors.spaceTitle"), t("player.errors.spaceBody")],
         };
-        dialog.alert(copy[problem][0], copy[problem][1]);
+        const detail = error instanceof AudioImportError ? error.detail : error instanceof Error ? error.message : undefined;
+        dialog.alert(copy[problem][0], detail ? `${copy[problem][1]}\n\n${t("auth.errorDetail", { detail })}` : copy[problem][1]);
         return false;
       }
     },

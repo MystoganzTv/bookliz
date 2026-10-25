@@ -34,6 +34,7 @@ import {
 } from "./audiobookModel";
 import {
   AudioImportError,
+  errorDetail,
   audioFileExists,
   audioFileSize,
   deleteAudioFile,
@@ -756,7 +757,12 @@ export class AudiobookEngine {
   /** Pick files and attach them to a book. Resolves false when the reader backs out; throws AudioImportError. */
   async attach(bookId: string): Promise<boolean> {
     if (this.main.importing) return false;
-    const picked = await pickAudioFiles();
+    let picked: PickedAudio[] | null;
+    try {
+      picked = await pickAudioFiles();
+    } catch (error) {
+      throw new AudioImportError("unreadable", undefined, `picker: ${errorDetail(error)}`);
+    }
     if (!picked) return false;
     this.setMain({ importing: { bookId, done: 0, total: picked.length } });
     try {
@@ -765,7 +771,7 @@ export class AudiobookEngine {
       return true;
     } catch (error) {
       if (error instanceof AudioImportError) throw error;
-      throw new AudioImportError("unreadable");
+      throw new AudioImportError("unreadable", undefined, errorDetail(error));
     } finally {
       this.setMain({ importing: null });
     }
@@ -804,7 +810,12 @@ export class AudiobookEngine {
   /** Pick files into the inbox. Null when the reader backs out; throws AudioImportError. */
   async pickIntoInbox(): Promise<AudioInboxItem | null> {
     if (this.main.importing) return null;
-    const picked = await pickAudioFiles();
+    let picked: PickedAudio[] | null;
+    try {
+      picked = await pickAudioFiles();
+    } catch (error) {
+      throw new AudioImportError("unreadable", undefined, `picker: ${errorDetail(error)}`);
+    }
     if (!picked) return null;
     return this.importIntoInbox(picked);
   }
@@ -831,7 +842,7 @@ export class AudiobookEngine {
       return item;
     } catch (error) {
       if (error instanceof AudioImportError) throw error;
-      throw new AudioImportError("unreadable");
+      throw new AudioImportError("unreadable", undefined, errorDetail(error));
     } finally {
       this.setMain({ importing: null });
     }
