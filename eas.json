@@ -8,12 +8,16 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "environment": "development"
+      "environment": "development",
+      "ios": {
+        "scheme": "Booklio"
+      }
     },
     "preview": {
       "distribution": "internal",
       "ios": {
-        "image": "macos-sequoia-15.6-xcode-26.2"
+        "image": "macos-sequoia-15.6-xcode-26.2",
+        "scheme": "Booklio"
       },
       "environment": "preview"
     },
@@ -21,7 +25,8 @@
       "distribution": "store",
       "ios": {
         "image": "macos-sequoia-15.6-xcode-26.2",
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "scheme": "Booklio"
       },
       "environment": "production",
       "autoIncrement": true
