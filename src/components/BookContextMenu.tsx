@@ -26,7 +26,6 @@ type Props = {
   onLogSession: () => void;
   /** False for a book whose audio plays in Bookliz — every listen is already a session. */
   canLogSession?: boolean;
-  onOpenSeries: (() => void) | undefined;
   onAddToList: () => void;
   /** Library folders. Absent where folders make no sense. */
   onMoveToFolder?: () => void;
@@ -43,7 +42,6 @@ export function BookContextMenu({
   onUpdateStatus,
   onLogSession,
   canLogSession = true,
-  onOpenSeries,
   onAddToList,
   onMoveToFolder,
   onRemove,
@@ -56,13 +54,11 @@ export function BookContextMenu({
 
   const isReading = book.userStatus.status === "reading";
   const isRead    = book.userStatus.status === "read";
-  const hasSeries = Boolean(book.seriesId);
 
   const actionGroups: ActionItem[][] = [
     // Group 1 — navigation
     [
       { key: "details",  label: t("contextMenu.details"),   icon: "book-outline" },
-      { key: "series",   label: t("contextMenu.series"),    icon: "layers-outline",   hidden: !hasSeries },
       { key: "author",   label: authorName,           icon: "person-outline",   hidden: !onViewAuthor },
     ],
     // Group 2 — status & tracking
@@ -89,7 +85,6 @@ export function BookContextMenu({
         case "details": return onViewDetails();
         case "status":  return onUpdateStatus();
         case "session": return onLogSession();
-        case "series":  return onOpenSeries?.();
         case "author":  return onViewAuthor?.();
         case "list":    return onAddToList();
         case "folder":  return onMoveToFolder?.();

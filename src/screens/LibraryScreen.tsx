@@ -239,11 +239,6 @@ export function LibraryScreen() {
         styles={styles}
         onPress={() => navigation.navigate("BookDetail", { bookId: book.id })}
         onMenu={() => setContextBook({ book, authorName: getAuthor(book.authorId)?.name ?? "" })}
-        onOpenSeries={
-          book.seriesId
-            ? () => navigation.navigate("SeriesTracker", { seriesId: book.seriesId! })
-            : undefined
-        }
       />
     ),
     [getAuthor, latestLogByBook, navigation, styles]
@@ -571,11 +566,6 @@ export function LibraryScreen() {
         onLogSession={() => {
           if (contextBook) navigation.navigate("AddReadingSession", { bookId: contextBook.book.id });
         }}
-        onOpenSeries={
-          contextBook?.book.seriesId
-            ? () => navigation.navigate("SeriesTracker", { seriesId: contextBook.book.seriesId! })
-            : undefined
-        }
         onViewAuthor={
           contextBook?.book.authorId
             ? () => navigation.navigate("AuthorBooks", { authorId: contextBook.book.authorId, authorName: contextBook.authorName })
@@ -775,7 +765,6 @@ function LibraryRowCard({
   styles,
   onPress,
   onMenu,
-  onOpenSeries,
 }: {
   book: Book;
   authorName: string;
@@ -783,7 +772,6 @@ function LibraryRowCard({
   styles: ReturnType<typeof createStyles>;
   onPress: () => void;
   onMenu: () => void;
-  onOpenSeries?: () => void;
 }) {
   const { t } = useI18n();
   const c = useColors();
@@ -805,11 +793,9 @@ function LibraryRowCard({
         <Text numberOfLines={1} style={styles.rowAuthor}>{authorName}</Text>
 
         {book.seriesName ? (
-          <Pressable accessibilityRole="button" onPress={onOpenSeries}>
-            <Text numberOfLines={1} style={styles.rowSeries}>
-              {book.seriesNumber ? `Book ${book.seriesNumber} · ` : ""}{book.seriesName}
-            </Text>
-          </Pressable>
+          <Text numberOfLines={1} style={styles.rowSeries}>
+            {book.seriesNumber ? `Book ${book.seriesNumber} · ` : ""}{book.seriesName}
+          </Text>
         ) : null}
 
         {isReading && progress > 0 ? (

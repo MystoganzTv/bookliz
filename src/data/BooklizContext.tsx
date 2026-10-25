@@ -563,7 +563,7 @@ const slugify = (value: string) =>
     .replace(/(^-|-$)/g, "");
 
 /** Stable series id derived from the series name, so books that share a
- * series name group together (SeriesTracker, completion detection). */
+ * series name group together (completion detection). */
 const buildSeriesId = (seriesName?: string): string | undefined => {
   // "Book 3 • The Empyrean" and "The Empyrean" are the same saga.
   const slug = slugify(cleanSeriesName(seriesName).name);

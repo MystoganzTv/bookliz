@@ -286,7 +286,7 @@ export function HomeScreen() {
       <View style={isWide ? styles.columns : undefined}>
         <View style={isWide ? styles.column : undefined}>
       {/* Streak card */}
-      <Pressable accessibilityRole="button" style={styles.streakCard} onPress={() => navigation.navigate("ReadingLog", {})}>
+      <View style={styles.streakCard}>
         <View style={[styles.streakIconWrap, { backgroundColor: streakMsg.accent + "22" }]}>
           <Ionicons name="flame" size={22} color={streakMsg.accent} />
         </View>
@@ -299,7 +299,7 @@ export function HomeScreen() {
         <Text style={[styles.streakCount, { color: streakMsg.accent }]}>
           {overallStats.currentStreak}d
         </Text>
-      </Pressable>
+      </View>
 
       {/* Goal card */}
       <View style={styles.goalCard}>
@@ -510,8 +510,6 @@ export function HomeScreen() {
         <>
           <SectionHeader
             title={t("home.recentSessions")}
-            actionLabel={t("home.viewAll")}
-            onAction={() => navigation.navigate("ReadingLog", {})}
           />
           {readingSessions.slice(0, 3).map((session) => (
             <SessionRow

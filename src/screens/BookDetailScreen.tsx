@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -23,8 +23,6 @@ import { BookCover } from "../components/BookCover";
 import { ScalePressable } from "../components/ScalePressable";
 import { BookStatusSheet } from "../components/BookStatusSheet";
 import { BookListSheet } from "../components/BookListSheet";
-import { FolderPickerSheet } from "../components/FolderPickerSheet";
-import { folderOfBook } from "../data/bookFolders";
 import { SessionRow } from "../components/SessionRow";
 import { useDialog } from "../components/DialogProvider";
 import { useBookliz } from "../data/BooklizContext";
@@ -36,14 +34,13 @@ import {
   pagesPerDay,
   weekRangeLabel,
 } from "../utils/readingWeek";
-import { useReadingTimer } from "../data/ReadingTimerContext";
 import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 import { useAttachAudio } from "../audio/useAttachAudio";
 import { RootStackParamList } from "../navigation/types";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useTheme } from "../theme/ThemeContext";
 import { useI18n } from "../i18n/LocalizationContext";
-import { hapticLight, hapticMedium } from "../utils/haptics";
+import { hapticMedium } from "../utils/haptics";
 import { isPlaceholderText, resolveBookMetadata } from "../utils/bookMetadata";
 import { isSameLanguage } from "../utils/languageUtils";
 import { statusLabelKey } from "../utils/statusLabels";
@@ -71,14 +68,30 @@ export function BookDetailScreen() {
   const {
     deleteBook, getAuthor, getBook, getBookStats,
     updateBookStatus, updateBookSynopsis, getReviewForBook,
-    getSessionsForBook, bookFolders, moveBookToFolder,
+    getSessionsForBook,
   } = useBookliz();
-  const [folderSheetOpen, setFolderSheetOpen] = useState(false);
+  // Actions picked in the "···" sheet run only once its Modal is gone: on iOS a
+  // second Modal, a dialog or the document picker presented while the sheet is
+  // still sliding out is silently refused (that is why "Add audio file" from
+  // this sheet never opened anything).
+  const pendingMoreActionRef = useRef<(() => void) | null>(null);
+  const moreFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushMoreAction = () => {
+    if (moreFallbackRef.current) { clearTimeout(moreFallbackRef.current); moreFallbackRef.current = null; }
+    const action = pendingMoreActionRef.current;
+    pendingMoreActionRef.current = null;
+    action?.();
+  };
+  const afterMoreSheet = (action: () => void) => {
+    pendingMoreActionRef.current = action;
+    setMoreSheetOpen(false);
+    if (moreFallbackRef.current) clearTimeout(moreFallbackRef.current);
+    moreFallbackRef.current = setTimeout(flushMoreAction, 600);
+  };
   const dialog = useDialog();
   const audioPlayer = useAudiobookPlayer();
   const attachAudio = useAttachAudio();
 
-  const { isRunning, bookId: timerBookId, startedAt: timerStartedAt, start: startTimer, stop: stopTimer } = useReadingTimer();
   const book = getBook(route.params.bookId);
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
   const [statusSheetOpen, setStatusSheetOpen] = useState(false);
@@ -86,8 +99,26 @@ export function BookDetailScreen() {
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [isFetchingSynopsis, setIsFetchingSynopsis] = useState(false);
   const [synopsisFetchFailed, setSynopsisFetchFailed] = useState(false);
-  // Parallax: hero drifts at ~45% scroll speed and zooms slightly on pull-down
+  // Parallax: the hero only stretches on pull-down. It used to also drift at
+  // ~45% scroll speed, which slid the title and author down under the action
+  // row and out between the cards below it (TestFlight 1.3.0 screenshot).
   const scrollY = useState(() => new Animated.Value(0))[0];
+  // Once the hero's title has scrolled under the header, the header turns
+  // opaque (iOS standard appearance); show the book's title there instead of
+  // an empty band.
+  const heroHeightRef = useRef(0);
+  const [titleInHeader, setTitleInHeader] = useState(false);
+  const bookTitle = book?.title ?? "";
+  useEffect(() => {
+    navigation.setOptions({ title: titleInHeader ? bookTitle : "" });
+  }, [navigation, titleInHeader, bookTitle]);
+  const onHeroScroll = (y: number) => {
+    const hero = heroHeightRef.current;
+    if (!hero) return;
+    // The title sits ~110pt above the hero's bottom edge.
+    const next = y > hero - insets.top - 44 - 110;
+    setTitleInHeader((prev) => (prev === next ? prev : next));
+  };
 
   if (!book) {
     return (
@@ -195,15 +226,12 @@ export function BookDetailScreen() {
         ].filter(Boolean).join(" & ")}
       </Text>
       {book.seriesName ? (
-        <Pressable accessibilityRole="button"
-          onPress={() => book.seriesId && navigation.navigate("SeriesTracker", { seriesId: book.seriesId! })}
-          style={styles.heroSeriesBtn}
-        >
+        <View style={styles.heroSeriesBtn}>
           <Ionicons name="layers-outline" size={12} color={c.tealDark} style={{ marginRight: 4 }} />
           <Text style={styles.heroSeries}>
             {book.seriesName}{book.seriesNumber ? ` · ${t("bookDetail.seriesBookN", { number: book.seriesNumber })}` : ""}
           </Text>
-        </Pressable>
+        </View>
       ) : null}
       <Pressable accessibilityRole="button" style={styles.heroStatusPill} onPress={() => setStatusSheetOpen(true)}>
         <View style={[styles.heroStatusDot, {
@@ -234,18 +262,19 @@ export function BookDetailScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
+          { useNativeDriver: true, listener: (e: { nativeEvent: { contentOffset: { y: number } } }) => onHeroScroll(e.nativeEvent.contentOffset.y) }
         )}
         scrollEventThrottle={16}
       >
         {/* ── HERO ─────────────────────────────────────────────────────────── */}
         <Animated.View
+          onLayout={(e) => { heroHeightRef.current = e.nativeEvent.layout.height; }}
           style={{
             transform: [
               {
                 translateY: scrollY.interpolate({
                   inputRange: [-1, 0, 1],
-                  outputRange: [-0.55, 0, 0.45], // pull-down stretch, scroll-up drift
+                  outputRange: [-0.55, 0, 0], // pull-down stretch only, no drift
                 }),
               },
               {
@@ -303,29 +332,8 @@ export function BookDetailScreen() {
               color={hasOpinion ? c.gold : c.ink}
             />
           </Pressable>
-          {/* Timer button — not for a book whose audio plays here: listening logs itself. */}
-          {audiobook ? null : (
-          <Pressable
-            style={[styles.iconBtn, isRunning && timerBookId === book.id && { backgroundColor: c.coral + "22", borderColor: c.coral }]}
-            accessibilityRole="button"
-            accessibilityLabel={isRunning && timerBookId === book.id ? t("a11y.stopTimer") : t("a11y.startTimer")}
-            onPress={() => {
-              hapticLight();
-              if (isRunning && timerBookId === book.id) {
-                const minutes = stopTimer();
-                navigation.navigate("AddReadingSession", { bookId: book.id, prefillMinutes: minutes, prefillStartedAt: timerStartedAt ?? undefined });
-              } else {
-                startTimer(book.id);
-              }
-            }}
-          >
-            <Ionicons
-              name={isRunning && timerBookId === book.id ? "stop-circle" : "timer-outline"}
-              size={20}
-              color={isRunning && timerBookId === book.id ? c.coral : c.ink}
-            />
-          </Pressable>
-          )}
+          {/* No timer button: the player logs listening on its own, and the
+              start/stop timer flow was dropped from this screen. */}
           {/* Everything else lives in the "more" sheet — keeps the row breathable */}
           <Pressable
             style={styles.iconBtn}
@@ -582,9 +590,6 @@ export function BookDetailScreen() {
           <View style={[styles.sectionBlock, { marginTop: spacing.lg }]}>
             <View style={styles.sectionBlockHeader}>
               <Text style={styles.sectionTitle}>{t("bookDetail.readingSessions")}</Text>
-              <Pressable accessibilityRole="button" onPress={() => navigation.navigate("ReadingLog", { bookId: book.id })}>
-                <Text style={styles.sectionAction}>{t("bookDetail.all")}</Text>
-              </Pressable>
             </View>
             {stats.latestSessions.slice(0, 3).map((session) => (
               <SessionRow
@@ -709,14 +714,6 @@ export function BookDetailScreen() {
         onClose={() => setStatusSheetOpen(false)}
       />
       <BookListSheet open={listSheetOpen} bookId={book.id} onClose={() => setListSheetOpen(false)} />
-      <FolderPickerSheet
-        open={folderSheetOpen}
-        title={t("folders.moveBookTitle", { title: book.title })}
-        currentId={folderOfBook(bookFolders, book.id)?.id ?? null}
-        noneLabel={t("folders.noFolder")}
-        onPick={(target) => moveBookToFolder(book.id, target)}
-        onClose={() => setFolderSheetOpen(false)}
-      />
 
       {/* ── More actions sheet ─────────────────────────────────────────────── */}
       <Modal
@@ -724,42 +721,16 @@ export function BookDetailScreen() {
         transparent
         animationType="slide"
         onRequestClose={() => setMoreSheetOpen(false)}
+        onDismiss={flushMoreAction}
       >
         <Pressable accessibilityRole="button" style={styles.moreOverlay} onPress={() => setMoreSheetOpen(false)}>
           <Pressable accessibilityRole="button" style={styles.moreSheet} onPress={(e) => e.stopPropagation()}>
             <View style={styles.moreHandle} />
-            {hasSessions ? (
-              <MoreAction icon="time-outline" label={t("bookDetail.moreReadingLog")} styles={styles} c={c}
-                onPress={() => { setMoreSheetOpen(false); navigation.navigate("ReadingLog", { bookId: book.id }); }} />
-            ) : null}
-            {book.seriesId ? (
-              <MoreAction icon="layers-outline" label={t("bookDetail.moreSeriesTracker")} styles={styles} c={c}
-                onPress={() => { setMoreSheetOpen(false); navigation.navigate("SeriesTracker", { seriesId: book.seriesId! }); }} />
-            ) : null}
             <MoreAction icon="bookmarks-outline" label={t("bookDetail.moreAddToList")} styles={styles} c={c}
-              onPress={() => { setMoreSheetOpen(false); setListSheetOpen(true); }} />
-            <MoreAction
-              icon="folder-outline"
-              label={(() => {
-                const current = folderOfBook(bookFolders, book.id);
-                return current ? t("folders.inFolder", { name: current.name }) : t("folders.moveBook");
-              })()}
-              styles={styles}
-              c={c}
-              // The sheet is a Modal: wait for this one to close first (iOS).
-              onPress={() => { setMoreSheetOpen(false); setTimeout(() => setFolderSheetOpen(true), 350); }}
-            />
-            <MoreAction
-              icon={audiobook ? "swap-horizontal" : "headset-outline"}
-              label={audiobook ? t("player.replaceAudio") : t("player.attachButton")}
-              styles={styles}
-              c={c}
-              onPress={() => { setMoreSheetOpen(false); void handleAttachAudio(); }}
-            />
+              onPress={() => afterMoreSheet(() => setListSheetOpen(true))} />
             {audiobook ? (
               <MoreAction icon="close-circle-outline" label={t("player.removeAudio")} styles={styles} c={c}
-                onPress={() => {
-                  setMoreSheetOpen(false);
+                onPress={() => afterMoreSheet(() => {
                   dialog.confirm({
                     title: t("player.removeConfirmTitle"),
                     body: t("player.removeConfirmBody"),
@@ -767,15 +738,14 @@ export function BookDetailScreen() {
                     destructive: true,
                     onConfirm: () => audioPlayer.engine.removeAudio(book.id),
                   });
-                }} />
+                })} />
             ) : null}
             <MoreAction icon="create-outline" label={t("bookDetail.moreEditBook")} styles={styles} c={c}
-              onPress={() => { setMoreSheetOpen(false); navigation.navigate("EditBook", { bookId: book.id }); }} />
+              onPress={() => afterMoreSheet(() => navigation.navigate("EditBook", { bookId: book.id }))} />
             <View style={styles.moreDivider} />
             <Pressable accessibilityRole="button"
               style={styles.moreRow}
-              onPress={() => {
-                setMoreSheetOpen(false);
+              onPress={() => afterMoreSheet(() => {
                 dialog.confirm({
                   title: book.title,
                   body: t("bookDetail.removeConfirmBody"),
@@ -787,7 +757,7 @@ export function BookDetailScreen() {
                     navigation.goBack();
                   },
                 });
-              }}
+              })}
             >
               <Ionicons name="trash-outline" size={20} color={c.danger} />
               <Text style={[styles.moreRowText, { color: c.danger }]}>{t("bookDetail.moreRemove")}</Text>

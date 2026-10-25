@@ -12,8 +12,6 @@ import { BookDetailScreen } from "../screens/BookDetailScreen";
 import { HomeScreen } from "../screens/HomeScreen";
 import { LibraryScreen } from "../screens/LibraryScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
-import { ReadingLogScreen } from "../screens/ReadingLogScreen";
-import { SeriesTrackerScreen } from "../screens/SeriesTrackerScreen";
 import { StatsScreen } from "../screens/StatsScreen";
 import { EditProfileScreen } from "../screens/EditProfileScreen";
 import { EditBookScreen } from "../screens/EditBookScreen";
@@ -186,7 +184,6 @@ export function AppNavigator() {
         <Stack.Screen component={WelcomeScreen} name="Welcome" options={{ headerShown: false }} />
         {/* Transparent header: the blurred cover hero extends under the status bar */}
         <Stack.Screen component={BookDetailScreen} name="BookDetail" options={{ title: "", headerTransparent: true }} />
-        <Stack.Screen component={ReadingLogScreen} name="ReadingLog" options={{ title: "" }} />
         <Stack.Screen component={AddReadingSessionScreen} name="AddReadingSession" options={{ title: "" }} />
         <Stack.Screen component={AudioPlayerScreen} name="AudioPlayer" options={{ headerShown: false, presentation: "modal" }} />
         <Stack.Screen
@@ -197,7 +194,6 @@ export function AppNavigator() {
             headerBackButtonDisplayMode: "minimal",
           }}
         />
-        <Stack.Screen component={SeriesTrackerScreen} name="SeriesTracker" options={{ title: "" }} />
         <Stack.Screen component={EditProfileScreen} name="EditProfile" options={{ title: t("nav.stack.editProfile") }} />
         <Stack.Screen component={SettingsScreen} name="Settings" options={{ title: t("nav.stack.settings") }} />
         <Stack.Screen component={SettingsChoiceScreen} name="SettingsChoice" options={{ title: "" }} />
