@@ -51,6 +51,7 @@ import {
   groupEditionCandidates,
   GroupedEditionCandidates,
 } from "../utils/editionMatchValidation";
+import { isbn10ToIsbn13, isbn13ToIsbn10 } from "../utils/isbnUtils";
 import { isSameLanguage } from "../utils/languageUtils";
 import { normalizeBookGenres } from "../utils/genres";
 import { GenreBookResult } from "../services/googleBooksProvider";
@@ -113,8 +114,15 @@ export function EditBookScreen() {
   // here is how a Spanish book silently acquires an English language field.
   const [language,        setLanguage]        = useState(book?.language ?? "");
   const rawIsbn = book?.isbn ?? "";
-  const [isbn13, setIsbn13] = useState(rawIsbn.replace(/\D/g, "").length === 13 ? rawIsbn : "");
-  const [isbn10, setIsbn10] = useState(rawIsbn.replace(/\D/g, "").length === 10 ? rawIsbn : "");
+  // A book stores one ISBN; the other form is the same number, derived
+  // (ISBN-10 exists only for 978- ISBN-13s).
+  const rawDigits = rawIsbn.replace(/[^0-9X]/gi, "");
+  const [isbn13, setIsbn13] = useState(
+    rawDigits.length === 13 ? rawIsbn : rawDigits.length === 10 ? isbn10ToIsbn13(rawDigits) ?? "" : ""
+  );
+  const [isbn10, setIsbn10] = useState(
+    rawDigits.length === 10 ? rawIsbn : rawDigits.length === 13 ? isbn13ToIsbn10(rawDigits) ?? "" : ""
+  );
   const isbn = isbn13.trim() || isbn10.trim();
   const [format,          setFormat]          = useState<ReadingFormat>(book?.format ?? "physical");
   const [coverImageUri,   setCoverImageUri]   = useState(book?.coverImageUri ?? "");
@@ -213,7 +221,7 @@ export function EditBookScreen() {
     setTitle(patch.title);
     setCoverImageUri(patch.coverImageUri);
     setIsbn13(patch.isbn13);
-    setIsbn10(patch.isbn10);
+    setIsbn10(patch.isbn10 || (patch.isbn13 ? isbn13ToIsbn10(patch.isbn13) ?? "" : ""));
     setPages(patch.pages);
     setPublisher(patch.publisher);
     setPublishedDate(patch.publishedDate);
@@ -299,8 +307,14 @@ export function EditBookScreen() {
     const coverIsAuto = /books\.google|googleusercontent|openlibrary|archive\.org/i.test(coverImageUri);
     if (langOk && meta.coverImageUri && (isBlank(coverImageUri) || (coverIsAuto && meta.coverImageUri !== coverImageUri))) { setCoverImageUri(meta.coverImageUri); filled.push("cover"); }
     if (langOk && meta.isbn && isBlank(isbn)) {
-      const clean = meta.isbn.replace(/\D/g, "");
-      if (clean.length === 13) { setIsbn13(meta.isbn); } else { setIsbn10(meta.isbn); }
+      const clean = meta.isbn.replace(/[^0-9X]/gi, "");
+      if (clean.length === 13) {
+        setIsbn13(meta.isbn);
+        if (isBlank(isbn10)) setIsbn10(isbn13ToIsbn10(clean) ?? "");
+      } else {
+        setIsbn10(meta.isbn);
+        if (isBlank(isbn13)) setIsbn13(isbn10ToIsbn13(clean) ?? "");
+      }
       filled.push("ISBN");
     }
     if (meta.authorName  && isBlank(authorName))                      { setAuthorName(meta.authorName);         filled.push("author"); }
