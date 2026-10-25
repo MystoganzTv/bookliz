@@ -8,13 +8,16 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { Appearance, useColorScheme } from "react-native";
+import { AppState, Appearance, useColorScheme } from "react-native";
 import { AppColors, darkColors, lightColors } from "./theme";
 import { ACCENTS, AccentId, isAccentId } from "./accents";
 import { usePro } from "../pro/ProContext";
+import { EditionId, EditionPreference, Hemisphere, isEditionPreference, isHemisphere, resolveEdition } from "../pro/editions";
 
 const STORAGE_KEY = "@bookliz/theme";
 const ACCENT_KEY = "@bookliz/accent";
+const EDITION_KEY = "@bookliz/edition";
+const HEMISPHERE_KEY = "@bookliz/hemisphere";
 
 /** What the screen is painted in right now. */
 type ThemeMode = "light" | "dark";
@@ -39,6 +42,11 @@ type ThemeContextValue = {
   /** Chosen accent (Pro). Painted only while Pro is active; kept if it lapses. */
   accent:        AccentId;
   setAccent:     (accent: AccentId) => void;
+  edition: EditionId;
+  editionPreference: EditionPreference;
+  setEditionPreference: (edition: EditionPreference) => void;
+  hemisphere: Hemisphere;
+  setHemisphere: (hemisphere: Hemisphere) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue>({
@@ -50,11 +58,20 @@ const ThemeContext = createContext<ThemeContextValue>({
   toggleTheme:   () => {},
   accent:        "teal",
   setAccent:     () => {},
+  edition: "classic",
+  editionPreference: "classic",
+  setEditionPreference: () => {},
+  hemisphere: "north",
+  setHemisphere: () => {},
 });
 
 export function ThemeProvider({ children }: PropsWithChildren) {
   const [preference, setPreferenceState] = useState<ThemePreference>("system");
   const [accent, setAccentState] = useState<AccentId>("teal");
+  const [editionPreference, setEditionState] = useState<EditionPreference>("classic");
+  const [hemisphere, setHemisphereState] = useState<Hemisphere>("north");
+  const [calendarDate, setCalendarDate] = useState(() => new Date());
+  const calendarDay = calendarDate.toDateString();
   const { isPro } = usePro();
   const systemScheme = useColorScheme();
 
@@ -66,7 +83,27 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     AsyncStorage.getItem(ACCENT_KEY).then((saved) => {
       if (isAccentId(saved)) setAccentState(saved);
     }).catch(() => {});
+    AsyncStorage.getItem(EDITION_KEY).then((saved) => {
+      if (isEditionPreference(saved)) setEditionState(saved);
+    }).catch(() => {});
+    AsyncStorage.getItem(HEMISPHERE_KEY).then((saved) => {
+      if (isHemisphere(saved)) setHemisphereState(saved);
+    }).catch(() => {});
   }, []);
+
+  // Refresh after returning to the app and across midnight while it stays open.
+  useEffect(() => {
+    if (editionPreference !== "seasonal") return;
+    const refresh = () => setCalendarDate(new Date());
+    refresh();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") refresh();
+    });
+    const tomorrow = new Date();
+    tomorrow.setHours(24, 0, 0, 50);
+    const timer = setTimeout(refresh, tomorrow.getTime() - Date.now());
+    return () => { subscription.remove(); clearTimeout(timer); };
+  }, [editionPreference, calendarDay]);
 
   // Native UI (keyboard, alerts, date pickers, Switch) follows the same choice:
   // an explicit light/dark overrides the window's style; "system" hands it back.
@@ -90,6 +127,16 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     AsyncStorage.setItem(ACCENT_KEY, next).catch(() => {});
   }, []);
 
+  const setEditionPreference = useCallback((next: EditionPreference) => {
+    setEditionState(next);
+    AsyncStorage.setItem(EDITION_KEY, next).catch(() => {});
+  }, []);
+
+  const setHemisphere = useCallback((next: Hemisphere) => {
+    setHemisphereState(next);
+    AsyncStorage.setItem(HEMISPHERE_KEY, next).catch(() => {});
+  }, []);
+
   const mode: ThemeMode = preference === "system" ? (systemScheme === "dark" ? "dark" : "light") : preference;
 
   const toggleTheme = useCallback(() => {
@@ -101,8 +148,10 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     const base = isDark ? darkColors : lightColors;
     const painted = isPro && accent !== "teal" ? ACCENTS[accent] : null;
     const colors = painted ? { ...base, teal: painted.main, tealDark: painted.dark } : base;
-    return { mode, isDark, colors, preference, setPreference, toggleTheme, accent, setAccent };
-  }, [accent, isPro, mode, preference, setAccent, setPreference, toggleTheme]);
+    const edition = resolveEdition(editionPreference, isPro, calendarDate, hemisphere);
+    return { mode, isDark, colors, preference, setPreference, toggleTheme, accent, setAccent,
+      edition, editionPreference, setEditionPreference, hemisphere, setHemisphere };
+  }, [accent, isPro, mode, preference, setAccent, setPreference, toggleTheme, editionPreference, calendarDate, setEditionPreference, hemisphere, setHemisphere]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

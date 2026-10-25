@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { BookCover } from "../components/BookCover";
 import { CatalogBookCard } from "../components/CatalogBookCard";
+import { EditionBanner } from "../components/EditionBanner";
+import { APP_ICONS } from "../pro/appIcons";
 
 import { RecommendationCard } from "../components/RecommendationCard";
 import { Screen } from "../components/Screen";
@@ -102,12 +104,14 @@ function shortHash(value: string): string {
 export function HomeScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList & MainTabParamList>>();
   const c = useColors();
-  const { isDark } = useTheme();
+  const { isDark, edition } = useTheme();
   const { t } = useI18n();
   const styles = useMemo(() => createStyles(c), [c]);
   const isWide = useIsWide();
   const { authors, books, getAuthor, getBook, overallStats, readingSessions, recommendations, userProfile } = useBookliz();
-  const logoSource = isDark ? booklizLogoDark : booklizLogoLight;
+  const logoSource = edition === "classic"
+    ? (isDark ? booklizLogoDark : booklizLogoLight)
+    : APP_ICONS.find((icon) => icon.id === edition)!.preview;
   const tasteProfile = useMemo(
     () => buildUserTasteProfile({ authors, books, readingSessions, userProfile }),
     [authors, books, readingSessions, userProfile]
@@ -251,12 +255,14 @@ export function HomeScreen() {
     <Screen wide>
       {/* Header */}
       <View style={styles.header}>
-        <Image source={logoSource} style={styles.logo} resizeMode="contain" />
+        <Image source={logoSource} style={[styles.logo, edition !== "classic" && { borderRadius: 14 }]} resizeMode="contain" />
         <View>
           <Text style={styles.greeting}>{getGreeting(t)},</Text>
           <Text style={styles.name}>{userProfile.name}.</Text>
         </View>
       </View>
+
+      {edition !== "classic" ? <EditionBanner edition={edition} /> : null}
 
       {/* Stats strip */}
       <View style={styles.statsStrip}>

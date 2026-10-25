@@ -535,7 +535,7 @@
 			baseConfigurationReference = AD7AD68384B5E082181D3C76 /* Pods-Booklio.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-Plum AppIcon-Forest AppIcon-Ink AppIcon-Ember AppIcon-Ocean";
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-Plum AppIcon-Forest AppIcon-Ink AppIcon-Ember AppIcon-Ocean AppIcon-Halloween AppIcon-Christmas AppIcon-Moonlight AppIcon-Botanical AppIcon-Library AppIcon-Audio AppIcon-Spring AppIcon-Summer AppIcon-Autumn AppIcon-Winter AppIcon-Valentines AppIcon-Walpurgis AppIcon-Workers";
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Booklio/Booklio.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
@@ -575,7 +575,7 @@
 			baseConfigurationReference = AA5307A4309C93CF1B7D7336 /* Pods-Booklio.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-Plum AppIcon-Forest AppIcon-Ink AppIcon-Ember AppIcon-Ocean";
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-Plum AppIcon-Forest AppIcon-Ink AppIcon-Ember AppIcon-Ocean AppIcon-Halloween AppIcon-Christmas AppIcon-Moonlight AppIcon-Botanical AppIcon-Library AppIcon-Audio AppIcon-Spring AppIcon-Summer AppIcon-Autumn AppIcon-Winter AppIcon-Valentines AppIcon-Walpurgis AppIcon-Workers";
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Booklio/Booklio.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
