@@ -1198,6 +1198,10 @@ export const translations: Record<AppLocale, TranslationTree> = {
       listened: "Listened",
     },
     editBook: {
+      formatSwitchTitle: "New format, same book?",
+      formatSwitchBody: "You're at {percent}% with sessions logged in the old format. Carry on from there, or start this format from zero?",
+      formatSwitchContinue: "Carry on",
+      formatSwitchStartOver: "Start over",
       titlePlaceholder: "Book title",
       statusWant: "Want",
       statusReading: "Reading",
@@ -2652,6 +2656,10 @@ export const translations: Record<AppLocale, TranslationTree> = {
       listened: "Escuchado",
     },
     editBook: {
+      formatSwitchTitle: "¿Nuevo formato, mismo libro?",
+      formatSwitchBody: "Vas por el {percent} % con sesiones registradas en el formato anterior. ¿Sigues desde ahí o empiezas este formato de cero?",
+      formatSwitchContinue: "Seguir donde iba",
+      formatSwitchStartOver: "Empezar de cero",
       titlePlaceholder: "Título del libro",
       statusWant: "Quiero",
       statusReading: "Leyendo",

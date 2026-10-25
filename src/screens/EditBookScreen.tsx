@@ -29,7 +29,7 @@ import {
 } from "react-native";
 import { BookCover } from "../components/BookCover";
 import { Screen } from "../components/Screen";
-import { useBookliz } from "../data/BooklizContext";
+import { formatGroupOf, useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
 import { CoreTrackingStatus, OwnershipStatus, ReadingFormat } from "../types/models";
@@ -95,7 +95,7 @@ export function EditBookScreen() {
   const styles = useMemo(() => createStyles(c), [c]);
   const route = useRoute<RouteProp<RootStackParamList, "EditBook">>();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { getAuthor, getBook, updateBook, deleteBook } = useBookliz();
+  const { getAuthor, getBook, updateBook, deleteBook, readingSessions, clearBookSessions } = useBookliz();
 
   const book = getBook(route.params.bookId);
 
@@ -350,6 +350,27 @@ export function EditBookScreen() {
   };
 
   const onSave = () => {
+    // Switching between paper, digital and audio with sessions already logged:
+    // ask whether the reader carries on from where they were (the % moves to
+    // the new format, old sessions stay with their own format) or starts over.
+    const formatFamilyChanged = formatGroupOf(book.format) !== formatGroupOf(format);
+    const hasSessions = readingSessions.some((session) => session.bookId === book.id);
+    if (formatFamilyChanged && hasSessions) {
+      dialog.confirm({
+        title: t("editBook.formatSwitchTitle"),
+        body: t("editBook.formatSwitchBody", { percent: book.userStatus.progressPercent }),
+        confirmLabel: t("editBook.formatSwitchStartOver"),
+        cancelLabel: t("editBook.formatSwitchContinue"),
+        destructive: true,
+        onConfirm: () => saveBook(true),
+        onCancel: () => saveBook(false),
+      });
+      return;
+    }
+    saveBook(false);
+  };
+
+  const saveBook = (startOver: boolean) => {
     updateBook(book.id, {
       title, authorName, synopsis,
       // Hand-typed genres go through exactly the same normalizer as imported
@@ -372,10 +393,11 @@ export function EditBookScreen() {
       rating: rating > 0 ? rating : undefined,
       personalRanking: parseNum(personalRanking),
       startDate, finishDate,
-      progressPercent: parseNum(progressPercent) ?? book.userStatus.progressPercent,
+      progressPercent: startOver ? 0 : parseNum(progressPercent) ?? book.userStatus.progressPercent,
       notes,
       favoriteQuotes: favoriteQuotes.map((q) => q.trim()).filter(Boolean),
     });
+    if (startOver) clearBookSessions(book.id);
     navigation.goBack();
   };
 

@@ -433,7 +433,6 @@ function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, o
                   autoFocus
                   inputAccessoryViewID={doneId}
                   keyboardType="number-pad"
-                  selectTextOnFocus
                   style={styles.bigInput}
                   value={audioText}
                   onBlur={commitAudioText}
@@ -496,7 +495,6 @@ function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, o
                 maxLength={5}
                 placeholder={String(resume)}
                 placeholderTextColor={c.gray}
-                selectTextOnFocus
                 style={styles.bigInput}
                 value={endText}
                 onChangeText={(text) => setEndText(text.replace(/[^0-9]/g, ""))}

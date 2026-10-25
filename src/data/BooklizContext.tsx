@@ -169,6 +169,9 @@ type BooklizContextValue = {
   addReadingSession: (input: NewReadingSessionInput) => ReadingSession;
   updateReadingSession: (sessionId: string, input: NewReadingSessionInput) => ReadingSession | undefined;
   deleteReadingSession: (sessionId: string) => void;
+  /** Start a book over: drop all its sessions and put its progress back to 0 %.
+   * Used when the reader switches format and chooses "Start over". */
+  clearBookSessions: (bookId: string) => void;
   deleteBook: (bookId: string) => void;
   updateBook: (bookId: string, input: UpdateBookInput) => void;
   updateBookStatus: (bookId: string, status: CoreTrackingStatus, rating?: number, owned?: boolean) => void;
@@ -291,7 +294,7 @@ const normalizeSeriesFields = (book: Book): Book => {
 
 /** Coarse format family — print / digital / audio. Same book in a different
  * family is a separate copy, not a duplicate. */
-const formatGroupOf = (format?: string): "print" | "digital" | "audio" => {
+export const formatGroupOf = (format?: string): "print" | "digital" | "audio" => {
   if (format === "audiobook") return "audio";
   if (format === "kindle" || format === "ebook") return "digital";
   return "print";
@@ -1412,6 +1415,17 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       );
     };
 
+    const clearBookSessions = (bookId: string) => {
+      setReadingSessions((current) => current.filter((session) => session.bookId !== bookId));
+      setBooks((current) =>
+        current.map((book) =>
+          book.id === bookId
+            ? { ...book, userStatus: { ...book.userStatus, progressPercent: 0 } }
+            : book
+        )
+      );
+    };
+
     const deleteBook = (bookId: string) => {
       const existingBook = getBook(bookId);
       if (!existingBook) {
@@ -2158,6 +2172,7 @@ export function BooklizProvider({ children }: PropsWithChildren) {
       addReadingSession,
       updateReadingSession,
       deleteReadingSession,
+      clearBookSessions,
       deleteBook,
       updateBook,
       updateBookStatus,
