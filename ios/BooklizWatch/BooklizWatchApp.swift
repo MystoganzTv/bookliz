@@ -1,13 +1,14 @@
 import SwiftUI
 
-/// Bookliz on Apple Watch — a remote for the audiobook player on the iPhone.
-/// The phone does the playing; the watch shows where you are and sends taps.
+/// Bookliz on Apple Watch — a remote for the audiobook player on the iPhone,
+/// and (Bookliz Pro) a player of its own for books sent to the watch.
 @main
 struct BooklizWatchApp: App {
   @StateObject private var link = PhoneLink.shared
 
   init() {
     PhoneLink.shared.activate()
+    LocalLibrary.shared.reload()
   }
 
   var body: some Scene {

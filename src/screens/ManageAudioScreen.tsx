@@ -18,6 +18,7 @@ import { AudioImportError, audioFolderSize } from "../audio/audioFiles";
 import { formatBytes, type AudioInboxItem } from "../audio/audiobookModel";
 import { CloudEntry } from "../audio/cloudAudio";
 import { useCloudAudio } from "../audio/useCloudAudio";
+import { useWatchAudio } from "../watch/useWatchAudio";
 import { usePro } from "../pro/ProContext";
 import { BookPickerSheet } from "../components/BookPickerSheet";
 import { useDialog } from "../components/DialogProvider";
@@ -55,6 +56,30 @@ export function ManageAudioScreen() {
   const [renaming, setRenaming] = useState<AudioInboxItem | null>(null);
   const { isPro } = usePro();
   const cloud = useCloudAudio(isPro);
+  const watchAudio = useWatchAudio();
+
+  const sendToWatch = (bookId: string) => {
+    if (!isPro) {
+      navigation.navigate("Paywall", { feature: "watchStandalone" });
+      return;
+    }
+    const queued = watchAudio.send(bookId);
+    if (queued > 0) {
+      hapticSuccess();
+      dialog.alert(t("watchAudio.sentTitle"), t("watchAudio.sentBody"));
+    } else {
+      dialog.alert(t("watchAudio.failedTitle"), t("watchAudio.failedBody"));
+    }
+  };
+
+  const removeFromWatch = (bookId: string, title: string) =>
+    dialog.confirm({
+      title: t("watchAudio.removeTitle"),
+      body: t("watchAudio.removeBody", { title }),
+      confirmLabel: t("watchAudio.removeConfirm"),
+      destructive: true,
+      onConfirm: () => watchAudio.remove(bookId),
+    });
   const cloudReady = isPro && cloud.supported && cloud.status.available;
   const remoteOnly = cloud.entries.filter((entry) => !entry.onThisDevice);
 
@@ -349,6 +374,43 @@ export function ManageAudioScreen() {
               />
             );
           })()}
+          {watchAudio.available
+            ? (() => {
+                const sending = watchAudio.transfers.get(row.bookId);
+                const onWatch = watchAudio.held.get(row.bookId);
+                if (sending) {
+                  return (
+                    <SettingsRow
+                      title={t("watchAudio.sending", { percent: Math.round(sending.fraction * 100) })}
+                      subtitle={t("watchAudio.sendingHint")}
+                      chevron={false}
+                      accessory={<ActivityIndicator color={c.teal} />}
+                    />
+                  );
+                }
+                if (onWatch?.complete) {
+                  return (
+                    <SettingsRow
+                      title={t("watchAudio.onWatch")}
+                      subtitle={t("watchAudio.removeHint")}
+                      chevron={false}
+                      accessory={<Ionicons name="watch" size={20} color={c.teal} />}
+                      onPress={() => removeFromWatch(row.bookId, row.title)}
+                    />
+                  );
+                }
+                return (
+                  <SettingsRow
+                    title={t("watchAudio.send")}
+                    subtitle={onWatch ? t("watchAudio.partial", { received: onWatch.received, total: onWatch.total }) : undefined}
+                    value={isPro ? undefined : t("pro.requiresPro")}
+                    chevron={false}
+                    accessory={<Ionicons name="watch-outline" size={20} color={c.teal} />}
+                    onPress={() => sendToWatch(row.bookId)}
+                  />
+                );
+              })()
+            : null}
           <SettingsRow title={t("player.removeAudio")} destructive chevron={false} onPress={() => removeAudio(row.bookId)} />
         </SettingsGroup>
       ))}

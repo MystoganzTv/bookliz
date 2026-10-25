@@ -8,7 +8,9 @@
  * whole navigator.
  */
 import type { NavigationContainerRefWithCurrent } from "@react-navigation/native";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { AppState } from "react-native";
+import { drainWatchProgress, onWatchFiles } from "../../modules/watch-bridge";
 import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 import { useBookliz } from "../data/BooklizContext";
 import { useReadingTimer } from "../data/ReadingTimerContext";
@@ -29,6 +31,25 @@ export function WatchSyncBridge({ navigation }: { navigation: NavRef }) {
   const timer = useReadingTimer();
 
   const authorName = useCallback((book: Book) => getAuthor(book.authorId)?.name ?? "", [getAuthor]);
+
+  // Listening on the watch without the phone (Pro): its position comes back
+  // here, and the newer of the two wins (engine.adoptPosition decides).
+  useEffect(() => {
+    const drain = () => {
+      for (const row of drainWatchProgress()) engine.adoptPosition(row.bookId, row.positionSec, row.at);
+    };
+    drain();
+    const files = onWatchFiles((event) => {
+      if (event.event === "progress") engine.adoptPosition(event.bookId, event.positionSec, event.at);
+    });
+    const appState = AppState.addEventListener("change", (state) => {
+      if (state === "active") drain();
+    });
+    return () => {
+      files.remove();
+      appState.remove();
+    };
+  }, [engine]);
 
   // Not keyed on elapsedMs: the watch counts the seconds itself from startedAt.
   const reading = useMemo(

@@ -2,6 +2,8 @@ import SwiftUI
 
 struct RootView: View {
   @EnvironmentObject private var link: PhoneLink
+  @ObservedObject private var localPlayer = WatchPlayer.shared
+  @ObservedObject private var localLibrary = LocalLibrary.shared
   @State private var page = 0
 
   var body: some View {
@@ -17,6 +19,12 @@ struct RootView: View {
             .containerBackground(Color.bookliz.opacity(0.35).gradient, for: .tabView)
             .tag(1)
         }
+        if localPlayer.book != nil || !localLibrary.rows.isEmpty {
+          // Books stored on the watch (Pro): play them with the phone left at home.
+          OnWatchLibraryView(onOpened: { withAnimation { page = 0 } })
+            .containerBackground(Color.bookliz.opacity(0.25).gradient, for: .tabView)
+            .tag(3)
+        }
         ReadingView(reading: link.state?.reading)
           .containerBackground(Color.bookliz.gradient, for: .tabView)
           .tag(2)
@@ -27,7 +35,10 @@ struct RootView: View {
 
   @ViewBuilder
   private var audioPage: some View {
-    if let state = link.state {
+    if localPlayer.book != nil {
+      OnWatchPlayerView()
+        .containerBackground(for: .tabView) { CoverBackground(url: nil) }
+    } else if let state = link.state {
       if let now = state.now {
         NowPlayingView(state: state, now: now)
       } else {

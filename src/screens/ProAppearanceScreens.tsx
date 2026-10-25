@@ -91,11 +91,12 @@ export function AppIconPickerScreen() {
   const dialog = useDialog();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const styles = useMemo(() => createStyles(c), [c]);
-  const [selected, setSelected] = useState<AppIconId>(() => iconIdForNativeName(currentIcon()));
-  const supported = supportsAlternateIcons();
+  const [selected, setSelected] = useState<AppIconId>("default");
+  const [supported, setSupported] = useState(true);
 
   useEffect(() => {
-    setSelected(iconIdForNativeName(currentIcon()));
+    void currentIcon().then((name) => setSelected(iconIdForNativeName(name)));
+    void supportsAlternateIcons().then(setSupported);
   }, []);
 
   const choose = async (id: AppIconId) => {

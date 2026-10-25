@@ -9,12 +9,12 @@ public class AppIconModule: Module {
   public func definition() -> ModuleDefinition {
     Name("AppIcon")
 
-    Function("supportsAlternateIcons") { () -> Bool in
+    AsyncFunction("supportsAlternateIcons") { () -> Bool in
       UIApplication.shared.supportsAlternateIcons
     }
     .runOnQueue(.main)
 
-    Function("currentIcon") { () -> String? in
+    AsyncFunction("currentIcon") { () -> String? in
       UIApplication.shared.alternateIconName
     }
     .runOnQueue(.main)

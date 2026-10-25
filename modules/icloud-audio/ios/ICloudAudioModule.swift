@@ -24,7 +24,7 @@ public class ICloudAudioModule: Module {
       self.queue.async {
         let signedIn = FileManager.default.ubiquityIdentityToken != nil
         let available = signedIn && ICloudAudioModule.root() != nil
-        promise.resolve(["signedIn": signedIn, "available": available])
+        promise.resolve(["signedIn": signedIn, "available": available] as [String: Any])
       }
     }
 
@@ -52,7 +52,7 @@ public class ICloudAudioModule: Module {
             self.sendEvent("onTransferProgress", ["remoteId": remoteId, "direction": "upload", "done": index + 1, "total": files.count])
           }
           try ICloudAudioModule.coordinatedWrite(Data(manifestJson.utf8), to: target.appendingPathComponent("manifest.json"))
-          promise.resolve(["files": files.count, "bytes": bytes])
+          promise.resolve(["files": files.count, "bytes": bytes] as [String: Any])
         } catch {
           promise.reject("ERR_ICLOUD_UPLOAD", error.localizedDescription)
         }
@@ -65,7 +65,7 @@ public class ICloudAudioModule: Module {
     AsyncFunction("list") { (promise: Promise) in
       self.queue.async {
         guard let root = ICloudAudioModule.root() else {
-          promise.resolve([])
+          promise.resolve([[String: Any]]())
           return
         }
         let fm = FileManager.default
@@ -109,6 +109,7 @@ public class ICloudAudioModule: Module {
           let deadline = Date().addingTimeInterval(timeoutSec > 0 ? timeoutSec : 1800)
           while true {
             let entries = ICloudAudioModule.entries(in: folder).filter { $0.name != "manifest.json" }
+            if let failed = entries.first(where: { $0.downloadError != nil })?.downloadError { throw failed }
             let done = entries.filter { $0.downloaded }.count
             self.sendEvent("onTransferProgress", ["remoteId": remoteId, "direction": "download", "done": done, "total": entries.count])
             if done == entries.count {
@@ -174,6 +175,7 @@ public class ICloudAudioModule: Module {
     let size: Int64
     let downloaded: Bool
     let uploaded: Bool
+    var downloadError: Error? = nil
   }
 
   /// Must not run on the main thread (Apple: it can block while the container is set up).
@@ -188,6 +190,7 @@ public class ICloudAudioModule: Module {
   static func entries(in folder: URL) -> [Entry] {
     let keys: [URLResourceKey] = [
       .fileSizeKey, .ubiquitousItemDownloadingStatusKey, .ubiquitousItemIsUploadedKey, .totalFileSizeKey,
+      .ubiquitousItemDownloadingErrorKey,
     ]
     let items = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: keys, options: [])) ?? []
     var byName: [String: Entry] = [:]
@@ -205,7 +208,7 @@ public class ICloudAudioModule: Module {
       let downloaded = !isPlaceholder && (status == nil || status == .current || status == .downloaded)
       let size = Int64(values?.fileSize ?? values?.totalFileSize ?? 0)
       let uploaded = values?.ubiquitousItemIsUploaded ?? false
-      let entry = Entry(name: name, size: size, downloaded: downloaded, uploaded: uploaded)
+      let entry = Entry(name: name, size: size, downloaded: downloaded, uploaded: uploaded, downloadError: values?.ubiquitousItemDownloadingError)
       if let existing = byName[name], existing.downloaded { continue }
       byName[name] = entry
     }

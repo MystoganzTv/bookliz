@@ -432,6 +432,26 @@ export class AudiobookEngine {
     }
   }
 
+  /**
+   * A position reported by the watch, where the book was played without the
+   * phone (Bookliz Pro). It wins only when it is newer than the last time the
+   * phone played the book, and never over the phone playing it right now.
+   */
+  adoptPosition(bookId: string, sec: number, atMs: number): boolean {
+    const audiobook = this.library[bookId];
+    if (!audiobook || !Number.isFinite(sec) || !Number.isFinite(atMs)) return false;
+    const phoneAt = Date.parse(audiobook.lastPlayedAt ?? audiobook.addedAt) || 0;
+    if (atMs <= phoneAt) return false;
+    const target = Math.max(0, Math.min(sec, audiobook.totalSec));
+    if (this.main.activeBookId === bookId) {
+      if (this.main.isPlaying) return false;
+      void this.seekTo(target, { remember: false });
+      return true;
+    }
+    this.savePosition(bookId, target, true);
+    return true;
+  }
+
   // ── Sessions ───────────────────────────────────────────────────────────────
 
   private trackListen(bookId: string, playing: boolean, sec: number, now: number) {

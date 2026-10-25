@@ -79,7 +79,10 @@ public class StoreKitModule: Module {
     updatesTask?.cancel()
     updatesTask = Task.detached { [weak self] in
       for await update in Transaction.updates {
-        if case .verified(let transaction) = update {
+        switch update {
+        case .verified(let transaction), .unverified(let transaction, _):
+          // Unverified ones never count (entitlements() skips them); finishing
+          // stops StoreKit from delivering them again on every launch.
           await transaction.finish()
         }
         let current = await StoreKitModule.entitlements()
@@ -122,7 +125,7 @@ public class StoreKitModule: Module {
       row["period"] = [
         "unit": unitName(subscription.subscriptionPeriod.unit),
         "value": subscription.subscriptionPeriod.value,
-      ]
+      ] as [String: Any]
       if let intro = subscription.introductoryOffer {
         row["introOffer"] = [
           "displayPrice": intro.displayPrice,
@@ -130,7 +133,7 @@ public class StoreKitModule: Module {
           "periodUnit": unitName(intro.period.unit),
           "periodValue": intro.period.value,
           "periodCount": intro.periodCount,
-        ]
+        ] as [String: Any]
       }
     }
     return row

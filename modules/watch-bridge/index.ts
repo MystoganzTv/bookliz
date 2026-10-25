@@ -19,10 +19,26 @@ export type WatchCommand = {
 
 type Subscription = { remove(): void };
 
+/** What the watch reports about audiobooks stored on it. */
+export type WatchFilesEvent =
+  | { event: "transferFinished"; bookId: string; index: number; error?: string }
+  | { event: "library"; books: string }
+  | { event: "progress"; bookId: string; positionSec: number; at: number };
+
+export type WatchProgress = { bookId: string; positionSec: number; at: number };
+export type WatchTransfer = { bookId: string; pending: number; fraction: number };
+
 type WatchBridgeNative = {
   isSupported(): boolean;
   status(): WatchStatus;
   updateState(json: string): void;
+  sendBook(json: string): number;
+  cancelBook(bookId: string): void;
+  fileTransfers(): WatchTransfer[];
+  deleteFromWatch(bookId: string): void;
+  watchLibrary(): string | null;
+  drainWatchProgress(): WatchProgress[];
+  addListener(event: "onWatchFiles", listener: (payload: WatchFilesEvent) => void): Subscription;
   addListener(event: "onCommand", listener: (command: WatchCommand) => void): Subscription;
   addListener(event: "onWatchStatus", listener: (status: WatchStatus) => void): Subscription;
 };
@@ -56,4 +72,60 @@ export function onWatchCommand(listener: (command: WatchCommand) => void): Subsc
 
 export function onWatchStatus(listener: (status: WatchStatus) => void): Subscription {
   return native ? native.addListener("onWatchStatus", listener) : { remove() {} };
+}
+
+// ── Audiobooks on the watch (Bookliz Pro) ─────────────────────────────────
+
+/** Queue a book's files for the watch. Returns how many files were queued. */
+export function sendBookToWatch(json: string): number {
+  try {
+    return native?.sendBook(json) ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function cancelWatchBook(bookId: string) {
+  try {
+    native?.cancelBook(bookId);
+  } catch {
+    // nothing queued
+  }
+}
+
+export function watchFileTransfers(): WatchTransfer[] {
+  try {
+    return native?.fileTransfers() ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export function deleteBookFromWatch(bookId: string) {
+  try {
+    native?.deleteFromWatch(bookId);
+  } catch {
+    // The watch drops it next time it hears from the phone.
+  }
+}
+
+/** Last list the watch reported (JSON), or null before it has said anything. */
+export function watchLibraryJson(): string | null {
+  try {
+    return native?.watchLibrary() ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function drainWatchProgress(): WatchProgress[] {
+  try {
+    return native?.drainWatchProgress() ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export function onWatchFiles(listener: (payload: WatchFilesEvent) => void): Subscription {
+  return native ? native.addListener("onWatchFiles", listener) : { remove() {} };
 }

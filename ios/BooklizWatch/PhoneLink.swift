@@ -77,6 +77,8 @@ extension PhoneLink: WCSessionDelegate {
       self.apply(context)
       self.reachable = reachable
       if reachable { self.send("sync") }
+      LocalLibrary.shared.reload()
+      LocalLibrary.shared.report()
     }
   }
 
@@ -99,5 +101,28 @@ extension PhoneLink: WCSessionDelegate {
   nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
     let json = message["state"] as? String
     Task { @MainActor in self.apply(json) }
+  }
+
+  // ── Audiobooks sent to the watch (Bookliz Pro) ──
+
+  /// Must move the file before returning: WatchConnectivity deletes it after.
+  nonisolated func session(_ session: WCSession, didReceive file: WCSessionFile) {
+    guard let metadata = file.metadata, metadata["kind"] as? String == "audio" else { return }
+    OnWatchStore.accept(file.fileURL, metadata: metadata)
+    let bookId = metadata["bookId"] as? String
+    Task { @MainActor in
+      let library = LocalLibrary.shared
+      library.reload()
+      // Files can land in any order: tell the phone on the first one (it shows
+      // "sending") and once the book is whole.
+      if let row = library.rows.first(where: { $0.book.bookId == bookId }), row.complete || row.received == 1 {
+        library.report()
+      }
+    }
+  }
+
+  nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+    guard userInfo["kind"] as? String == "deleteBook", let bookId = userInfo["bookId"] as? String else { return }
+    Task { @MainActor in LocalLibrary.shared.delete(bookId) }
   }
 }

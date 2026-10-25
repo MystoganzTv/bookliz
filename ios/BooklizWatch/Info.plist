@@ -6,6 +6,10 @@
 	<string>Bookliz</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>WKApplication</key>
 	<true/>
 	<key>WKCompanionAppBundleIdentifier</key>

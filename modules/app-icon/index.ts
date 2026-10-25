@@ -6,26 +6,26 @@ import { requireOptionalNativeModule } from "expo";
 import { Platform } from "react-native";
 
 type AppIconNative = {
-  supportsAlternateIcons(): boolean;
-  currentIcon(): string | null;
+  supportsAlternateIcons(): Promise<boolean>;
+  currentIcon(): Promise<string | null>;
   setIcon(name: string | null): Promise<string | null>;
 };
 
 const native: AppIconNative | null =
   Platform.OS === "ios" ? requireOptionalNativeModule<AppIconNative>("AppIcon") : null;
 
-export function supportsAlternateIcons(): boolean {
+export async function supportsAlternateIcons(): Promise<boolean> {
   try {
-    return native?.supportsAlternateIcons() ?? false;
+    return (await native?.supportsAlternateIcons()) ?? false;
   } catch {
     return false;
   }
 }
 
 /** The alternate set's name, or null for the primary icon. */
-export function currentIcon(): string | null {
+export async function currentIcon(): Promise<string | null> {
   try {
-    return native?.currentIcon() ?? null;
+    return (await native?.currentIcon()) ?? null;
   } catch {
     return null;
   }
