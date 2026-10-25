@@ -794,7 +794,7 @@ function LibraryRowCard({
 
         {book.seriesName ? (
           <Text numberOfLines={1} style={styles.rowSeries}>
-            {book.seriesNumber ? `Book ${book.seriesNumber} · ` : ""}{book.seriesName}
+            {book.seriesNumber ? `${t("bookDetail.seriesBookN", { number: book.seriesNumber })} · ` : ""}{book.seriesName}
           </Text>
         ) : null}
 

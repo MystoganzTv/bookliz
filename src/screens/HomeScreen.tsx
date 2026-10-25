@@ -423,7 +423,7 @@ export function HomeScreen() {
                     section.focusGenre ?? section.focusAuthor ?? section.focusSeries
                   )}
                 >
-                  <Text style={styles.personalizedSectionAction}>Browse</Text>
+                  <Text style={styles.personalizedSectionAction}>{t("common.browse")}</Text>
                 </Pressable>
               </View>
               <ScrollView
@@ -456,7 +456,7 @@ export function HomeScreen() {
         <>
           <SectionHeader
             title="Based on your interests"
-            actionLabel="Browse"
+            actionLabel={t("common.browse")}
             onAction={() =>
               navigation.navigate("GenreBrowse", { genre: userProfile.favoriteGenres[0]! })
             }
@@ -514,7 +514,7 @@ export function HomeScreen() {
           {readingSessions.slice(0, 3).map((session) => (
             <SessionRow
               key={session.id}
-              bookTitle={getBook(session.bookId)?.title ?? "Unknown book"}
+              bookTitle={getBook(session.bookId)?.title ?? t("common.unknownBook")}
               session={session}
               onPress={() => navigation.navigate("AddReadingSession", { bookId: session.bookId, sessionId: session.id })}
             />

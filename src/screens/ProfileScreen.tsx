@@ -394,7 +394,7 @@ function getRepositoryCopy(
     return {
       accent: c.coral,
       title: t("profile.syncNeedsAttention"),
-      body: repositoryStatus.lastError ?? "Bookliz could not persist your latest changes."
+      body: repositoryStatus.lastError ?? t("profile.persistFailed")
     };
   }
 

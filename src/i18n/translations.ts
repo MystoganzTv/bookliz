@@ -373,6 +373,8 @@ export const translations: Record<AppLocale, TranslationTree> = {
       dismiss: "Dismiss",
     },
     common: {
+      browse: "Browse",
+      unknownBook: "Unknown book",
       okay: "Okay",
       save: "Save",
       cancel: "Cancel",
@@ -455,6 +457,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       discardFailedTitle: "Could not discard the copy",
     },
     profile: {
+      persistFailed: "Bookliz couldn't save your latest changes.",
       currentIdentity: "Current reading identity",
       books: "Books",
       sessions: "Sessions",
@@ -1195,6 +1198,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       listened: "Listened",
     },
     editBook: {
+      titlePlaceholder: "Book title",
       statusWant: "Want",
       statusReading: "Reading",
       statusRead: "Read",
@@ -1824,6 +1828,8 @@ export const translations: Record<AppLocale, TranslationTree> = {
       dismiss: "Cerrar",
     },
     common: {
+      browse: "Explorar",
+      unknownBook: "Libro desconocido",
       okay: "Vale",
       save: "Guardar",
       cancel: "Cancelar",
@@ -1905,6 +1911,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       discardFailedTitle: "No se pudo descartar la copia",
     },
     profile: {
+      persistFailed: "Bookliz no pudo guardar tus últimos cambios.",
       currentIdentity: "Identidad lectora actual",
       books: "Libros",
       sessions: "Sesiones",
@@ -2645,6 +2652,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       listened: "Escuchado",
     },
     editBook: {
+      titlePlaceholder: "Título del libro",
       statusWant: "Quiero",
       statusReading: "Leyendo",
       statusRead: "Leído",

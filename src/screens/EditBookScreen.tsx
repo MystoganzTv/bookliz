@@ -414,7 +414,7 @@ export function EditBookScreen() {
 
       {/* ══ BOOK INFO ════════════════════════════════════════════════════════ */}
       <FieldCard icon="text-outline" label={t("editBook.labelTitle")} c={c} styles={styles}>
-        <PlainInput value={title} onChangeText={setTitle} placeholder="Book title" styles={styles} c={c} />
+        <PlainInput value={title} onChangeText={setTitle} placeholder={t("editBook.titlePlaceholder")} styles={styles} c={c} />
       </FieldCard>
 
       <FieldCard icon="person-outline" label={t("editBook.labelAuthor")} c={c} styles={styles}>
