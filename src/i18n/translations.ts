@@ -58,6 +58,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       rhythm: "Your rhythm",
       streak: "Longest streak",
       daysCount: "{count} days",
+      daysCountOne: "1 day",
       busiestMonth: "Busiest month",
       favoriteDay: "Favourite day",
       favoriteTime: "Favourite time",
@@ -73,6 +74,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       topRated: "Rated highest",
       favorites: "Authors and genres",
       booksCount: "{count} books",
+      booksCountOne: "1 book",
       share: "Share my year",
       shareBooks: "{count} books finished",
       shareHours: "{count} hours reading",
@@ -156,15 +158,15 @@ export const translations: Record<AppLocale, TranslationTree> = {
       requiresPro: "Pro",
       settingsRow: "Bookliz Pro",
       settingsActive: "Active",
-      settingsFooter: "Pro adds playback on Apple Watch without your iPhone, audiobooks in the cloud, your year in reading, accent colours and app icons. Everything else stays free.",
+      settingsFooter: "Pro adds playback on Apple Watch without your iPhone, audiobooks in iCloud, your year in reading, accent colours and app icons. Everything else stays free.",
       features: {
         watchStandalone: {
           title: "Apple Watch without your iPhone",
           body: "Send an audiobook to your watch and listen on a run or a walk with the phone left at home.",
         },
         cloudAudio: {
-          title: "Audiobooks in the cloud",
-          body: "Your audio files saved to your account, ready to download on your other iPhone or iPad.",
+          title: "Audiobooks in iCloud",
+          body: "Your audio files saved to your iCloud Drive, ready to download on your other iPhone or iPad.",
         },
         yearInReview: {
           title: "Your year in reading",
@@ -1532,6 +1534,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       rhythm: "Tu ritmo",
       streak: "Racha más larga",
       daysCount: "{count} días",
+      daysCountOne: "1 día",
       busiestMonth: "Mes con más lectura",
       favoriteDay: "Día favorito",
       favoriteTime: "Momento favorito",
@@ -1547,6 +1550,7 @@ export const translations: Record<AppLocale, TranslationTree> = {
       topRated: "Mejor valorados",
       favorites: "Autores y géneros",
       booksCount: "{count} libros",
+      booksCountOne: "1 libro",
       share: "Compartir mi año",
       shareBooks: "{count} libros terminados",
       shareHours: "{count} horas leyendo",
@@ -1630,15 +1634,15 @@ export const translations: Record<AppLocale, TranslationTree> = {
       requiresPro: "Pro",
       settingsRow: "Bookliz Pro",
       settingsActive: "Activo",
-      settingsFooter: "Pro añade escuchar en el Apple Watch sin el iPhone, audiolibros en la nube, tu año de lectura, colores de acento e iconos. Todo lo demás sigue siendo gratis.",
+      settingsFooter: "Pro añade escuchar en el Apple Watch sin el iPhone, audiolibros en iCloud, tu año de lectura, colores de acento e iconos. Todo lo demás sigue siendo gratis.",
       features: {
         watchStandalone: {
           title: "Apple Watch sin el iPhone",
           body: "Pasa un audiolibro al reloj y escúchalo corriendo o paseando con el móvil en casa.",
         },
         cloudAudio: {
-          title: "Audiolibros en la nube",
-          body: "Tus archivos de audio guardados en tu cuenta, listos para descargar en tu otro iPhone o iPad.",
+          title: "Audiolibros en iCloud",
+          body: "Tus archivos de audio guardados en tu iCloud Drive, listos para descargar en tu otro iPhone o iPad.",
         },
         yearInReview: {
           title: "Tu año de lectura",

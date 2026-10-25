@@ -31,10 +31,12 @@ export function YearInReviewScreen() {
   const review = useMemo(() => buildYearInReview(books, readingSessions, year), [books, readingSessions, year]);
   const lang = locale === "es" ? "es-ES" : "en-US";
 
+  const cap = (text: string) => text.charAt(0).toLocaleUpperCase(lang) + text.slice(1);
   const monthName = (index: number, style: "short" | "long" = "long") =>
-    new Date(Date.UTC(2026, index, 15)).toLocaleDateString(lang, { month: style, timeZone: "UTC" });
+    cap(new Date(Date.UTC(2026, index, 15)).toLocaleDateString(lang, { month: style, timeZone: "UTC" }));
   const weekdayName = (index: number) =>
-    new Date(Date.UTC(2026, 0, 4 + index)).toLocaleDateString(lang, { weekday: "long", timeZone: "UTC" });
+    cap(new Date(Date.UTC(2026, 0, 4 + index)).toLocaleDateString(lang, { weekday: "long", timeZone: "UTC" }));
+  const booksCount = (count: number) => t(count === 1 ? "yearReview.booksCountOne" : "yearReview.booksCount", { count });
   const hours = Math.floor(review.minutes / 60);
   const authorName = (authorId: string) => getAuthor(authorId)?.name ?? "—";
 
@@ -130,7 +132,7 @@ export function YearInReviewScreen() {
           <Section title={t("yearReview.rhythm")} styles={styles}>
             <BarChart data={review.monthlyMinutes.map((value, i) => ({ label: monthName(i, "short").slice(0, 3), value }))} />
             <View style={styles.factGrid}>
-              <Fact icon="flame-outline" label={t("yearReview.streak")} value={t("yearReview.daysCount", { count: review.longestStreak })} styles={styles} c={c} />
+              <Fact icon="flame-outline" label={t("yearReview.streak")} value={t(review.longestStreak === 1 ? "yearReview.daysCountOne" : "yearReview.daysCount", { count: review.longestStreak })} styles={styles} c={c} />
               {review.busiestMonth !== null ? (
                 <Fact icon="calendar-outline" label={t("yearReview.busiestMonth")} value={monthName(review.busiestMonth)} styles={styles} c={c} />
               ) : null}
@@ -167,11 +169,11 @@ export function YearInReviewScreen() {
           {review.topAuthorIds.length || review.topGenres.length ? (
             <Section title={t("yearReview.favorites")} styles={styles}>
               {review.topAuthorIds.map((row, i) => (
-                <Ranked key={`a-${row.label}`} place={i + 1} label={authorName(row.label)} value={t("yearReview.booksCount", { count: row.value })} styles={styles} />
+                <Ranked key={`a-${row.label}`} place={i + 1} label={authorName(row.label)} value={booksCount(row.value)} styles={styles} />
               ))}
               {review.topGenres.length ? <View style={styles.divider} /> : null}
               {review.topGenres.map((row, i) => (
-                <Ranked key={`g-${row.label}`} place={i + 1} label={row.label} value={t("yearReview.booksCount", { count: row.value })} styles={styles} />
+                <Ranked key={`g-${row.label}`} place={i + 1} label={row.label} value={booksCount(row.value)} styles={styles} />
               ))}
             </Section>
           ) : null}
@@ -247,7 +249,7 @@ function createStyles(c: AppColors) {
     factGrid: { flexDirection: "row", flexWrap: "wrap", marginTop: spacing.md, rowGap: spacing.md },
     fact: { gap: 2, width: "50%" },
     factLabel: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 13 },
-    factValue: { color: c.ink, fontFamily: fonts.body, fontSize: 16, textTransform: "capitalize" },
+    factValue: { color: c.ink, fontFamily: fonts.body, fontSize: 16 },
     bookRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, paddingVertical: spacing.sm },
     bookCopy: { flex: 1 },
     bookCaption: { color: c.tealDark, fontFamily: fonts.body, fontSize: 12, textTransform: "uppercase" },
