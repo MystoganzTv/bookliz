@@ -24,6 +24,7 @@ import {
   googleBooksHeaders,
   googleBooksKeyParam,
   redactGoogleBooksUrl,
+  plainQueryFallbackUrl,
 } from "./googleBooksEndpoint";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -238,7 +239,12 @@ export async function fetchByTitle(
     const url = `${GB_BASE}?q=intitle:${encodeURIComponent(title)}${authorPart}&maxResults=${MAX_RESULTS_QUERY}${apiKey()}`;
     const res = await fetchWithTimeout(url, { headers: googleBooksHeaders() });
     if (!res.ok) return [];
-    const data = (await res.json()) as GBResponse;
+    let data = (await res.json()) as GBResponse;
+    const plainUrl = !data.items?.length ? plainQueryFallbackUrl(url) : null;
+    if (plainUrl) {
+      const retry = await fetchWithTimeout(plainUrl, { headers: googleBooksHeaders() });
+      if (retry.ok) data = (await retry.json()) as GBResponse;
+    }
     const query: ScoringQuery = { title, author };
     return (data.items ?? []).map((vol) => volumeToEdition(vol, query));
   } catch {
@@ -375,7 +381,13 @@ export async function fetchByKeyword(
       }
       return { books: [], totalItems: 0 };
     }
-    const data = (await res.json()) as GBResponse;
+    let data = (await res.json()) as GBResponse;
+    // intitle:/inauthor: currently answer 0 — see plainQueryFallbackUrl.
+    const plainUrl = !data.items?.length ? plainQueryFallbackUrl(url) : null;
+    if (plainUrl) {
+      const retry = await fetchWithTimeout(plainUrl, { headers: googleBooksHeaders() });
+      if (retry.ok) data = (await retry.json()) as GBResponse;
+    }
 
     const books: GenreBookResult[] = (data.items ?? [])
       // Require a real cover (UI lists): skip catalog-only records and volumes
@@ -484,7 +496,14 @@ export async function fetchWorksByQuery(
       if (__DEV__) console.log(`[GB] HTTP ${res.status}`);
       return [];
     }
-    const data = (await res.json()) as GBResponse;
+    let data = (await res.json()) as GBResponse;
+    // intitle:/inauthor: currently answer 0 — see plainQueryFallbackUrl.
+    const plainUrl = !data.items?.length ? plainQueryFallbackUrl(url) : null;
+    if (plainUrl) {
+      if (__DEV__) console.log("[GB] qualified query empty — retrying as free text");
+      const retry = await fetchWithTimeout(plainUrl, { headers: googleBooksHeaders() });
+      if (retry.ok) data = (await retry.json()) as GBResponse;
+    }
     const items = data.items ?? [];
     if (__DEV__) console.log(`[GB] raw results: ${items.length}`);
     items.forEach((vol, i) => {

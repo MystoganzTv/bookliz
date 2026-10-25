@@ -28,7 +28,7 @@ import {
   inferSeriesData,
 } from "../utils/knownWorks";
 import { dice, fuzzyOverlapCoeff } from "./bookMatchScorer";
-import { GOOGLE_BOOKS_BASE, googleBooksKeyParam } from "./googleBooksEndpoint";
+import { GOOGLE_BOOKS_BASE, googleBooksKeyParam, plainQueryFallbackUrl } from "./googleBooksEndpoint";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -310,7 +310,12 @@ async function fetchGoogleBooksByQuery(
     const url = `${GB_BASE}?q=intitle:${encodeURIComponent(title)}${authorPart}&maxResults=10${key}`;
     const res = await fetchWithTimeout(url, { headers: googleBooksAppHeaders() });
     if (!res.ok) return [];
-    const data = (await res.json()) as GBResponse;
+    let data = (await res.json()) as GBResponse;
+    const plainUrl = !data.items?.length ? plainQueryFallbackUrl(url) : null;
+    if (plainUrl) {
+      const retry = await fetchWithTimeout(plainUrl, { headers: googleBooksAppHeaders() });
+      if (retry.ok) data = (await retry.json()) as GBResponse;
+    }
     return (data.items ?? []).map((vol) =>
       normalizeGBVolume(vol, { title, author })
     );

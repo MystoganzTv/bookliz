@@ -60,3 +60,26 @@ export function googleBooksHeaders(): Record<string, string> {
 export function redactGoogleBooksUrl(url: string): string {
   return url.replace(/key=[^&]+/, "key=REDACTED");
 }
+
+
+/**
+ * Since late October 2026 Google Books answers every field-qualified query
+ * (`intitle:`, `inauthor:`) with zero results, while the same words as free
+ * text still match — checked against the live API ("intitle:dune" → 0,
+ * "dune" → 364). Books added from search then came in without ISBN or page
+ * count, because the edition lookup behind them found nothing.
+ *
+ * Returns the same URL with those qualifiers turned into plain words, or null
+ * when there is nothing to strip. Callers retry once with it only when the
+ * qualified query came back empty, so if Google fixes it the precise query
+ * wins again with no change here. `isbn:` and `subject:` are left alone:
+ * a bare ISBN or genre word as free text does not find the right books.
+ */
+export function plainQueryFallbackUrl(url: string): string | null {
+  const match = url.match(/([?&]q=)([^&]*)/);
+  if (!match) return null;
+  const q = match[2];
+  if (!/(intitle|inauthor)(:|%3A)/i.test(q)) return null;
+  const plain = q.replace(/(intitle|inauthor)(:|%3A)/gi, "");
+  return url.replace(match[0], `${match[1]}${plain}`);
+}
