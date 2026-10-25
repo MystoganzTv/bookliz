@@ -1,0 +1,7 @@
+{
+  "name": "airplay-button",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Apple's AirPlay route picker (AVRoutePickerView) as a React Native view, for Bookliz's audiobook player.",
+  "main": "index.tsx"
+}

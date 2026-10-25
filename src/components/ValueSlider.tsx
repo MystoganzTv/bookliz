@@ -25,6 +25,10 @@ export function ValueSlider({
   onChange,
   onSettle,
   accessibilityLabel,
+  trackColor,
+  fillColor,
+  knobColor,
+  knobSize = KNOB,
 }: {
   value: number;
   min: number;
@@ -34,6 +38,12 @@ export function ValueSlider({
   /** Fires once when the finger lifts — for the expensive follow-up work. */
   onSettle?: (value: number) => void;
   accessibilityLabel?: string;
+  /** Overrides for screens with their own palette (the audiobook player). */
+  trackColor?: string;
+  fillColor?: string;
+  /** A solid knob of this colour, instead of the default ringed one. */
+  knobColor?: string;
+  knobSize?: number;
 }) {
   const c = useColors();
   const [width, setWidth] = useState(0);
@@ -46,20 +56,31 @@ export function ValueSlider({
   const span = Math.max(1, max - min);
   const ratio = Math.min(1, Math.max(0, (value - min) / span));
 
+  // Where the finger first touched, in track coordinates. Every move is that
+  // plus the gesture's own dx — no window measurement, which inside a modal is
+  // taken while the sheet is still sliding in and puts the finger in the wrong
+  // place for every drag after.
+  const startX = useRef(0);
+
   const responder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: (event) => emit(event.nativeEvent.locationX),
-        onPanResponderMove: (_event, gesture) => emit(gesture.moveX - trackX.current),
-        onPanResponderRelease: (_event, gesture) => emit(gesture.moveX - trackX.current, true),
-        onPanResponderTerminate: (_event, gesture) => emit(gesture.moveX - trackX.current, true),
+        // Once dragging, keep the gesture: the sheet's swipe-to-dismiss and a
+        // parent ScrollView must not take it away mid-drag.
+        onPanResponderTerminationRequest: () => false,
+        onShouldBlockNativeResponder: () => true,
+        onPanResponderGrant: (event) => {
+          startX.current = event.nativeEvent.locationX;
+          emit(startX.current);
+        },
+        onPanResponderMove: (_event, gesture) => emit(startX.current + gesture.dx),
+        onPanResponderRelease: (_event, gesture) => emit(startX.current + gesture.dx, true),
+        onPanResponderTerminate: (_event, gesture) => emit(startX.current + gesture.dx, true),
       }),
     []
   );
-
-  const trackX = useRef(0);
 
   function emit(x: number, settled = false) {
     const s = state.current;
@@ -79,25 +100,24 @@ export function ValueSlider({
       accessibilityValue={{ min, max, now: value }}
       style={styles.hitArea}
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-      // Measured in window coordinates so a move gesture, which reports
-      // absolute x, can be turned back into a position along the track.
-      ref={(node) => {
-        node?.measureInWindow?.((x) => {
-          trackX.current = x;
-        });
-      }}
       {...responder.panHandlers}
     >
-      <View style={[styles.track, { backgroundColor: c.border }]}>
-        <View style={[styles.fill, { backgroundColor: c.teal, width: `${ratio * 100}%` }]} />
+      <View pointerEvents="none" style={[styles.track, { backgroundColor: trackColor ?? c.border }]}>
+        <View style={[styles.fill, { backgroundColor: fillColor ?? c.teal, width: `${ratio * 100}%` }]} />
       </View>
       <View
+        pointerEvents="none"
         style={[
           styles.knob,
           {
-            backgroundColor: c.card,
-            borderColor: c.teal,
-            left: Math.max(0, Math.min(width - KNOB, ratio * width - KNOB / 2)),
+            backgroundColor: knobColor ?? c.card,
+            borderColor: knobColor ?? c.teal,
+            borderRadius: knobSize / 2,
+            borderWidth: knobColor ? 0 : 3,
+            height: knobSize,
+            top: (44 - knobSize) / 2,
+            width: knobSize,
+            left: Math.max(0, Math.min(width - knobSize, ratio * width - knobSize / 2)),
           },
         ]}
       />
@@ -107,7 +127,7 @@ export function ValueSlider({
 
 const styles = StyleSheet.create({
   hitArea: {
-    height: 40,
+    height: 44,
     justifyContent: "center",
     width: "100%",
   },
@@ -126,7 +146,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     height: KNOB,
     position: "absolute",
-    top: (40 - KNOB) / 2,
+    top: (44 - KNOB) / 2,
     width: KNOB,
   },
 });

@@ -27,6 +27,7 @@
 		9AA84F00ED6C21FD798B3A1F /* WatchState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F699B98B7C2C96168062294 /* WatchState.swift */; };
 		9F3D36889F12F3A279165F13 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = B49FAC87F4A6A0E34E15EBF6 /* L10n.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		C2021749523BE59A610F78FB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D6ED187AA31088A8D0BD3B3F /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 		F196DF7DC0EE19E9E7405AFD /* NowPlayingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1EADB57D33E8DFC4BFFFFF /* NowPlayingView.swift */; };
 		F8ABCA94997067B1BC47AB55 /* ChaptersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE4203D7653498D028D2E878 /* ChaptersView.swift */; };
@@ -323,6 +324,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				997E1FBBF288A9A50786C07A /* Assets.xcassets in Resources */,
+				C2021749523BE59A610F78FB /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -622,6 +624,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.3.0;
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mystodev.booklio.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -653,6 +656,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.3.0;
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mystodev.booklio.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;

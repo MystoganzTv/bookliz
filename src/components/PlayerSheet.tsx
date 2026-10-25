@@ -1,13 +1,23 @@
 /** Bottom sheet used by the audiobook player for chapters, speed, sleep timer and "more". */
 import { Ionicons } from "@expo/vector-icons";
-import { PropsWithChildren, useMemo } from "react";
+import { createContext, PropsWithChildren, useContext, useMemo } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppColors, fonts, radii, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
 
-export function PlayerSheet({ open, title, onClose, children }: PropsWithChildren<{ open: boolean; title?: string; onClose: () => void }>) {
-  const c = useColors();
+/** Lets a screen with its own palette (the player is always dark) dress its sheets to match. */
+const SheetColors = createContext<AppColors | null>(null);
+
+export function PlayerSheet({
+  open,
+  title,
+  onClose,
+  colors,
+  children,
+}: PropsWithChildren<{ open: boolean; title?: string; onClose: () => void; colors?: AppColors }>) {
+  const themed = useColors();
+  const c = colors ?? themed;
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(c), [c]);
   return (
@@ -17,7 +27,7 @@ export function PlayerSheet({ open, title, onClose, children }: PropsWithChildre
           <View style={styles.handle} />
           {title ? <Text style={styles.title}>{title}</Text> : null}
           <ScrollView bounces={false} style={styles.scroll}>
-            {children}
+            <SheetColors.Provider value={c}>{children}</SheetColors.Provider>
           </ScrollView>
         </Pressable>
       </Pressable>
@@ -31,6 +41,7 @@ export function SheetRow({
   icon,
   selected,
   destructive,
+  disabled,
   onPress,
 }: {
   label: string;
@@ -38,16 +49,19 @@ export function SheetRow({
   icon?: React.ComponentProps<typeof Ionicons>["name"];
   selected?: boolean;
   destructive?: boolean;
+  disabled?: boolean;
   onPress: () => void;
 }) {
-  const c = useColors();
+  const themed = useColors();
+  const c = useContext(SheetColors) ?? themed;
   const styles = useMemo(() => createStyles(c), [c]);
   const color = destructive ? c.danger : selected ? c.tealDark : c.ink;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected: Boolean(selected) }}
-      style={({ pressed }) => [styles.row, selected && styles.rowSelected, pressed && { opacity: 0.6 }]}
+      accessibilityState={{ selected: Boolean(selected), disabled: Boolean(disabled) }}
+      disabled={disabled}
+      style={({ pressed }) => [styles.row, selected && styles.rowSelected, disabled && { opacity: 0.4 }, pressed && { opacity: 0.6 }]}
       onPress={onPress}
     >
       {icon ? <Ionicons name={icon} size={20} color={color} /> : null}

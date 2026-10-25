@@ -50,4 +50,4 @@ with_node \
   --entitlement "/Users/enrique/Developer/Bookliz/ios/Booklio/Booklio.entitlements" \
    \
   --platform "apple" \
-  --packages "@react-native-google-signin/google-signin" "expo" "expo-apple-authentication" "expo-application" "expo-asset" "expo-camera" "expo-constants" "expo-crypto" "expo-dev-launcher" "expo-dev-menu" "expo-file-system" "expo-font" "expo-haptics" "expo-keep-awake" "expo-linear-gradient" "expo-linking" "expo-network" "expo-notifications" "expo-secure-store" "expo-web-browser"
+  --packages "@react-native-google-signin/google-signin" "airplay-button" "expo" "expo-apple-authentication" "expo-application" "expo-asset" "expo-audio" "expo-camera" "expo-constants" "expo-crypto" "expo-dev-launcher" "expo-dev-menu" "expo-document-picker" "expo-file-system" "expo-font" "expo-haptics" "expo-keep-awake" "expo-linear-gradient" "expo-linking" "expo-network" "expo-notifications" "expo-secure-store" "expo-web-browser" "file-backup" "now-playing" "watch-bridge"

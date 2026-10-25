@@ -7,13 +7,16 @@
 
 import ExpoModulesCore
 import ExpoAdapterGoogleSignIn
+import AirPlayButton
 import Expo
 import ExpoAppleAuthentication
 import EXApplication
 import ExpoAsset
+import ExpoAudio
 import ExpoCamera
 import EXConstants
 import ExpoCrypto
+import ExpoDocumentPicker
 import ExpoFileSystem
 import ExpoFont
 import ExpoHaptics
@@ -24,6 +27,9 @@ import ExpoNetwork
 import EXNotifications
 import ExpoSecureStore
 import ExpoWebBrowser
+import FileBackup
+import NowPlaying
+import WatchBridge
 #if EXPO_CONFIGURATION_DEBUG
 import EXDevLauncher
 import EXDevMenu
@@ -34,13 +40,16 @@ public class ExpoModulesProvider: ModulesProvider {
   public override func getModuleClasses() -> [AnyModule.Type] {
     #if EXPO_CONFIGURATION_DEBUG
     return [
+      AirPlayButtonModule.self,
       ExpoFetchModule.self,
       AppleAuthenticationModule.self,
       ApplicationModule.self,
       AssetModule.self,
+      AudioModule.self,
       CameraViewModule.self,
       ConstantsModule.self,
       CryptoModule.self,
+      DocumentPickerModule.self,
       FileSystemModule.self,
       FileSystemLegacyModule.self,
       FontLoaderModule.self,
@@ -62,19 +71,25 @@ public class ExpoModulesProvider: ModulesProvider {
       ServerRegistrationModule.self,
       SecureStoreModule.self,
       WebBrowserModule.self,
+      FileBackupModule.self,
+      NowPlayingModule.self,
+      WatchBridgeModule.self,
       DevMenuModule.self,
       DevMenuInternalModule.self,
       DevMenuPreferences.self
     ]
     #else
     return [
+      AirPlayButtonModule.self,
       ExpoFetchModule.self,
       AppleAuthenticationModule.self,
       ApplicationModule.self,
       AssetModule.self,
+      AudioModule.self,
       CameraViewModule.self,
       ConstantsModule.self,
       CryptoModule.self,
+      DocumentPickerModule.self,
       FileSystemModule.self,
       FileSystemLegacyModule.self,
       FontLoaderModule.self,
@@ -95,7 +110,10 @@ public class ExpoModulesProvider: ModulesProvider {
       SchedulerModule.self,
       ServerRegistrationModule.self,
       SecureStoreModule.self,
-      WebBrowserModule.self
+      WebBrowserModule.self,
+      FileBackupModule.self,
+      NowPlayingModule.self,
+      WatchBridgeModule.self
     ]
     #endif
   }
