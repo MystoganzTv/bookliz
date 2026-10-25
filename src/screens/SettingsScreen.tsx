@@ -16,6 +16,7 @@ import { loadIncludeAudioInBackup, setIncludeAudioInBackup } from "../audio/audi
 import { audioFolderSize } from "../audio/audioFiles";
 import { formatBytes } from "../audio/audiobookModel";
 import { updatePlayerPrefs, usePlayerPrefs } from "../audio/playerPrefs";
+import { loadOpeningSoundEnabled, setOpeningSoundEnabled } from "../audio/splashSound";
 import { isFileBackupAvailable } from "../../modules/file-backup";
 import { onWatchStatus, watchStatus, WatchStatus } from "../../modules/watch-bridge";
 import { useDialog } from "../components/DialogProvider";
@@ -63,6 +64,12 @@ export function SettingsScreen() {
 
   useEffect(() => {
     void loadNotificationPrefs().then(setNotifPrefs);
+  }, []);
+
+  // ── The chime when the app opens (on by default) ─────────────────────────
+  const [openingSound, setOpeningSound] = useState(true);
+  useEffect(() => {
+    void loadOpeningSoundEnabled().then(setOpeningSound);
   }, []);
 
   // ── Audiobooks in the iCloud device backup (off by default) ──────────────
@@ -237,6 +244,14 @@ export function SettingsScreen() {
           title={t("appearancePro.iconTitle")}
           value={pro.isPro ? undefined : t("pro.requiresPro")}
           onPress={() => navigation.navigate("AppIconPicker")}
+        />
+        <SettingsToggleRow
+          title={t("settings.openingSound")}
+          value={openingSound}
+          onValueChange={(v) => {
+            setOpeningSound(v);
+            void setOpeningSoundEnabled(v);
+          }}
         />
       </SettingsGroup>
 

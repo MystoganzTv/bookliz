@@ -14,6 +14,9 @@ import type { RootStackParamList } from "../navigation/types";
 import { useAudiobookPlayer } from "./AudiobookPlayerContext";
 import { AudioImportError } from "./audioFiles";
 import { pickedFromFileUris } from "./audioFiles";
+import { useEbooks } from "../ebook/EbookContext";
+import { EbookImportError } from "../ebook/ebookFiles";
+import { isEbookFileName, isLockedEbookFileName } from "../ebook/ebookModel";
 
 /** AirDrop of a folder of MP3s delivers them one by one, a few hundred ms apart. */
 const GATHER_MS = 1500;
@@ -23,6 +26,9 @@ export const isIncomingFileUrl = (url: string | null | undefined): url is string
 
 export function useIncomingAudio(navigation: NavigationContainerRefWithCurrent<RootStackParamList>) {
   const { engine } = useAudiobookPlayer();
+  // importPicked is stable; depending on it (not on the whole ebook state)
+  // keeps the URL listener from re-subscribing on every library change.
+  const { importPicked } = useEbooks();
   const dialog = useDialog();
   const { t } = useI18n();
 
@@ -36,7 +42,22 @@ export function useIncomingAudio(navigation: NavigationContainerRefWithCurrent<R
       const uris = batch;
       batch = [];
       if (!uris.length || !alive) return;
-      const picked = pickedFromFileUris(uris);
+      const all = pickedFromFileUris(uris);
+      if (!all.length) return;
+      // Ebooks (EPUB, PDF, CBZ/CBR, TXT — and DRM formats, to say why not) go
+      // to the ebook inbox; everything else is treated as audio.
+      const books = all.filter((p) => isEbookFileName(p.name) || isLockedEbookFileName(p.name));
+      const picked = all.filter((p) => !books.includes(p));
+      if (books.length) {
+        const result = importPicked(books, null);
+        const failure = result.failed[0];
+        if (failure) {
+          const problem = failure.error instanceof EbookImportError ? failure.error.problem : "unreadable";
+          dialog.alert(t(`ebook.errors.${problem}Title`), t(`ebook.errors.${problem}Body`, { name: failure.name }));
+        } else if (result.imported.length && navigation.isReady()) {
+          navigation.navigate("AppTabs");
+        }
+      }
       if (!picked.length) return;
       try {
         await engine.importIntoInbox(picked);
@@ -73,5 +94,5 @@ export function useIncomingAudio(navigation: NavigationContainerRefWithCurrent<R
       if (timer) clearTimeout(timer);
       sub.remove();
     };
-  }, [dialog, engine, navigation, t]);
+  }, [dialog, engine, importPicked, navigation, t]);
 }

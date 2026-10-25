@@ -46,6 +46,7 @@ export type RootStackParamList = {
   ManageAudio: { inboxItemId?: string } | undefined;
   AudioFolder: { folderId: string };
   AudioBookFiles: { bookId: string };
+  Reader: { ebookId: string };
   /** Settings > Credits and licences. */
   Credits: undefined;
   /** A Library folder (subfolders + books). */

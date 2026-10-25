@@ -12,7 +12,8 @@
  * changes rarely (what is loaded, playing or not), "position" ticks twice a
  * second and only the scrubber and mini-player listen to it.
  */
-import { createAudioPlayer, setAudioModeAsync, type AudioPlayer, type AudioStatus } from "expo-audio";
+import { createAudioPlayer, type AudioPlayer, type AudioStatus } from "expo-audio";
+import { claimPlaybackSession } from "./audioSession";
 import { setLockScreenSkipIntervals } from "../../modules/now-playing";
 import type { Book, NewReadingSessionInput } from "../types/models";
 import { getPlayerPrefs, loadPlayerPrefs, smartRewindSec, subscribePlayerPrefs, updatePlayerPrefs } from "./playerPrefs";
@@ -199,11 +200,8 @@ export class AudiobookEngine {
     this.started = true;
     await loadPlayerPrefs();
     subscribePlayerPrefs(() => this.onPrefsChanged());
-    try {
-      await setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true, interruptionMode: "doNotMix" });
-    } catch {
-      // Playback still works in the foreground.
-    }
+    // The audio session is claimed right before the first play (claimPlaybackSession),
+    // not here: opening the app must not stop music that is already playing.
 
     let stored: AudioLibrary | null = null;
     try {
@@ -309,6 +307,7 @@ export class AudiobookEngine {
       this.setMain({ isLoading: false });
     }
     if (autoplay && this.loadedBookId === audiobook.bookId) {
+      await claimPlaybackSession();
       player.play();
       this.observe();
     }
@@ -572,14 +571,18 @@ export class AudiobookEngine {
       const player = this.player;
       void this.seekTo(Math.max(0, this.position - back), { remember: false })
         .catch(() => {})
+        .then(() => claimPlaybackSession())
         .then(() => {
           player.play();
           this.observe();
         });
       return;
     }
-    this.player.play();
-    this.observe();
+    const player = this.player;
+    void claimPlaybackSession().then(() => {
+      player.play();
+      this.observe();
+    });
   }
 
   pause() {

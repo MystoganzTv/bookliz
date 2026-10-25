@@ -2,7 +2,7 @@
   "expo": {
     "name": "Bookliz",
     "slug": "booklio",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "scheme": "bookliz",
     "orientation": "portrait",
     "icon": "./assets/brand/bookliz-icon.png",

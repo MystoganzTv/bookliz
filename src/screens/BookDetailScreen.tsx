@@ -36,6 +36,8 @@ import {
 } from "../utils/readingWeek";
 import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 import { useAttachAudio } from "../audio/useAttachAudio";
+import { useEbooks } from "../ebook/EbookContext";
+import { EbookImportError } from "../ebook/ebookFiles";
 import { RootStackParamList } from "../navigation/types";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useTheme } from "../theme/ThemeContext";
@@ -92,6 +94,7 @@ export function BookDetailScreen() {
   const dialog = useDialog();
   const audioPlayer = useAudiobookPlayer();
   const attachAudio = useAttachAudio();
+  const ebooks = useEbooks();
 
   const book = getBook(route.params.bookId);
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
@@ -141,9 +144,25 @@ export function BookDetailScreen() {
   const isOwned = book.userStatus.ownership === "owned";
   const hasSessions = stats.totalSessions > 0;
   const audiobook = audioPlayer.library[book.id];
+  const ebook = ebooks.ebookForBook(book.id);
   const isListeningHere = audioPlayer.activeBookId === book.id && audioPlayer.isPlaying;
   const importingHere = audioPlayer.importing?.bookId === book.id ? audioPlayer.importing : null;
   const openPlayer = (autoplay = true) => navigation.navigate("AudioPlayer", { bookId: book.id, autoplay });
+  const handleAddEbook = async () => {
+    const result = await ebooks.pickAndImport(book.id);
+    if (!result) return;
+    if (result.imported.length) {
+      hapticMedium();
+      navigation.navigate("Reader", { ebookId: result.imported[0].id });
+      return;
+    }
+    const failure = result.failed[0];
+    if (failure) {
+      const problem = failure.error instanceof EbookImportError ? failure.error.problem : "unreadable";
+      dialog.alert(t(`ebook.errors.${problem}Title`), t(`ebook.errors.${problem}Body`, { name: failure.name }));
+    }
+  };
+
   const handleAttachAudio = async () => {
     if (await attachAudio(book.id)) openPlayer(false);
   };
@@ -164,6 +183,11 @@ export function BookDetailScreen() {
   const statusLabel = t(statusLabelKey(book.userStatus.status));
 
   const primaryAction = (() => {
+    // An ebook here: reading in Bookliz logs itself, like listening. When a
+    // book has both, its format decides which one is "the" action.
+    if (ebook && !(audiobook && book.format === "audiobook")) {
+      return { label: t("ebook.read"), icon: "book-outline" as const, onPress: () => navigation.navigate("Reader", { ebookId: ebook.id }) };
+    }
     // With the audio on this phone, listening IS logging: every listen becomes a session.
     if (audiobook) return { label: isListeningHere ? t("player.listening") : t("player.listen"), icon: "headset" as const, onPress: () => openPlayer() };
     // An audiobook whose file is not here yet: the next step is adding it, never
@@ -360,6 +384,15 @@ export function BookDetailScreen() {
             main button above already is "Add audio file". */}
         {!audiobook && book.format === "audiobook" && !isDone && !isDnf ? (
           <Text style={styles.attachHint}>{t("player.attachBody")}</Text>
+        ) : null}
+        {/* An ebook without its file: Log session stays the main action (a
+            Kindle reader cannot import a DRM file); reading here is offered. */}
+        {!ebook && book.format === "ebook" ? (
+          <Pressable accessibilityRole="button" style={styles.addEbookLink} onPress={() => void handleAddEbook()}>
+            <Ionicons name="add-circle-outline" size={16} color={c.tealDark} />
+            <Text style={styles.addEbookText}>{t("ebook.add")}</Text>
+            <Text style={styles.addEbookHint} numberOfLines={2}>{t("ebook.addHint")}</Text>
+          </Pressable>
         ) : null}
 
         {/* ── PROGRESS ─────────────────────────────────────────────────────── */}
@@ -740,6 +773,18 @@ export function BookDetailScreen() {
                   });
                 })} />
             ) : null}
+            {ebook ? (
+              <MoreAction icon="close-circle-outline" label={t("ebook.remove")} styles={styles} c={c}
+                onPress={() => afterMoreSheet(() => {
+                  dialog.confirm({
+                    title: t("ebook.removeTitle"),
+                    body: t("ebook.removeBody"),
+                    confirmLabel: t("common.delete"),
+                    destructive: true,
+                    onConfirm: () => ebooks.remove(ebook.id),
+                  });
+                })} />
+            ) : null}
             <MoreAction icon="create-outline" label={t("bookDetail.moreEditBook")} styles={styles} c={c}
               onPress={() => afterMoreSheet(() => navigation.navigate("EditBook", { bookId: book.id }))} />
             <View style={styles.moreDivider} />
@@ -862,6 +907,12 @@ function createStyles(c: AppColors, isDark: boolean) {
     },
     primaryBtnText: { color: "#FFFFFF", fontFamily: fonts.body, fontSize: 14, fontWeight: "900" },
 
+    addEbookLink: {
+      alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center",
+      marginHorizontal: spacing.lg, marginTop: spacing.sm,
+    },
+    addEbookText: { color: c.tealDark, fontFamily: fonts.body, fontSize: 14, fontWeight: "800" },
+    addEbookHint: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 12, lineHeight: 17, textAlign: "center", width: "100%" },
     attachHint: {
       color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 13, lineHeight: 18,
       marginHorizontal: spacing.lg, marginTop: spacing.sm, textAlign: "center",

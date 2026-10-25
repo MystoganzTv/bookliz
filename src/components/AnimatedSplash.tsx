@@ -24,11 +24,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, Easing, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useI18n } from "../i18n/LocalizationContext";
+import { playOpeningSound } from "../audio/splashSound";
 
 const NAVY = "#0F172A";
 /** Shortest time on screen: long enough for the entrance to finish, so a fast launch never cuts it off. */
-const MIN_MS = 1750;
+const MIN_MS = 2700;
 const MIN_MS_REDUCED = 500;
+/** When the sun starts to rise — the chime starts with it. */
+const SUN_RISES_MS = 650;
 
 /** Where each layer sits on the 1024×1024 icon (from the cut). */
 const LAYERS = {
@@ -98,10 +101,16 @@ export function AnimatedSplash({ ready, onDone }: { ready: boolean; onDone: () =
   useEffect(() => {
     if (reduced === null) return;
     const timer = setTimeout(() => setMinElapsed(true), reduced ? MIN_MS_REDUCED : MIN_MS);
+    // The opening chime: its two notes rise with the sun (it respects the silent switch).
+    // This is the only place in the app that plays a sound like this.
+    const chime = setTimeout(() => void playOpeningSound(), reduced ? 0 : SUN_RISES_MS);
 
     if (reduced) {
       [...v.rings, v.book, v.sun, v.leaves, v.star, v.sparkle, v.birds, v.word, v.tagline].forEach((a) => a.setValue(1));
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(chime);
+      };
     }
 
     const at = (ms: number, anim: Animated.CompositeAnimation) => Animated.sequence([Animated.delay(ms), anim]);
@@ -111,15 +120,15 @@ export function AnimatedSplash({ ready, onDone }: { ready: boolean; onDone: () =
       Animated.spring(value, { toValue: 1, friction, tension, useNativeDriver: native });
 
     const entrance = Animated.parallel([
-      ...v.rings.map((ring, i) => at(i * 110, timing(ring, 1000))),
-      at(120, spring(v.book, 8, 38)),
-      at(420, timing(v.sun, 1000, Easing.out(Easing.back(1.1)))),
-      at(720, spring(v.leaves, 6, 60)),
-      at(820, spring(v.star, 5, 90)),
-      at(1000, spring(v.sparkle, 5, 90)),
-      at(760, timing(v.birds, 1100)),
-      at(980, timing(v.word, 650)),
-      at(1150, timing(v.tagline, 600)),
+      ...v.rings.map((ring, i) => at(i * 160, timing(ring, 1400))),
+      at(200, spring(v.book, 9, 22)),
+      at(SUN_RISES_MS, timing(v.sun, 1400, Easing.out(Easing.back(1.1)))),
+      at(1100, spring(v.leaves, 7, 34)),
+      at(1250, spring(v.star, 5, 60)),
+      at(1500, spring(v.sparkle, 5, 60)),
+      at(1150, timing(v.birds, 1600)),
+      at(1500, timing(v.word, 800)),
+      at(1750, timing(v.tagline, 750)),
     ]);
 
     const wave = (value: Animated.Value, duration: number) =>
@@ -133,10 +142,11 @@ export function AnimatedSplash({ ready, onDone }: { ready: boolean; onDone: () =
 
     entrance.start();
     // The idle life starts once the sun is up, overlapping the tail of the entrance.
-    const idle = setTimeout(() => loops.forEach((l) => l.start()), 1200);
+    const idle = setTimeout(() => loops.forEach((l) => l.start()), 1900);
 
     return () => {
       clearTimeout(timer);
+      clearTimeout(chime);
       clearTimeout(idle);
       entrance.stop();
       loops.forEach((l) => l.stop());
@@ -148,7 +158,7 @@ export function AnimatedSplash({ ready, onDone }: { ready: boolean; onDone: () =
     leaving.current = true;
     Animated.timing(v.exit, {
       toValue: 1,
-      duration: reduced ? 250 : 480,
+      duration: reduced ? 250 : 600,
       easing: Easing.in(Easing.cubic),
       useNativeDriver: native,
     }).start(() => onDone());

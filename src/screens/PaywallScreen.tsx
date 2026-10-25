@@ -23,6 +23,7 @@ const FEATURE_ICONS: Record<ProFeature, keyof typeof Ionicons.glyphMap> = {
   yearInReview: "sparkles-outline",
   accentThemes: "color-palette-outline",
   appIcons: "apps-outline",
+  readerFonts: "text-outline",
 };
 
 const BETA_FEATURES: ProFeature[] = ["watchStandalone", "cloudAudio"];

@@ -28,6 +28,7 @@ import { PlayerSettingsScreen } from "../screens/PlayerSettingsScreen";
 import { ManageAudioScreen } from "../screens/ManageAudioScreen";
 import { AudioLibraryScreen } from "../screens/AudioLibraryScreen";
 import { AudioBookFilesScreen } from "../screens/AudioBookFilesScreen";
+import { ReaderScreen } from "../screens/ReaderScreen";
 import { CreditsScreen } from "../screens/CreditsScreen";
 import { FolderScreen } from "../screens/FolderScreen";
 import { PaywallScreen } from "../screens/PaywallScreen";
@@ -99,7 +100,7 @@ function AppTabs() {
             Home: focused ? "home" : "home-outline",
             Library: focused ? "library" : "library-outline",
             Add: focused ? "add" : "add-outline",
-            Audio: focused ? "headset" : "headset-outline",
+            Audio: focused ? "albums" : "albums-outline",
             Profile: focused ? "person" : "person-outline"
           };
           const isAdd = route.name === "Add";
@@ -203,6 +204,7 @@ export function AppNavigator() {
         <Stack.Screen component={ManageAudioScreen} name="ManageAudio" options={{ title: t("audioLib.storage") }} />
         <Stack.Screen component={AudioLibraryScreen} name="AudioFolder" options={{ title: "" }} />
         <Stack.Screen component={AudioBookFilesScreen} name="AudioBookFiles" options={{ title: "" }} />
+        <Stack.Screen component={ReaderScreen} name="Reader" options={{ headerShown: false, presentation: "fullScreenModal", animation: "fade" }} />
         <Stack.Screen component={CreditsScreen} name="Credits" options={{ title: t("credits.title") }} />
         <Stack.Screen component={FolderScreen} name="Folder" options={{ title: "" }} />
         <Stack.Screen component={EditBookScreen} name="EditBook" options={{ title: t("nav.stack.editBook") }} />

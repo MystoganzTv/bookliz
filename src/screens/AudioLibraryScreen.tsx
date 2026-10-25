@@ -35,12 +35,18 @@ import { useColors } from "../theme/ThemeContext";
 import { AppColors, fonts, radii, spacing } from "../theme/theme";
 import type { BookFolder } from "../types/models";
 import { hapticLight, hapticSuccess } from "../utils/haptics";
+import { BookPickerSheet } from "../components/BookPickerSheet";
+import { useEbooks } from "../ebook/EbookContext";
+import { EbookImportError, pickEbookFiles } from "../ebook/ebookFiles";
+import { isEbookFileName, isLockedEbookFileName, type Ebook } from "../ebook/ebookModel";
+import { formatBytes } from "../audio/audiobookModel";
 import { formatListenLength } from "./ManageAudioScreen";
 
 type Menu =
   | { kind: "screen" }
   | { kind: "book"; bookId: string }
-  | { kind: "folder"; folder: BookFolder };
+  | { kind: "folder"; folder: BookFolder }
+  | { kind: "ebookInbox"; ebook: Ebook };
 
 export function AudioLibraryScreen() {
   const route = useRoute<RouteProp<RootStackParamList, "AudioFolder">>();
@@ -54,6 +60,7 @@ export function AudioLibraryScreen() {
   const { getBook, getAuthor, bookFolders, createFolder, renameFolder, deleteFolder, moveBookToFolder } = useBookliz();
   const player = useAudiobookPlayer();
   const { engine } = player;
+  const ebooks = useEbooks();
 
   const folder = folderId ? bookFolders.find((f) => f.id === folderId) ?? null : null;
   useEffect(() => {
@@ -62,8 +69,12 @@ export function AudioLibraryScreen() {
 
   /** Books that have audio here (and still exist in the library). */
   const audioIds = useMemo(
-    () => new Set(Object.keys(player.library).filter((id) => Boolean(getBook(id)))),
-    [getBook, player.library]
+    () =>
+      new Set(
+        [...Object.keys(player.library), ...Object.values(ebooks.library).map((e) => e.bookId ?? "")]
+          .filter((id) => Boolean(id && getBook(id)))
+      ),
+    [ebooks.library, getBook, player.library]
   );
 
   // Folders here: those holding audio somewhere below, and empty ones (just
@@ -78,20 +89,30 @@ export function AudioLibraryScreen() {
     [audioIds, bookFolders, folderId]
   );
 
+  /** Books here that have audio, an ebook, or both — most recently used first. */
   const audiobooks = useMemo(() => {
     const here = [...audioIds].filter((id) => (folderOfBook(bookFolders, id)?.id ?? null) === folderId);
-    const rank = (a: Audiobook) => a.lastPlayedAt ?? a.addedAt;
-    return here.map((id) => player.library[id]).sort((a, b) => rank(b).localeCompare(rank(a)));
-  }, [audioIds, bookFolders, folderId, player.library]);
+    const rank = (id: string) => {
+      const audio: Audiobook | undefined = player.library[id];
+      const ebook = ebooks.ebookForBook(id);
+      return [audio?.lastPlayedAt, audio?.addedAt, ebook?.lastOpenedAt, ebook?.addedAt].filter(Boolean).sort().pop() ?? "";
+    };
+    return here.sort((a, b) => rank(b).localeCompare(rank(a)));
+  }, [audioIds, bookFolders, ebooks, folderId, player.library]);
 
   const inbox = isRoot ? player.inbox : [];
+  const ebookInbox = isRoot ? ebooks.inbox : [];
   const importingInbox = player.importing?.bookId === INBOX_IMPORT ? player.importing : null;
-  const isEmpty = !inbox.length && !folders.length && !audiobooks.length;
+  const isEmpty = !inbox.length && !ebookInbox.length && !folders.length && !audiobooks.length;
 
   // ── Menus ────────────────────────────────────────────────────────────────
   const [menu, setMenu] = useState<Menu | null>(null);
   const [sheet, setSheet] = useState<
-    { kind: "createFolder" } | { kind: "renameFolder"; folder: BookFolder } | { kind: "moveBook"; bookId: string } | null
+    | { kind: "createFolder" }
+    | { kind: "renameFolder"; folder: BookFolder }
+    | { kind: "moveBook"; bookId: string }
+    | { kind: "assignEbook"; ebook: Ebook }
+    | null
   >(null);
   // An action picked in the menu runs once the menu's Modal is gone: iOS
   // refuses to present a second modal while the first is still sliding out.
@@ -107,15 +128,40 @@ export function AudioLibraryScreen() {
     action?.();
   };
 
+  /**
+   * One picker for everything this tab holds: audio goes to the audio inbox,
+   * ebooks (EPUB, PDF, CBZ/CBR, TXT) to the ebook inbox.
+   */
   const importFiles = async () => {
+    let picked;
     try {
-      const item = await engine.pickIntoInbox();
-      if (item) hapticSuccess();
+      picked = await pickEbookFiles();
     } catch (error) {
-      const problem = error instanceof AudioImportError ? error.problem : "unreadable";
-      const detail = error instanceof AudioImportError ? error.detail : error instanceof Error ? error.message : undefined;
-      const body = t(`player.errors.${problem}Body`);
-      dialog.alert(t(`player.errors.${problem}Title`), detail ? `${body}\n\n${t("auth.errorDetail", { detail })}` : body);
+      dialog.alert(t("player.errors.unreadableTitle"), error instanceof Error ? error.message : String(error));
+      return;
+    }
+    if (!picked) return;
+    const books = picked.filter((p) => isEbookFileName(p.name) || isLockedEbookFileName(p.name));
+    const audio = picked.filter((p) => !books.includes(p));
+    if (books.length) {
+      const result = ebooks.importPicked(books, null);
+      if (result.imported.length) hapticSuccess();
+      const failure = result.failed[0];
+      if (failure) {
+        const problem = failure.error instanceof EbookImportError ? failure.error.problem : "unreadable";
+        dialog.alert(t(`ebook.errors.${problem}Title`), t(`ebook.errors.${problem}Body`, { name: failure.name }));
+      }
+    }
+    if (audio.length) {
+      try {
+        const item = await engine.importIntoInbox(audio);
+        if (item) hapticSuccess();
+      } catch (error) {
+        const problem = error instanceof AudioImportError ? error.problem : "unreadable";
+        const detail = error instanceof AudioImportError ? error.detail : error instanceof Error ? error.message : undefined;
+        const body = t(`player.errors.${problem}Body`);
+        dialog.alert(t(`player.errors.${problem}Title`), detail ? `${body}\n\n${t("auth.errorDetail", { detail })}` : body);
+      }
     }
   };
 
@@ -151,12 +197,40 @@ export function AudioLibraryScreen() {
           { key: "newFolder", icon: "folder-open-outline", label: t("audioLib.newFolder"), run: () => setSheet({ kind: "createFolder" }) },
           { key: "storage", icon: "server-outline", label: t("audioLib.storage"), run: () => navigation.navigate("ManageAudio") },
         ]
+      : menu?.kind === "ebookInbox"
+        ? [
+            { key: "read", icon: "book-outline", label: t("ebook.read"), run: () => navigation.navigate("Reader", { ebookId: menu.ebook.id }) },
+            { key: "assign", icon: "link-outline", label: t("fileManager.assign"), run: () => setSheet({ kind: "assignEbook", ebook: menu.ebook }) },
+            { key: "delete", icon: "trash-outline", label: t("fileManager.delete"), danger: true, run: () => dialog.confirm({
+              title: t("fileManager.deleteTitle"),
+              body: t("fileManager.deleteBody", { title: menu.ebook.title }),
+              confirmLabel: t("common.delete"),
+              destructive: true,
+              onConfirm: () => ebooks.remove(menu.ebook.id),
+            }) },
+          ]
       : menu?.kind === "book"
         ? [
-            { key: "files", icon: "list-outline", label: t("audioLib.showFiles"), run: () => navigation.navigate("AudioBookFiles", { bookId: menu.bookId }) },
+            ...(player.library[menu.bookId]
+              ? [{ key: "files", icon: "list-outline" as const, label: t("audioLib.showFiles"), run: () => navigation.navigate("AudioBookFiles", { bookId: menu.bookId }) }]
+              : []),
+            ...(ebooks.ebookForBook(menu.bookId)
+              ? [{ key: "read", icon: "book-outline" as const, label: t("ebook.read"), run: () => navigation.navigate("Reader", { ebookId: ebooks.ebookForBook(menu.bookId)!.id }) }]
+              : []),
             { key: "move", icon: "folder-outline", label: t("audioLib.moveToFolder"), run: () => setSheet({ kind: "moveBook", bookId: menu.bookId }) },
             { key: "detail", icon: "book-outline", label: t("audioLib.openBook"), run: () => navigation.navigate("BookDetail", { bookId: menu.bookId }) },
-            { key: "remove", icon: "trash-outline", label: t("player.removeAudio"), danger: true, run: () => removeAudio(menu.bookId) },
+            ...(player.library[menu.bookId]
+              ? [{ key: "remove", icon: "trash-outline" as const, label: t("player.removeAudio"), danger: true, run: () => removeAudio(menu.bookId) }]
+              : []),
+            ...(ebooks.ebookForBook(menu.bookId)
+              ? [{ key: "removeEbook", icon: "trash-outline" as const, label: t("ebook.remove"), danger: true, run: () => dialog.confirm({
+                  title: t("ebook.removeTitle"),
+                  body: t("ebook.removeBody"),
+                  confirmLabel: t("common.delete"),
+                  destructive: true,
+                  onConfirm: () => ebooks.remove(ebooks.ebookForBook(menu.bookId)!.id),
+                }) }]
+              : []),
           ]
         : menu?.kind === "folder"
           ? [
@@ -165,7 +239,7 @@ export function AudioLibraryScreen() {
             ]
           : [];
   const menuTitle =
-    menu?.kind === "book" ? getBook(menu.bookId)?.title ?? "" : menu?.kind === "folder" ? menu.folder.name : "";
+    menu?.kind === "book" ? getBook(menu.bookId)?.title ?? "" : menu?.kind === "folder" ? menu.folder.name : menu?.kind === "ebookInbox" ? menu.ebook.title : "";
 
   return (
     <Screen>
@@ -210,9 +284,27 @@ export function AudioLibraryScreen() {
       ) : null}
 
       {/* ── Not given to a book yet ───────────────────────────────────────── */}
-      {inbox.length ? (
+      {inbox.length || ebookInbox.length ? (
         <>
           <Text style={styles.sectionLabel}>{t("audioLib.unassigned")}</Text>
+          {ebookInbox.map((ebook) => (
+            <Pressable
+              key={ebook.id}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+              onPress={() => setMenu({ kind: "ebookInbox", ebook })}
+            >
+              <View style={[styles.tile, { backgroundColor: c.teal + "1A" }]}>
+                <Ionicons name={ebook.format === "comic" ? "images" : ebook.format === "pdf" ? "document" : "book"} size={22} color={c.tealDark} />
+              </View>
+              <View style={styles.rowCopy}>
+                <Text style={styles.rowTitle} numberOfLines={2}>{ebook.title}</Text>
+                <Text style={styles.rowSub} numberOfLines={1}>{[t(`ebook.format_${ebook.format}`), formatBytes(ebook.bytes)].join(" · ")}</Text>
+                <Text style={styles.rowHint}>{t("audioLib.assignHint")}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={c.muted} />
+            </Pressable>
+          ))}
           {inbox.map((item) => (
             <Pressable
               key={item.id}
@@ -261,21 +353,50 @@ export function AudioLibraryScreen() {
       })}
 
       {/* ── Audiobooks ────────────────────────────────────────────────────── */}
-      {audiobooks.map((audiobook) => {
-        const book = getBook(audiobook.bookId);
+      {audiobooks.map((bookId) => {
+        const book = getBook(bookId);
         if (!book) return null;
-        const active = player.activeBookId === audiobook.bookId;
+        const audiobook = player.library[bookId] as Audiobook | undefined;
+        const ebook = ebooks.ebookForBook(bookId);
+        if (!audiobook && ebook) {
+          // Ebook only: the row opens the reader.
+          const pct = Math.round((ebook.progress ?? 0) * 100);
+          return (
+            <Pressable
+              key={bookId}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+              onPress={() => navigation.navigate("Reader", { ebookId: ebook.id })}
+              onLongPress={() => setMenu({ kind: "book", bookId })}
+            >
+              <MiniCover book={book} width={52} />
+              <View style={styles.rowCopy}>
+                <Text style={styles.rowTitle} numberOfLines={2}>{book.title}</Text>
+                <Text style={styles.rowSub} numberOfLines={1}>{getAuthor(book.authorId)?.name ?? ""}</Text>
+                <Text style={styles.rowSub} numberOfLines={1}>
+                  {[t(`ebook.format_${ebook.format}`), pct >= 99 ? t("audioLib.finished") : pct > 0 ? t("audioLib.percent", { pct }) : null].filter(Boolean).join(" · ")}
+                </Text>
+                {pct > 0 && pct < 99 ? <View style={styles.track}><View style={[styles.trackFill, { width: `${pct}%` }]} /></View> : null}
+              </View>
+              <View style={styles.playBtn}>
+                <Ionicons name="book-outline" size={18} color={c.teal} />
+              </View>
+            </Pressable>
+          );
+        }
+        if (!audiobook) return null;
+        const active = player.activeBookId === bookId;
         const playing = active && player.isPlaying;
         const pct = audiobook.totalSec > 0 ? Math.min(100, Math.round((audiobook.positionSec / audiobook.totalSec) * 100)) : 0;
         const files = audiobook.tracks.filter((track) => !track.removed).length;
         return (
           <Pressable
-            key={audiobook.bookId}
+            key={bookId}
             accessibilityRole="button"
             accessibilityHint={t("audioLib.rowHint")}
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-            onPress={() => navigation.navigate("AudioBookFiles", { bookId: audiobook.bookId })}
-            onLongPress={() => setMenu({ kind: "book", bookId: audiobook.bookId })}
+            onPress={() => navigation.navigate("AudioBookFiles", { bookId })}
+            onLongPress={() => setMenu({ kind: "book", bookId })}
           >
             <MiniCover book={book} width={52} />
             <View style={styles.rowCopy}>
@@ -285,6 +406,7 @@ export function AudioLibraryScreen() {
                 {[
                   formatListenLength(audiobook.totalSec, t),
                   files > 1 ? t("manageAudio.files", { count: files }) : null,
+                  ebook ? t(`ebook.format_${ebook.format}`) : null,
                   pct >= 99 ? t("audioLib.finished") : pct > 0 ? t("audioLib.percent", { pct }) : null,
                 ].filter(Boolean).join(" · ")}
               </Text>
@@ -292,12 +414,23 @@ export function AudioLibraryScreen() {
                 <View style={styles.track}><View style={[styles.trackFill, { width: `${pct}%` }]} /></View>
               ) : null}
             </View>
+            {ebook ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("ebook.read")}
+                hitSlop={8}
+                style={styles.playBtn}
+                onPress={() => navigation.navigate("Reader", { ebookId: ebook.id })}
+              >
+                <Ionicons name="book-outline" size={18} color={c.teal} />
+              </Pressable>
+            ) : null}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={playing ? t("audioLib.pause") : t("audioLib.play")}
               hitSlop={8}
               style={[styles.playBtn, active && styles.playBtnActive]}
-              onPress={() => playOrPause(audiobook.bookId)}
+              onPress={() => playOrPause(bookId)}
             >
               <Ionicons name={playing ? "pause" : "play"} size={18} color={active ? "#FFFFFF" : c.teal} style={playing ? undefined : { marginLeft: 2 }} />
             </Pressable>
@@ -335,6 +468,17 @@ export function AudioLibraryScreen() {
         initialName={sheet?.kind === "renameFolder" ? sheet.folder.name : ""}
         initialEmoji={sheet?.kind === "renameFolder" ? sheet.folder.emoji ?? "📁" : "📁"}
         onSave={(name, emoji) => sheet?.kind === "renameFolder" && renameFolder(sheet.folder.id, name, emoji)}
+        onClose={() => setSheet(null)}
+      />
+      <BookPickerSheet
+        open={sheet?.kind === "assignEbook"}
+        title={t("fileManager.assignTitle", { title: sheet?.kind === "assignEbook" ? sheet.ebook.title : "" })}
+        initialQuery={sheet?.kind === "assignEbook" ? sheet.ebook.title : ""}
+        onPick={(bookId) => {
+          if (sheet?.kind !== "assignEbook") return;
+          ebooks.assign(sheet.ebook.id, bookId);
+          hapticSuccess();
+        }}
         onClose={() => setSheet(null)}
       />
       <FolderPickerSheet

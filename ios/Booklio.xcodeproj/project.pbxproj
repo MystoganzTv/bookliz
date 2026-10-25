@@ -7,9 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B1E512453065658A8180C7A9 /* OnWatchViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BC1505926123FA2EBE8F5A6 /* OnWatchViews.swift */; };
-		9FC82D77584CC79D32866DC6 /* WatchPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6897EA427678A8F0A1027546 /* WatchPlayer.swift */; };
-		979AFA96B0142325E8283942 /* OnWatchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63F261965EF736A205CFE022 /* OnWatchStore.swift */; };
 		0128AD8F81D0F8EF7946CA70 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89E247A5C763CAF0211CD69E /* RootView.swift */; };
 		056CB4202637971E687A195E /* libPods-Booklio.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A6C18469A65C6FB76945CBB7 /* libPods-Booklio.a */; };
 		057628BCD826EFBA6993CEB4 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D6ED187AA31088A8D0BD3B3F /* PrivacyInfo.xcprivacy */; };
@@ -23,9 +20,12 @@
 		5FA7DD5A00C9DEAA4A43CB3A /* BooklizWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 86F325945D28235446226AA0 /* BooklizWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		78AEB8FA9742DE9757872413 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3DF094659FD89923C41B3AE /* ExpoModulesProvider.swift */; };
 		933609482341893C0AFC69EB /* PhoneLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A9355474CBD6CB471DD6ADB /* PhoneLink.swift */; };
+		979AFA96B0142325E8283942 /* OnWatchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63F261965EF736A205CFE022 /* OnWatchStore.swift */; };
 		997E1FBBF288A9A50786C07A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6CC206C253334A4E9FF2B5ED /* Assets.xcassets */; };
 		9AA84F00ED6C21FD798B3A1F /* WatchState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F699B98B7C2C96168062294 /* WatchState.swift */; };
 		9F3D36889F12F3A279165F13 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = B49FAC87F4A6A0E34E15EBF6 /* L10n.swift */; };
+		9FC82D77584CC79D32866DC6 /* WatchPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6897EA427678A8F0A1027546 /* WatchPlayer.swift */; };
+		B1E512453065658A8180C7A9 /* OnWatchViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BC1505926123FA2EBE8F5A6 /* OnWatchViews.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		C2021749523BE59A610F78FB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D6ED187AA31088A8D0BD3B3F /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
@@ -58,14 +58,14 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		4BC1505926123FA2EBE8F5A6 /* OnWatchViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnWatchViews.swift; sourceTree = "<group>"; };
-		6897EA427678A8F0A1027546 /* WatchPlayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchPlayer.swift; sourceTree = "<group>"; };
-		63F261965EF736A205CFE022 /* OnWatchStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnWatchStore.swift; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* Booklio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Booklio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Booklio/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Booklio/Info.plist; sourceTree = "<group>"; };
 		4A9355474CBD6CB471DD6ADB /* PhoneLink.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PhoneLink.swift; sourceTree = "<group>"; };
+		4BC1505926123FA2EBE8F5A6 /* OnWatchViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnWatchViews.swift; sourceTree = "<group>"; };
 		4F699B98B7C2C96168062294 /* WatchState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchState.swift; sourceTree = "<group>"; };
+		63F261965EF736A205CFE022 /* OnWatchStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnWatchStore.swift; sourceTree = "<group>"; };
+		6897EA427678A8F0A1027546 /* WatchPlayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchPlayer.swift; sourceTree = "<group>"; };
 		6CC206C253334A4E9FF2B5ED /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		812CB56B3E965DDC0FE5C49C /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		86F325945D28235446226AA0 /* BooklizWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BooklizWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -372,6 +372,7 @@
 				"${PODS_CONFIGURATION_BUILD_DIR}/expo-dev-launcher/EXDevLauncher.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/expo-dev-menu/EXDevMenu.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/glog/glog_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/react-native-blob-util/ReactNativeBlobUtilPrivacyInfo.bundle",
 			);
 			name = "[CP] Copy Pods Resources";
 			outputPaths = (
@@ -394,6 +395,7 @@
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXDevLauncher.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXDevMenu.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/glog_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ReactNativeBlobUtilPrivacyInfo.bundle",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -534,8 +536,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = AD7AD68384B5E082181D3C76 /* Pods-Booklio.debug.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-Plum AppIcon-Forest AppIcon-Ink AppIcon-Ember AppIcon-Ocean AppIcon-Halloween AppIcon-Christmas AppIcon-Moonlight AppIcon-Botanical AppIcon-Library AppIcon-Audio AppIcon-Spring AppIcon-Summer AppIcon-Autumn AppIcon-Winter AppIcon-Valentines AppIcon-Walpurgis AppIcon-Workers";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Booklio/Booklio.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
@@ -553,7 +555,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.4.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -574,8 +576,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = AA5307A4309C93CF1B7D7336 /* Pods-Booklio.release.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-Plum AppIcon-Forest AppIcon-Ink AppIcon-Ember AppIcon-Ocean AppIcon-Halloween AppIcon-Christmas AppIcon-Moonlight AppIcon-Botanical AppIcon-Library AppIcon-Audio AppIcon-Spring AppIcon-Summer AppIcon-Autumn AppIcon-Winter AppIcon-Valentines AppIcon-Walpurgis AppIcon-Workers";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Booklio/Booklio.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
@@ -588,7 +590,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.4.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -623,7 +625,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.4.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mystodev.booklio.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -655,7 +657,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.4.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mystodev.booklio.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";

@@ -1,3 +1,4 @@
+import { useEbooks } from "../ebook/EbookContext";
 import { useAttachAudio } from "../audio/useAttachAudio";
 import { Ionicons } from "@expo/vector-icons";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
@@ -127,6 +128,9 @@ export function HomeScreen() {
   const { library: audioLibrary } = useAudiobookPlayer();
   const continueHasAudio = Boolean(continueBook && audioLibrary[continueBook.id]);
   const continueIsAudiobook = continueBook?.format === "audiobook";
+  const ebooks = useEbooks();
+  const continueEbook = continueBook ? ebooks.ebookForBook(continueBook.id) : undefined;
+  const continueReads = Boolean(continueEbook && !(continueHasAudio && continueIsAudiobook));
   const attachAudio = useAttachAudio();
   const goalPct = Math.min(100, Math.round((overallStats.booksReadThisYear / userProfile.yearlyGoal) * 100));
   const remaining = userProfile.yearlyGoal - overallStats.booksReadThisYear;
@@ -366,7 +370,9 @@ export function HomeScreen() {
               <Pressable accessibilityRole="button"
                 style={styles.primaryButton}
                 onPress={() =>
-                  continueHasAudio
+                  continueReads && continueEbook
+                    ? navigation.navigate("Reader", { ebookId: continueEbook.id })
+                    : continueHasAudio
                     ? navigation.navigate("AudioPlayer", { bookId: continueBook.id })
                     : continueIsAudiobook
                       ? void attachAudio(continueBook.id)
@@ -374,13 +380,13 @@ export function HomeScreen() {
                 }
               >
                 <Ionicons
-                  name={continueHasAudio ? "headset" : continueIsAudiobook ? "add" : "pencil"}
+                  name={continueReads ? "book" : continueHasAudio ? "headset" : continueIsAudiobook ? "add" : "pencil"}
                   size={13}
                   color={c.navText}
                   style={{ marginRight: 6 }}
                 />
                 <Text style={styles.primaryButtonText}>
-                  {continueHasAudio ? t("player.listen") : continueIsAudiobook ? t("player.attachButton") : t("home.logSession")}
+                  {continueReads ? t("ebook.read") : continueHasAudio ? t("player.listen") : continueIsAudiobook ? t("player.attachButton") : t("home.logSession")}
                 </Text>
               </Pressable>
             </View>

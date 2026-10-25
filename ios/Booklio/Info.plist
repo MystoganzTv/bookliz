@@ -19,7 +19,7 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.3.0</string>
+	<string>1.4.0</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -117,7 +117,23 @@
 				<string>public.aiff-audio</string>
 				<string>com.microsoft.waveform-audio</string>
 				<string>org.xiph.flac</string>
+				<dict>
+			<key>CFBundleTypeName</key>
+			<string>Ebook</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>org.idpf.epub-container</string>
+				<string>com.adobe.pdf</string>
+				<string>public.plain-text</string>
+				<string>com.mystodev.booklio.cbz</string>
+				<string>com.mystodev.booklio.cbr</string>
 			</array>
+		</dict>
+	</array>
 		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
@@ -131,7 +147,42 @@
 			<array>
 				<string>public.mpeg-4-audio</string>
 				<string>public.audio</string>
+				<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.mystodev.booklio.cbz</string>
+			<key>UTTypeDescription</key>
+			<string>Comic book archive (ZIP)</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.zip-archive</string>
+				<string>public.data</string>
 			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>cbz</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.mystodev.booklio.cbr</string>
+			<key>UTTypeDescription</key>
+			<string>Comic book archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>cbr</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
