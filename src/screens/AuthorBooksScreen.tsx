@@ -9,6 +9,7 @@
  * Tapping a catalog book → BookIntake (initialBookSelection pre-fills review).
  * Tapping a library book → BookDetail.
  */
+import { AtmosphereBackdrop } from "../components/AtmosphereBackdrop";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -266,6 +267,7 @@ export function AuthorBooksScreen() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <View style={[styles.root, { backgroundColor: c.bg }]}>
+      <AtmosphereBackdrop />
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable

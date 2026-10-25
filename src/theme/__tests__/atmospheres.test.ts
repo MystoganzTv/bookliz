@@ -4,12 +4,15 @@
  *  - ink on bg/surface ≥ 7 (body text, WCAG AAA)
  *  - muted on bg/surface ≥ 4.5 (secondary text, AA)
  *  - white on the accent ≥ 3 (buttons: bold 16pt white on `teal`)
+ *  - white on navy ≥ 7 (the dark buttons: "Read", "Save")
  *  - the accent on bg ≥ 3 (icons, progress bars, links in bold), and the
  *    darker accent too — it is the active tab tint
  */
 import { ATMOSPHERES, atmosphereFor, paintAtmosphere, ThemedEditionId } from "../atmospheres";
 import { EDITION_IDS } from "../../pro/editions";
 import { darkColors, lightColors } from "../theme";
+import fs from "fs";
+import path from "path";
 
 const luminance = (hex: string) => {
   const n = hex.replace("#", "");
@@ -27,6 +30,16 @@ describe("atmospheres", () => {
     for (const id of EDITION_IDS) {
       if (id === "classic") expect(atmosphereFor(id)).toBeNull();
       else expect(atmosphereFor(id)).toBe(ATMOSPHERES[id]);
+    }
+  });
+
+  it("ships a 1200×520 grey+alpha landscape for every atmosphere", () => {
+    for (const id of Object.keys(ATMOSPHERES)) {
+      const png = fs.readFileSync(path.resolve(__dirname, "../../../assets/atmospheres", `${id}.png`));
+      expect(png.subarray(1, 4).toString()).toBe("PNG");
+      expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1200, 520]);
+      // Colour type 4 (grey+alpha) or 6 (RGBA): it needs alpha for tintColor to draw a silhouette.
+      expect([4, 6]).toContain(png[25]);
     }
   });
 
@@ -52,6 +65,7 @@ describe("atmospheres", () => {
     check("teal/surface", t.teal, t.surface, 3);
     check("tealDark/bg", t.tealDark, t.bg, 3);
     check("tealDark/surface", t.tealDark, t.surface, 3);
+    check("white/navy", "#FFFFFF", t.navy, 7);
     expect(failures).toEqual([]);
   });
 

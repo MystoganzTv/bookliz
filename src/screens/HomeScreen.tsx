@@ -383,7 +383,7 @@ export function HomeScreen() {
                 <Ionicons
                   name={continueReads ? "book" : continueHasAudio ? "headset" : continueIsAudiobook ? "add" : "pencil"}
                   size={13}
-                  color={c.navText}
+                  color="#FFFFFF"
                   style={{ marginRight: 6 }}
                 />
                 <Text style={styles.primaryButtonText}>

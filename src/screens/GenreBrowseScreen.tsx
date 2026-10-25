@@ -8,6 +8,7 @@
  * Books already in the user's library are highlighted with a badge.
  * Tapping a catalog book navigates to BookIntake with the ISBN pre-filled.
  */
+import { AtmosphereBackdrop } from "../components/AtmosphereBackdrop";
 import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useRoute, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -352,6 +353,7 @@ export function GenreBrowseScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: c.bg }]}>
+      <AtmosphereBackdrop />
       {/* Main catalog list */}
       {loading ? (
         // Skeleton grid matching the real 2-col catalog layout
