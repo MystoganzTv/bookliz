@@ -3,6 +3,7 @@
  * subfolder, and "···" for rename / move / delete. "Add books" opens the whole
  * library with checkboxes — the quick way to file many books at once.
  */
+import { AtmosphereFill } from "../components/AtmosphereFill";
 import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -138,6 +139,8 @@ export function FolderScreen() {
         ListEmptyComponent={
           subfolders.length === 0 ? <Text style={styles.empty}>{t("folders.emptyFolder")}</Text> : null
         }
+        ListFooterComponent={<AtmosphereFill bleedBottom={120} bleedHorizontal={spacing.md} />}
+        ListFooterComponentStyle={styles.listFooter}
         contentContainerStyle={styles.listContent}
         renderItem={({ item: book }) => (
           <Pressable
@@ -316,7 +319,8 @@ function AddBooksSheet({ open, folderId, folderName, onClose }: { open: boolean;
 function createStyles(c: AppColors) {
   return StyleSheet.create({
     headerButtons: { alignItems: "center", flexDirection: "row", gap: spacing.md },
-    listContent: { paddingBottom: 120, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
+    listFooter: { flexGrow: 1 },
+    listContent: { flexGrow: 1, paddingBottom: 120, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
     breadcrumb: { color: c.muted, fontFamily: fonts.body, fontSize: 13, marginBottom: spacing.sm, paddingHorizontal: spacing.xs },
     block: {
       backgroundColor: c.surface,

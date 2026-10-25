@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { AtmosphereFill } from "../components/AtmosphereFill";
 import { useNavigation, useScrollToTop } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
@@ -457,6 +458,8 @@ export function LibraryScreen() {
         columnWrapperStyle={isGrid ? styles.gridRow : undefined}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={listEmpty}
+        ListFooterComponent={<AtmosphereFill bleedBottom={124} bleedHorizontal={spacing.md} />}
+        ListFooterComponentStyle={styles.listFooter}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -1151,7 +1154,10 @@ function createStyles(c: AppColors, isDark: boolean) {
       color: "#0F172A",
     },
     /** FlatList content padding — mirrors what <Screen scroll> applies itself. */
+    /** Lets AtmosphereFill take whatever height the rows leave empty. */
+    listFooter: { flexGrow: 1 },
     listContent: {
+      flexGrow: 1,
       paddingBottom: 124,
       paddingHorizontal: spacing.md,
       paddingTop: spacing.md,

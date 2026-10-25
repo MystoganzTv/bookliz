@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useColors } from "../theme/ThemeContext";
 import { spacing } from "../theme/theme";
 import { AtmosphereBackdrop } from "./AtmosphereBackdrop";
+import { AtmosphereFill } from "./AtmosphereFill";
 
 /**
  * How wide the content column is allowed to get.
@@ -47,6 +48,11 @@ export function Screen({ children, scroll = true, contentStyle, headerRight, wid
    */
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTop(scrollRef);
+  // The atmosphere's fill bleeds into the content padding so its objects (and,
+  // on an empty screen, its landscape) reach the real edges of the screen.
+  const padding = StyleSheet.flatten([styles.content, contentStyle]);
+  const bleedBottom = typeof padding.paddingBottom === "number" ? padding.paddingBottom : 0;
+  const bleedHorizontal = typeof padding.paddingHorizontal === "number" ? padding.paddingHorizontal : 0;
 
   if (!scroll) {
     return (
@@ -71,7 +77,10 @@ export function Screen({ children, scroll = true, contentStyle, headerRight, wid
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
       >
-        <View style={[styles.column, !capped && styles.columnFree]}>{children}</View>
+        <View style={[styles.column, styles.columnGrow, !capped && styles.columnFree]}>
+          {children}
+          <AtmosphereFill bleedBottom={bleedBottom} bleedHorizontal={bleedHorizontal} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -84,6 +93,7 @@ function createStyles(c: ReturnType<typeof useColors>) {
       flex: 1,
     },
     content: {
+      flexGrow: 1,
       paddingBottom: 124,
       paddingHorizontal: spacing.md,
       paddingTop: spacing.md,
@@ -92,6 +102,10 @@ function createStyles(c: ReturnType<typeof useColors>) {
       alignSelf: "center",
       maxWidth: MAX_CONTENT_WIDTH,
       width: "100%",
+    },
+    /** Scrolling variant: the column takes the leftover height, for AtmosphereFill. */
+    columnGrow: {
+      flexGrow: 1,
     },
     /** Only for the non-scrolling variant, whose child list needs the height. */
     columnFill: {

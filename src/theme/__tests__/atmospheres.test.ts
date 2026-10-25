@@ -43,6 +43,15 @@ describe("atmospheres", () => {
     }
   });
 
+  it("gives every atmosphere at least six real MaterialCommunityIcons motifs", () => {
+    const glyphs = require("@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/MaterialCommunityIcons.json");
+    for (const [id, atmosphere] of Object.entries(ATMOSPHERES)) {
+      expect([id, atmosphere.motifs.length >= 6]).toEqual([id, true]);
+      expect(atmosphere.motifs.filter((name) => !(name in glyphs))).toEqual([]);
+      expect(new Set(atmosphere.motifs).size).toBe(atmosphere.motifs.length);
+    }
+  });
+
   const cases = (Object.keys(ATMOSPHERES) as ThemedEditionId[])
     .flatMap((id) => (["light", "dark"] as const).map((mode) => [id, mode] as const));
 
