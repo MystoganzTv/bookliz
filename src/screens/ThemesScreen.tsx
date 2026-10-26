@@ -25,7 +25,8 @@ import { paintAtmosphere } from "../theme/atmospheres";
 import { useTheme } from "../theme/ThemeContext";
 import { AppColors, darkColors, fonts, lightColors, spacing } from "../theme/theme";
 
-const SECTIONS: { id: "seasonal" | "celebrations" | "illustrated" | "originals"; themes: EditionPreference[] }[] = [
+const SECTIONS: { id: "fantasy" | "seasonal" | "celebrations" | "illustrated" | "originals"; themes: EditionPreference[] }[] = [
+  { id: "fantasy", themes: ["mushroom", "dragon", "arcane", "moonGarden"] },
   { id: "seasonal", themes: ["seasonal", "spring", "summer", "autumn", "winter"] },
   { id: "celebrations", themes: ["valentines", "walpurgis", "workers", "halloween", "christmas"] },
   { id: "illustrated", themes: ["moonlight", "botanical", "library", "audio"] },
@@ -57,9 +58,14 @@ export function ThemesScreen() {
   const today = seasonalEdition(new Date(), hemisphere);
   const resolve = (id: EditionPreference): EditionId => (id === "seasonal" ? today : id);
 
-  const applyIcon = async (target: AppIconId) => {
-    if (!iconFollowsTheme || !supported) return;
-    if ((await applyAppIcon(target)) === "failed") {
+  const applyIcon = async (target: AppIconId, follows = iconFollowsTheme) => {
+    if (!follows) return;
+    const result = await applyAppIcon(target);
+    if (result === "unavailable") {
+      dialog.alert(t("appearancePro.iconBuildTitle"), t("appearancePro.iconBuildBody"));
+    } else if (result === "unsupported") {
+      dialog.alert(t("appearancePro.iconUnsupportedTitle"), t("appearancePro.iconUnsupportedBody"));
+    } else if (result === "failed") {
       dialog.alert(t("appearancePro.iconFailedTitle"), t("appearancePro.iconFailedBody"));
     }
   };
@@ -84,7 +90,7 @@ export function ThemesScreen() {
 
   const toggleFollow = (next: boolean) => {
     setIconFollowsTheme(next);
-    if (next && supported) void applyAppIcon(iconForEdition(resolve(active), activeClassicIcon));
+    if (next) void applyIcon(iconForEdition(resolve(active), activeClassicIcon), true);
   };
 
   return (
@@ -100,6 +106,7 @@ export function ThemesScreen() {
       {SECTIONS.map((section) => (
         <View key={section.id} style={styles.section}>
           <Text style={styles.sectionTitle} accessibilityRole="header">{t(`appearancePro.collections.${section.id}`)}</Text>
+          {section.id === "fantasy" ? <Text style={styles.collectionDescription}>{t("appearancePro.fantasyDescription")}</Text> : null}
           <View style={styles.grid} accessibilityRole="radiogroup">
             {section.themes.map((id) => {
               const edition = resolve(id);
@@ -112,11 +119,12 @@ export function ThemesScreen() {
                   accessibilityRole="radio"
                   accessibilityState={{ selected: chosen }}
                   accessibilityLabel={t(`appearancePro.editions.${id}`)}
+                  accessibilityHint={section.id === "fantasy" ? t(`appearancePro.editionMessages.${id}`) : undefined}
                   onPress={() => chooseTheme(id)}
-                  style={({ pressed }) => [styles.cell, pressed && { opacity: 0.6 }]}
+                  style={({ pressed }) => [styles.cell, section.id === "fantasy" && styles.fantasyCell, pressed && { opacity: 0.6 }]}
                 >
-                  <View style={[styles.ring, chosen && { borderColor: tile.teal }]}>
-                    <Image source={preview(iconForEdition(edition, activeClassicIcon))} style={styles.icon} accessible={false} />
+                  <View style={[styles.ring, section.id === "fantasy" && styles.fantasyRing, chosen && { borderColor: tile.teal }]}>
+                    <Image source={preview(iconForEdition(edition, activeClassicIcon))} style={[styles.icon, section.id === "fantasy" && styles.fantasyIcon]} accessible={false} />
                     {id === "seasonal" ? (
                       <View style={[styles.badge, styles.badgeLeft, { backgroundColor: c.bg }]}>
                         <Ionicons name="calendar" size={13} color={c.tealDark} />
@@ -129,6 +137,7 @@ export function ThemesScreen() {
                     ) : null}
                   </View>
                   <Text style={[styles.label, chosen && { color: c.ink }]} numberOfLines={2}>{t(`appearancePro.editions.${id}`)}</Text>
+                  {section.id === "fantasy" ? <Text style={styles.themeMessage}>{t(`appearancePro.editionMessages.${id}`)}</Text> : null}
                   <View style={styles.swatches}>
                     {[tile.bg, tile.teal, tile.coral].map((color, index) => (
                       <View key={index} style={[styles.swatch, { backgroundColor: color, borderColor: c.border }]} />
@@ -216,6 +225,11 @@ function createStyles(c: AppColors) {
     sectionTitle: { color: c.muted, fontFamily: fonts.body, fontSize: 12, letterSpacing: 1.2, marginBottom: spacing.md, textTransform: "uppercase" },
     grid: { flexDirection: "row", flexWrap: "wrap", rowGap: spacing.lg },
     cell: { alignItems: "center", width: "33.33%", paddingHorizontal: 4 },
+    collectionDescription: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 14, lineHeight: 21, marginTop: -4, marginBottom: spacing.md },
+    fantasyCell: { width: "50%", paddingHorizontal: 8 },
+    fantasyRing: { borderRadius: 34 },
+    fantasyIcon: { borderRadius: 27, height: 116, width: 116 },
+    themeMessage: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 4, maxWidth: 180 },
     ring: { borderColor: "transparent", borderRadius: 26, borderWidth: 3, padding: 3 },
     icon: { borderRadius: 19, height: 76, width: 76 },
     badge: { position: "absolute", right: -2, bottom: -2, borderRadius: 12, padding: 3 },

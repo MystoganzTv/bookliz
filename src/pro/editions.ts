@@ -5,6 +5,7 @@
 export const EDITION_IDS = [
   "classic", "spring", "summer", "autumn", "winter", "valentines", "walpurgis", "workers",
   "halloween", "christmas", "moonlight", "botanical", "library", "audio",
+  "mushroom", "dragon", "arcane", "moonGarden",
 ] as const;
 export type EditionId = typeof EDITION_IDS[number];
 export type EditionPreference = EditionId | "seasonal";

@@ -8,6 +8,7 @@ import { Platform } from "react-native";
 type AppIconNative = {
   supportsAlternateIcons(): Promise<boolean>;
   currentIcon(): Promise<string | null>;
+  availableIcons?(): Promise<string[]>;
   setIcon(name: string | null): Promise<string | null>;
 };
 
@@ -29,6 +30,12 @@ export async function currentIcon(): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/** Names actually shipped in this binary. Null means the native module needs updating. */
+export async function availableIcons(): Promise<string[] | null> {
+  if (!native?.availableIcons) return null;
+  return native.availableIcons();
 }
 
 export async function setIcon(name: string | null): Promise<string | null> {

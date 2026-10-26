@@ -45,6 +45,26 @@ export type Atmosphere = {
 export type ThemedEditionId = Exclude<EditionId, "classic">;
 
 export const ATMOSPHERES: Record<ThemedEditionId, Atmosphere> = {
+  mushroom: {
+    motifs: ["mushroom", "star", "cloud", "flower", "sprout", "butterfly", "leaf"],
+    light: { bg: "#F1F8FC", surface: "#FBFDFF", surfaceAlt: "#E1EFF6", border: "#CEDFEA", ink: "#172B3D", muted: "#536779", navBg: "#FBFDFF", navText: "#172B3D", teal: "#BF3D35", tealDark: "#A52F29", coral: "#36804E", gold: "#E8AF32", navy: "#17334A", wash: "#CBE9F6" },
+    dark:  { bg: "#0D1B2A", surface: "#15273A", surfaceAlt: "#1E354A", border: "#2C465B", ink: "#F2F7FB", muted: "#AEBFCC", navBg: "#0A1623", navText: "#F2F7FB", teal: "#DC6258", tealDark: "#C95249", coral: "#79C58B", gold: "#F6CC62", navy: "#243F59", wash: "#234F6A" },
+  },
+  dragon: {
+    motifs: ["shield-sword", "fire", "castle", "sword-cross", "diamond-stone", "feather", "egg-outline"],
+    light: { bg: "#F0F6F1", surface: "#FAFCF8", surfaceAlt: "#E1EBE1", border: "#CDDDCF", ink: "#162B25", muted: "#56695F", navBg: "#FAFCF8", navText: "#162B25", teal: "#267553", tealDark: "#1B6144", coral: "#B5653D", gold: "#D4A24E", navy: "#163C31", wash: "#CCE4D4" },
+    dark:  { bg: "#0B1917", surface: "#132923", surfaceAlt: "#1C382F", border: "#2C4A3D", ink: "#EEF6EA", muted: "#ADBEAE", navBg: "#081512", navText: "#EEF6EA", teal: "#418C66", tealDark: "#387D59", coral: "#E3A174", gold: "#EBC476", navy: "#214B3B", wash: "#1A4B39" },
+  },
+  arcane: {
+    motifs: ["magic-staff", "creation", "book-open-variant", "crystal-ball", "star-four-points", "flask-round-bottom", "key-variant"],
+    light: { bg: "#F4F2FA", surface: "#FDFBFF", surfaceAlt: "#EAE4F4", border: "#DCD2EA", ink: "#241B3D", muted: "#685D79", navBg: "#FDFBFF", navText: "#241B3D", teal: "#6D4AA6", tealDark: "#573A8E", coral: "#A27626", gold: "#D3AB58", navy: "#2A1D4B", wash: "#DFD2F0" },
+    dark:  { bg: "#130F24", surface: "#1E1834", surfaceAlt: "#2A2145", border: "#3A2F58", ink: "#F6EFFB", muted: "#B9ACC9", navBg: "#0F0B1D", navText: "#F6EFFB", teal: "#9672CB", tealDark: "#8661BB", coral: "#DDBB73", gold: "#F1D498", navy: "#3B285F", wash: "#422A65" },
+  },
+  moonGarden: {
+    motifs: ["butterfly", "moon-waning-crescent", "flower-tulip", "flower", "star-four-points", "sprout", "leaf"],
+    light: { bg: "#FBF3F6", surface: "#FFFBFD", surfaceAlt: "#F2E5ED", border: "#E7D3E0", ink: "#321E32", muted: "#745E70", navBg: "#FFFBFD", navText: "#321E32", teal: "#A24F7B", tealDark: "#8B3F68", coral: "#6B7D56", gold: "#C6A16E", navy: "#43223E", wash: "#EFD4E4" },
+    dark:  { bg: "#1A101E", surface: "#281A2D", surfaceAlt: "#36243B", border: "#49314D", ink: "#F9EFF6", muted: "#C5ADC2", navBg: "#150C19", navText: "#F9EFF6", teal: "#BC709E", tealDark: "#A75D8B", coral: "#ABC091", gold: "#DFC6A3", navy: "#4A2B49", wash: "#522C4B" },
+  },
   spring: {
     motifs: ["flower-tulip", "butterfly", "bee", "sprout", "flower", "bird", "umbrella"],
     light: { bg: "#FCF6F4", surface: "#FFFCFB", surfaceAlt: "#F7E9E8", border: "#EFDADA", ink: "#2A1F24", muted: "#72636A", navBg: "#FFFCFB", navText: "#2A1F24", teal: "#C2486C", tealDark: "#A93D5D", coral: "#3F8A52", gold: "#E2A93A", navy: "#3A1F2C", wash: "#F6D3DC" },

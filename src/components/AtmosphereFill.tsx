@@ -12,6 +12,10 @@ import { useTheme } from "../theme/ThemeContext";
  * really empty screen (see LANDSCAPE_MIN_HEIGHT).
  */
 export const ATMOSPHERE_SCENES: Record<ThemedEditionId, ImageSourcePropType> = {
+  mushroom: require("../../assets/atmospheres/mushroom.png"),
+  dragon: require("../../assets/atmospheres/dragon.png"),
+  arcane: require("../../assets/atmospheres/arcane.png"),
+  moonGarden: require("../../assets/atmospheres/moonGarden.png"),
   spring: require("../../assets/atmospheres/spring.png"),
   summer: require("../../assets/atmospheres/summer.png"),
   autumn: require("../../assets/atmospheres/autumn.png"),

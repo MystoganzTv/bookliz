@@ -4,9 +4,11 @@ import type { EditionId } from "./editions";
 /** Home-screen icons. `nativeName` is the app-icon set in Images.xcassets (null = primary). */
 export type AppIconId = "default" | "plum" | "forest" | "ink" | "ember" | "ocean"
   | "halloween" | "christmas" | "moonlight" | "botanical" | "library" | "audio"
-  | "spring" | "summer" | "autumn" | "winter" | "valentines" | "walpurgis" | "workers";
+  | "spring" | "summer" | "autumn" | "winter" | "valentines" | "walpurgis" | "workers"
+  | "mushroom" | "dragon" | "arcane" | "moonGarden";
 
-export const ICON_COLLECTIONS: { id: "seasonal" | "celebrations" | "illustrated" | "originals"; icons: AppIconId[] }[] = [
+export const ICON_COLLECTIONS: { id: "fantasy" | "seasonal" | "celebrations" | "illustrated" | "originals"; icons: AppIconId[] }[] = [
+  { id: "fantasy", icons: ["mushroom", "dragon", "arcane", "moonGarden"] },
   { id: "seasonal", icons: ["spring", "summer", "autumn", "winter"] },
   { id: "celebrations", icons: ["valentines", "walpurgis", "workers", "halloween", "christmas"] },
   { id: "illustrated", icons: ["moonlight", "botanical", "library", "audio"] },
@@ -14,6 +16,10 @@ export const ICON_COLLECTIONS: { id: "seasonal" | "celebrations" | "illustrated"
 ];
 
 export const APP_ICONS: { id: AppIconId; nativeName: string | null; preview: ImageSourcePropType }[] = [
+  { id: "mushroom", nativeName: "AppIcon-Mushroom", preview: require("../../assets/app-icons/mushroom.png") },
+  { id: "dragon", nativeName: "AppIcon-Dragon", preview: require("../../assets/app-icons/dragon.png") },
+  { id: "arcane", nativeName: "AppIcon-Arcane", preview: require("../../assets/app-icons/arcane.png") },
+  { id: "moonGarden", nativeName: "AppIcon-MoonGarden", preview: require("../../assets/app-icons/moonGarden.png") },
   { id: "default", nativeName: null, preview: require("../../assets/app-icons/default.png") },
   { id: "plum", nativeName: "AppIcon-Plum", preview: require("../../assets/app-icons/plum.png") },
   { id: "forest", nativeName: "AppIcon-Forest", preview: require("../../assets/app-icons/forest.png") },

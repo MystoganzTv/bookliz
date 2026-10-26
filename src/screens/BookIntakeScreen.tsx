@@ -7,6 +7,7 @@ import { ActivityIndicator, Animated, Image, KeyboardAvoidingView, Modal, Platfo
 import { BooklizDialog } from "../components/BooklizDialog";
 import { ScalePressable } from "../components/ScalePressable";
 import { Screen } from "../components/Screen";
+import { ThemeIllustration } from "../components/ThemeIllustration";
 import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
@@ -2114,6 +2115,7 @@ export function BookIntakeScreen() {
           onPress={() => setMode("manual")}
         />
       </View>
+      <ThemeIllustration />
     </Screen>
   );
 }
