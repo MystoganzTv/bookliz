@@ -21,3 +21,7 @@ supabase/.temp/
 # Carpetas de trabajo locales (no forman parte del proyecto)
 _to_delete/
 Claude outputs/
+
+# Local EAS builds (eas build --local)
+/build/
+*.ipa
