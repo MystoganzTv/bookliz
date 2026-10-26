@@ -24,14 +24,15 @@ describe("splash theme note", () => {
 });
 
 describe("cut splash scenes", () => {
-  it("every layer file exists and every scene has a book", () => {
+  it("every layer file exists and every scene has one whole main picture", () => {
     const source = fs.readFileSync(path.resolve(__dirname, "../../components/splash/themedScenes.ts"), "utf8");
     const files = [...source.matchAll(/require\("\.\.\/\.\.\/\.\.\/(assets\/splash\/themes\/[^"]+)"\)/g)].map((m) => m[1]);
     expect(files.length).toBeGreaterThan(50);
     for (const file of files) expect(fs.existsSync(path.resolve(__dirname, "../../..", file))).toBe(true);
     for (const block of source.split(/\n  \w+: \{\n/).slice(1)) {
-      expect(block).toContain('kind: "bookLeft"');
-      expect(block).toContain('kind: "bookRight"');
+      // Never cut through the drawing: exactly one main piece, no book halves.
+      expect(block.match(/kind: "main"/g)?.length).toBe(1);
+      expect(block).not.toContain('kind: "bookLeft"');
     }
   });
 });

@@ -1,22 +1,24 @@
 /**
  * The loading screen for a theme other than Classic: the theme's own icon,
- * built up like a pop-up book.
+ * standing up like a pop-up page.
  *
  *   1. the screen warms from the launch navy into the icon's background,
  *      halo rings ripple out,
- *   2. the book falls open from its spine (a stack of books rises instead),
- *   3. the art stands up out of the pages — the chime starts with it —
- *      with a soft glow behind,
- *   4. the larger pieces grow in, the small ones (stars, petals, snowflakes,
- *      bats) pop one after another and then twinkle,
- *   5. "bookliz" and the theme's own line settle underneath.
+ *   2. the whole picture — book and all, never cut apart — rises and stands
+ *      up from its base, settling with a small overshoot; the chime starts,
+ *      and a soft glow comes up behind it,
+ *   3. the separate pieces (an acorn, a butterfly) glide in from outside,
+ *      the small ones (stars, petals, snowflakes, bats) pop one after another,
+ *      nearest first, then twinkle,
+ *   4. "bookliz" and the theme's own line settle underneath.
  *
- * The layers are cut from the 1024px theme icon (themedScenes.ts), so the
- * finished frame is the icon itself. Same rules as the Classic splash: native
- * driver throughout, a minimum time so a fast launch never cuts the entrance,
+ * While the library loads, the picture floats a little, the glow breathes and
+ * the pieces sway. The layers come from the 1024px theme icon
+ * (themedScenes.ts), so the finished frame is the icon itself. Native driver
+ * throughout; a minimum time so a fast launch never cuts the entrance;
  * Reduce Motion shows the finished scene and fades.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, Easing, StyleSheet, useWindowDimensions, View } from "react-native";
 import { playOpeningSound } from "../../audio/splashSound";
 import { useI18n } from "../../i18n/LocalizationContext";
@@ -26,8 +28,8 @@ import { SplashLayer, SplashScene } from "./themedScenes";
 const NAVY = "#0F172A";
 const MIN_MS = 2800;
 const MIN_MS_REDUCED = 500;
-/** When the art stands up — the chime starts with it. */
-const ART_RISES_MS = 650;
+/** The chime starts as the picture is nearly upright. */
+const CHIME_MS = 450;
 const GLOW = require("../../../assets/splash/glow.png");
 const native = true;
 const ease = Easing.out(Easing.cubic);
@@ -40,6 +42,8 @@ function shade(hex: string, amount: number) {
   const parts = [0, 2, 4].map((i) => Math.round(parseInt(n.slice(i, i + 2), 16) * (1 - a) + to * a));
   return `#${parts.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
+
+const isMain = (l: SplashLayer) => l.kind === "main" || l.kind === "art" || l.kind === "bookLeft" || l.kind === "bookRight";
 
 type Props = { edition: ThemedEditionId; scene: SplashScene; ready: boolean; onDone: () => void };
 
@@ -54,21 +58,18 @@ export function ThemedSplash({ edition, scene, ready, onDone }: Props) {
   const cropBottom = Math.max(...scene.layers.map((l) => l.y + l.h)) + 10;
   const sceneHeight = (cropBottom - cropTop) * k;
 
-  const art = scene.layers.find((l) => l.kind === "art");
+  const mains = scene.layers.filter(isMain);
   const sides = scene.layers.filter((l) => l.kind === "side");
   const sparks = scene.layers.filter((l) => l.kind === "spark");
-  const books = scene.layers.filter((l) => l.kind === "bookLeft" || l.kind === "bookRight");
-  const center = art ? { x: art.x + art.w / 2, y: art.y + art.h * 0.55 } : { x: 512, y: scene.bookTop - 120 };
-  const rings = useMemo(
-    () => [800, 630, 460].map((r, i) => ({ r, color: shade(scene.bg, (scene.light ? -1 : 1) * (0.04 + i * 0.035)) })),
-    [scene.bg, scene.light]
-  );
+  const cx = scene.cx ?? 512;
+  const cy = scene.cy ?? (cropTop + cropBottom) / 2;
+  const rings = [800, 630, 460].map((r, i) => ({ r, color: shade(scene.bg, (scene.light ? -1 : 1) * (0.04 + i * 0.035)) }));
 
   const v = useRef({
     bg: new Animated.Value(0),
     rings: [0, 1, 2].map(() => new Animated.Value(0)),
-    book: new Animated.Value(0),
-    art: new Animated.Value(0),
+    main: new Animated.Value(0),
+    glow: new Animated.Value(0),
     sides: sides.map(() => new Animated.Value(0)),
     sparks: sparks.map(() => new Animated.Value(0)),
     word: new Animated.Value(0),
@@ -96,30 +97,29 @@ export function ThemedSplash({ edition, scene, ready, onDone }: Props) {
   useEffect(() => {
     if (reduced === null) return;
     const timer = setTimeout(() => setMinElapsed(true), reduced ? MIN_MS_REDUCED : MIN_MS);
-    const chime = setTimeout(() => void playOpeningSound(), reduced ? 0 : ART_RISES_MS);
-    const all = [v.bg, ...v.rings, v.book, v.art, ...v.sides, ...v.sparks, v.word, v.tagline];
+    const chime = setTimeout(() => void playOpeningSound(), reduced ? 0 : CHIME_MS);
 
     if (reduced) {
-      all.forEach((a) => a.setValue(1));
+      [v.bg, ...v.rings, v.main, v.glow, ...v.sides, ...v.sparks, v.word, v.tagline].forEach((a) => a.setValue(1));
       return () => { clearTimeout(timer); clearTimeout(chime); };
     }
 
     const at = (ms: number, anim: Animated.CompositeAnimation) => Animated.sequence([Animated.delay(ms), anim]);
     const timing = (value: Animated.Value, duration: number, easing = ease) =>
       Animated.timing(value, { toValue: 1, duration, easing, useNativeDriver: native });
-    const spring = (value: Animated.Value, friction = 7, tension = 50) =>
+    const spring = (value: Animated.Value, friction: number, tension: number) =>
       Animated.spring(value, { toValue: 1, friction, tension, useNativeDriver: native });
 
     const entrance = Animated.parallel([
       timing(v.bg, 380, Easing.out(Easing.quad)),
       ...v.rings.map((ring, i) => at(80 + i * 160, timing(ring, 1400))),
-      at(200, spring(v.book, 9, 22)),
-      at(ART_RISES_MS, timing(v.art, 1150, Easing.out(Easing.back(1.25)))),
-      ...v.sides.map((side, i) => at(1050 + i * 130, spring(side, 6, 40))),
-      // Small pieces pop in a quick cascade, top to bottom — never longer than ~0.8 s in all.
-      ...v.sparks.map((spark, i) => at(1200 + Math.min(i * 45, 800), spring(spark, 5, 70))),
-      at(1550, timing(v.word, 800)),
-      at(1800, timing(v.tagline, 750)),
+      // One soft spring for the whole picture: rises, stands up, overshoots a hair, settles.
+      at(200, spring(v.main, 8, 26)),
+      at(400, timing(v.glow, 1000)),
+      ...v.sides.map((side, i) => at(900 + i * 140, spring(side, 7, 38))),
+      ...v.sparks.map((spark, i) => at(1100 + Math.min(i * 55, 850), spring(spark, 5, 75))),
+      at(1500, timing(v.word, 800)),
+      at(1750, timing(v.tagline, 750)),
     ]);
 
     const wave = (value: Animated.Value, duration: number) =>
@@ -129,7 +129,7 @@ export function ThemedSplash({ edition, scene, ready, onDone }: Props) {
           Animated.timing(value, { toValue: 0, duration, easing: Easing.inOut(Easing.sin), useNativeDriver: native }),
         ])
       );
-    const loops = [wave(v.breathe, 1400), wave(v.sway, 1900), wave(v.twinkleA, 850), wave(v.twinkleB, 1150), wave(v.float, 2100)];
+    const loops = [wave(v.breathe, 1400), wave(v.sway, 1900), wave(v.twinkleA, 850), wave(v.twinkleB, 1150), wave(v.float, 2200)];
     entrance.start();
     const idle = setTimeout(() => loops.forEach((l) => l.start()), 2000);
 
@@ -161,8 +161,8 @@ export function ThemedSplash({ edition, scene, ready, onDone }: Props) {
   const fadeIn = (value: Animated.Value, until = 0.35) =>
     value.interpolate({ inputRange: [0, until, 1], outputRange: [0, 1, 1], extrapolate: "clamp" });
 
-  const ringX = center.x * k;
-  const ringY = (center.y - cropTop) * k;
+  const ringX = cx * k;
+  const ringY = (cy - cropTop) * k;
   const glowSize = 900 * k;
   const ink = scene.light ? palette.ink : "#FFFBF4";
   const accent = scene.light ? palette.tealDark : palette.gold;
@@ -195,86 +195,64 @@ export function ThemedSplash({ edition, scene, ready, onDone }: Props) {
             style={{
               height: glowSize,
               left: ringX - glowSize / 2,
-              opacity: Animated.multiply(fadeIn(v.art, 0.6), lerp(v.breathe, scene.light ? 0.35 : 0.6, scene.light ? 0.5 : 0.85)),
+              opacity: Animated.multiply(v.glow, lerp(v.breathe, scene.light ? 0.3 : 0.55, scene.light ? 0.45 : 0.8)),
               position: "absolute",
               tintColor: palette.gold,
               top: ringY - glowSize / 2,
-              transform: [{ scale: Animated.multiply(lerp(v.art, 0.5, 1), lerp(v.breathe, 1, 1.08)) }],
+              transform: [{ scale: Animated.multiply(lerp(v.glow, 0.6, 1), lerp(v.breathe, 1, 1.08)) }],
               width: glowSize,
             }}
           />
 
-          {/* Larger separate pieces grow from their base, then sway. */}
-          {sides.map((l, i) => (
-            <Animated.Image
-              key={`side${i}`}
-              source={l.source}
-              style={[
-                place(l),
-                {
-                  opacity: fadeIn(v.sides[i], 0.3),
-                  transform: [
-                    { scale: v.sides[i] },
-                    { rotate: v.sway.interpolate({ inputRange: [0, 1], outputRange: [i % 2 ? "2deg" : "-2deg", i % 2 ? "-2deg" : "2deg"] }) },
-                  ],
-                  transformOrigin: "50% 100%",
-                },
-              ]}
-            />
-          ))}
+          {/* Separate pieces glide in from outside the picture, then sway. */}
+          {sides.map((l, i) => {
+            const dx = l.x + l.w / 2 - cx;
+            const dy = l.y + l.h / 2 - cy;
+            const n = Math.hypot(dx, dy) || 1;
+            const turn = i % 2 ? 1 : -1;
+            return (
+              <Animated.Image
+                key={`side${i}`}
+                source={l.source}
+                style={[
+                  place(l),
+                  {
+                    opacity: fadeIn(v.sides[i], 0.3),
+                    transform: [
+                      { translateX: lerp(v.sides[i], (dx / n) * 70 * k, 0) },
+                      { translateY: lerp(v.sides[i], (dy / n) * 70 * k, 0) },
+                      { rotate: v.sides[i].interpolate({ inputRange: [0, 1], outputRange: [`${12 * turn}deg`, "0deg"] }) },
+                      { rotate: v.sway.interpolate({ inputRange: [0, 1], outputRange: [`${-2 * turn}deg`, `${2 * turn}deg`] }) },
+                      { scale: lerp(v.sides[i], 0.7, 1) },
+                    ],
+                  },
+                ]}
+              />
+            );
+          })}
 
-          {/* The art stands up out of the pages like a pop-up, then floats a little. */}
-          {art ? (
-            <Animated.Image
-              source={art.source}
-              style={[
-                place(art),
-                {
-                  opacity: fadeIn(v.art, 0.25),
-                  transform: [
-                    { perspective: 1000 },
-                    { translateY: Animated.add(lerp(v.art, 40 * k, 0), lerp(v.float, 3 * k, -3 * k)) },
-                    { rotateX: v.art.interpolate({ inputRange: [0, 1], outputRange: ["78deg", "0deg"] }) },
-                  ],
-                  transformOrigin: "50% 100%",
-                },
-              ]}
-            />
-          ) : null}
-
-          {/* The book: falls open from its spine, or (a stack) rises into place. */}
+          {/* The whole picture rises and stands up from its base, then floats. */}
           <Animated.View
             style={[
               StyleSheet.absoluteFill,
               {
-                opacity: fadeIn(v.book, 0.25),
-                transform: scene.mode === "open"
-                  ? [{ translateY: lerp(v.book, 70 * k, 0) }]
-                  : [{ translateY: lerp(v.book, 140 * k, 0) }, { scale: lerp(v.book, 0.92, 1) }],
+                opacity: fadeIn(v.main, 0.3),
+                transform: [
+                  { perspective: 1100 },
+                  { translateY: Animated.add(lerp(v.main, 50 * k, 0), lerp(v.float, 3 * k, -3 * k)) },
+                  { rotateX: v.main.interpolate({ inputRange: [0, 1], outputRange: ["62deg", "0deg"] }) },
+                  { scale: lerp(v.main, 0.86, 1) },
+                ],
+                transformOrigin: `50% ${Math.min(100, ((Math.max(...mains.map((l) => l.y + l.h)) - cropTop) / (cropBottom - cropTop)) * 100)}%`,
               },
             ]}
           >
-            {books.map((l) => (
-              <Animated.Image
-                key={l.kind}
-                source={l.source}
-                style={[
-                  place(l),
-                  scene.mode === "open"
-                    ? {
-                        transform: [
-                          { perspective: 900 },
-                          { rotateY: v.book.interpolate({ inputRange: [0, 1], outputRange: l.kind === "bookLeft" ? ["78deg", "0deg"] : ["-78deg", "0deg"] }) },
-                        ],
-                        transformOrigin: l.kind === "bookLeft" ? "100% 50%" : "0% 50%",
-                      }
-                    : null,
-                ]}
-              />
+            {mains.map((l, i) => (
+              <Animated.Image key={`main${i}`} source={l.source} style={place(l)} />
             ))}
           </Animated.View>
 
-          {/* Small pieces pop, then twinkle out of step with each other. */}
+          {/* Small pieces pop nearest-first, then twinkle out of step. */}
           {sparks.map((l, i) => {
             const twinkle = i % 2 ? v.twinkleB : v.twinkleA;
             return (
@@ -287,7 +265,7 @@ export function ThemedSplash({ edition, scene, ready, onDone }: Props) {
                     opacity: Animated.multiply(fadeIn(v.sparks[i], 0.2), lerp(twinkle, 1, 0.6)),
                     transform: [
                       { scale: Animated.multiply(v.sparks[i], lerp(twinkle, 1, 0.82)) },
-                      { rotate: v.sparks[i].interpolate({ inputRange: [0, 1], outputRange: [i % 2 ? "60deg" : "-60deg", "0deg"] }) },
+                      { rotate: v.sparks[i].interpolate({ inputRange: [0, 1], outputRange: [i % 2 ? "50deg" : "-50deg", "0deg"] }) },
                     ],
                   },
                 ]}
