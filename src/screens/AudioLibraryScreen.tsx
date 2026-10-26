@@ -27,12 +27,11 @@ import { useDialog } from "../components/DialogProvider";
 import { FolderPickerSheet } from "../components/FolderPickerSheet";
 import { MiniCover } from "../components/MiniCover";
 import { Screen } from "../components/Screen";
-import { ThemeIllustration } from "../components/ThemeIllustration";
 import { useBookliz } from "../data/BooklizContext";
 import { childFolders, deepBookCount, folderOfBook } from "../data/bookFolders";
 import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
-import { useColors, useTheme } from "../theme/ThemeContext";
+import { useColors } from "../theme/ThemeContext";
 import { AppColors, fonts, radii, spacing } from "../theme/theme";
 import type { BookFolder } from "../types/models";
 import { hapticLight, hapticSuccess } from "../utils/haptics";
@@ -55,7 +54,6 @@ export function AudioLibraryScreen() {
   const isRoot = folderId === null;
   const { t } = useI18n();
   const c = useColors();
-  const { edition } = useTheme();
   const styles = useMemo(() => createStyles(c), [c]);
   const dialog = useDialog();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -244,7 +242,7 @@ export function AudioLibraryScreen() {
     menu?.kind === "book" ? getBook(menu.bookId)?.title ?? "" : menu?.kind === "folder" ? menu.folder.name : menu?.kind === "ebookInbox" ? menu.ebook.title : "";
 
   return (
-    <Screen>
+    <Screen landscape>
       <View style={styles.header}>
         {isRoot ? <Text style={styles.title}>{t("audioLib.title")}</Text> : <View style={{ flex: 1 }} />}
         <Pressable
@@ -273,9 +271,7 @@ export function AudioLibraryScreen() {
 
       {isEmpty ? (
         <View style={styles.empty}>
-          {edition === "classic" ? (
-            <Ionicons name={isRoot ? "headset-outline" : "folder-open-outline"} size={40} color={c.muted} />
-          ) : <ThemeIllustration />}
+          <Ionicons name={isRoot ? "headset-outline" : "folder-open-outline"} size={40} color={c.muted} />
           <Text style={styles.emptyTitle}>{isRoot ? t("audioLib.emptyTitle") : t("audioLib.emptyFolderTitle")}</Text>
           <Text style={styles.emptyBody}>{isRoot ? t("audioLib.emptyBody") : t("audioLib.emptyFolderBody")}</Text>
           {isRoot ? (
@@ -441,8 +437,6 @@ export function AudioLibraryScreen() {
           </Pressable>
         );
       })}
-
-      {!isEmpty ? <ThemeIllustration /> : null}
 
       {/* ── Menu ──────────────────────────────────────────────────────────── */}
       <Modal visible={Boolean(menu)} transparent animationType="fade" onRequestClose={() => setMenu(null)} onDismiss={flushPending}>

@@ -32,11 +32,11 @@ Editable vector sources live in `scripts/theme-art/` (see its README) with rende
 
 Validation: run the appearance assets, atmospheres, editions, theme icon, and edition lifecycle suites plus TypeScript. On a Pro device, switch through all four in both display modes, relaunch to check persistence, and verify the matching native icon with icon following enabled. Without Pro, tapping them should open the existing paywall.
 
-Fantasy launch artwork is cut like every other theme (main / side / spark layers in `assets/splash/themes/<id>/`, registered in `src/components/splash/themedScenes.ts`) from the transparent art-only render, so the splash, Add Book and Files share one source.
+Fantasy launch artwork is cut like every other theme (main / side / spark layers in `assets/splash/themes/<id>/`, registered in `src/components/splash/themedScenes.ts`) from the transparent art-only render, the same way as every other theme.
 
 ## Shared illustrations and icon availability
 
-`ThemeIllustration` displays the selected theme’s complete transparent artwork on the Add Book menu and in Files, including below existing files and in empty folders. Both screens read the same scene registry and render the same image at the same size; Classic preserves its original appearance. The artwork is decorative and does not intercept touches or enter the accessibility tree.
+Add Book and Files show the theme's landscape along the bottom of their free space whenever there is room (`<Screen landscape>`), with the scattered motifs above it — never behind text. Other screens show the landscape only when nearly empty. Classic draws nothing.
 
 The native AppIcon module exposes `availableIcons()` from the installed binary’s `CFBundleAlternateIcons` dictionary and rejects unbundled names before calling UIKit. The JavaScript icon service checks availability before comparing the current name and confirms the name again after a change. An older binary or native module now produces a translated update-build message instead of silently accepting an unavailable icon. Manual selection and enabling icon following use the same error handling, even while capability detection is loading.
 

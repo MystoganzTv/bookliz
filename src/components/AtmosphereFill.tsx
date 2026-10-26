@@ -40,6 +40,8 @@ type Props = {
   /** Padding of the scroll content to bleed into, so the field reaches the real edges. */
   bleedBottom?: number;
   bleedHorizontal?: number;
+  /** Show the landscape whenever there is room for it, not only on a nearly empty screen. */
+  landscape?: boolean;
 };
 
 /**
@@ -51,7 +53,7 @@ type Props = {
  * gets a whole field, and a really empty screen also gets the landscape.
  * Renders nothing under Classic.
  */
-export function AtmosphereFill({ bleedBottom = 0, bleedHorizontal = 0 }: Props) {
+export function AtmosphereFill({ bleedBottom = 0, bleedHorizontal = 0, landscape = false }: Props) {
   const { atmosphere, edition, isDark, colors: c } = useTheme();
   const route = useContext(NavigationRouteContext);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -62,9 +64,12 @@ export function AtmosphereFill({ bleedBottom = 0, bleedHorizontal = 0 }: Props) 
     setSize((prev) => (Math.abs(prev.width - width) < 1 && Math.abs(prev.height - height) < 1 ? prev : { width, height }));
   };
 
-  const showLandscape = size.height >= LANDSCAPE_MIN_HEIGHT;
   const sceneHeight = Math.min(size.width * SCENE_RATIO, MAX_SCENE_HEIGHT);
-  const fieldHeight = showLandscape ? size.height - sceneHeight : size.height;
+  // Forced: as soon as the free space holds most of the landscape (the sky is
+  // what gets cropped). Otherwise only on a nearly empty screen.
+  const showLandscape = landscape ? size.height >= sceneHeight * 0.7 : size.height >= LANDSCAPE_MIN_HEIGHT;
+  const frameHeight = Math.min(sceneHeight, size.height);
+  const fieldHeight = showLandscape ? Math.max(0, size.height - frameHeight) : size.height;
   const sprinkles = useMemo(
     () => (atmosphere ? scatterMotifs(seed, size.width, fieldHeight, atmosphere.motifs.length) : []),
     [atmosphere, seed, size.width, fieldHeight]
@@ -97,7 +102,7 @@ export function AtmosphereFill({ bleedBottom = 0, bleedHorizontal = 0 }: Props) 
         />
       ))}
       {showLandscape ? (
-        <View style={[styles.sceneFrame, { height: sceneHeight }]}>
+        <View style={[styles.sceneFrame, { height: frameHeight }]}>
           <Image
             source={ATMOSPHERE_SCENES[edition]}
             resizeMode="stretch"

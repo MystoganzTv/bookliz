@@ -33,9 +33,15 @@ type ScreenProps = PropsWithChildren<{
    * settings list or a review form spread across 1024pt is worse, not better.
    */
   wide?: boolean;
+  /**
+   * Always draw the theme's landscape along the bottom of the free space, not
+   * only when the screen is nearly empty — for the screens whose whole lower
+   * half is room (Add book, Files).
+   */
+  landscape?: boolean;
 }>;
 
-export function Screen({ children, scroll = true, contentStyle, headerRight, wide = false }: ScreenProps) {
+export function Screen({ children, scroll = true, contentStyle, headerRight, wide = false, landscape = false }: ScreenProps) {
   const c = useColors();
   const styles = useMemo(() => createStyles(c), [c]);
   const { width } = useWindowDimensions();
@@ -79,7 +85,7 @@ export function Screen({ children, scroll = true, contentStyle, headerRight, wid
       >
         <View style={[styles.column, styles.columnGrow, !capped && styles.columnFree]}>
           {children}
-          <AtmosphereFill bleedBottom={bleedBottom} bleedHorizontal={bleedHorizontal} />
+          <AtmosphereFill bleedBottom={bleedBottom} bleedHorizontal={bleedHorizontal} landscape={landscape} />
         </View>
       </ScrollView>
     </SafeAreaView>
