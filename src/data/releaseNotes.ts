@@ -18,6 +18,38 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    // 1.3.0 never reached the store (rejected), so 1.4.0 carries Pro as new too.
+    version: "1.4.0",
+    label: "October 2026",
+    sections: [
+      {
+        type: "new",
+        items: [
+          "Themes (Pro): seasons, holidays and storybook worlds that repaint all of Bookliz in light and dark, each with its own app icon and animated launch screen",
+          "Read your ebooks right in Bookliz: EPUB, PDF, comics (CBZ/CBR) and TXT, next to your audiobooks in Files",
+          "Bookliz Pro — optional, monthly, yearly or lifetime; everything free stays free",
+          "Listen on Apple Watch without your iPhone, keep audiobooks in iCloud, see your year in reading and pick reader fonts (Pro)",
+        ],
+      },
+      {
+        type: "improved",
+        items: [
+          "Your audiobooks as a library: each book is a folder with its files, plus folders of your own",
+          "Cleaner screens with fewer boxes, and a new Profile",
+          "Logging a session is just the page you are on; switching a book's format asks whether to continue or start over",
+          "Edit book redesigned; ISBN-10 and ISBN-13 stay in sync",
+          "Book search fills in missing ISBNs and page counts more often",
+        ],
+      },
+      {
+        type: "fixed",
+        items: [
+          "The purchase screen no longer freezes after buying Pro",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.3.0",
     label: "October 2026",
     sections: [
@@ -28,7 +60,7 @@ export const RELEASE_NOTES: ReleaseEntry[] = [
           "Listen on Apple Watch without your iPhone: send an audiobook to the watch and go (Pro)",
           "Audiobooks in iCloud: save your audio files and download them on your other devices (Pro)",
           "Your year in reading: hours, streaks, best books, authors and genres (Pro)",
-          "Accent colors and alternative app icons (Pro)",
+          "Alternative app icons (Pro)",
         ],
       },
     ],
