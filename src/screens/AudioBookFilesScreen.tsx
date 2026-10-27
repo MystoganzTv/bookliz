@@ -10,6 +10,7 @@ import { useEffect, useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAudiobookPlayer, useAudiobookPosition } from "../audio/AudiobookPlayerContext";
 import { formatClock } from "../audio/audiobookModel";
+import { useDialog } from "../components/DialogProvider";
 import { MiniCover } from "../components/MiniCover";
 import { Screen } from "../components/Screen";
 import { useBookliz } from "../data/BooklizContext";
@@ -17,7 +18,7 @@ import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
 import { useColors } from "../theme/ThemeContext";
 import { AppColors, fonts, radii, spacing } from "../theme/theme";
-import { hapticLight } from "../utils/haptics";
+import { hapticLight, hapticSuccess } from "../utils/haptics";
 import { formatListenLength } from "./ManageAudioScreen";
 
 export function AudioBookFilesScreen() {
@@ -31,6 +32,7 @@ export function AudioBookFilesScreen() {
   const player = useAudiobookPlayer();
   const { engine } = player;
   const livePosition = useAudiobookPosition();
+  const dialog = useDialog();
   const book = getBook(bookId);
   const audiobook = player.library[bookId];
   const active = player.activeBookId === bookId;
@@ -143,6 +145,51 @@ export function AudioBookFilesScreen() {
           </Pressable>
         );
       })}
+
+      {/* Wrong book, or done with it: the way out lives here too, not only behind a long-press. */}
+      <View style={styles.manage}>
+        <Pressable
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.manageRow, pressed && { opacity: 0.6 }]}
+          onPress={() =>
+            dialog.confirm({
+              title: t("fileManager.detachTitle"),
+              body: t("fileManager.detachBody"),
+              confirmLabel: t("fileManager.detachConfirm"),
+              onConfirm: () => {
+                if (engine.detachToInbox(bookId)) hapticSuccess();
+                navigation.goBack();
+              },
+            })
+          }
+        >
+          <Ionicons name="return-down-back-outline" size={18} color={c.ink} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.manageText}>{t("fileManager.detach")}</Text>
+            <Text style={styles.rowSub}>{t("fileManager.detachHint")}</Text>
+          </View>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.manageRow, pressed && { opacity: 0.6 }]}
+          onPress={() =>
+            dialog.confirm({
+              title: t("player.removeConfirmTitle"),
+              body: t("player.removeConfirmBody"),
+              confirmLabel: t("player.removeConfirm"),
+              destructive: true,
+              onConfirm: () => {
+                engine.removeAudio(bookId);
+                hapticSuccess();
+                navigation.goBack();
+              },
+            })
+          }
+        >
+          <Ionicons name="trash-outline" size={18} color={c.danger} />
+          <Text style={[styles.manageText, { color: c.danger }]}>{t("player.removeAudio")}</Text>
+        </Pressable>
+      </View>
     </Screen>
   );
 }
@@ -179,5 +226,12 @@ function createStyles(c: AppColors) {
     indexText: { color: c.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: "900" },
     rowTitle: { color: c.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: "800" },
     rowSub: { color: c.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: "600", marginTop: 2 },
+    manage: { gap: spacing.xs, marginTop: spacing.xl },
+    manageRow: {
+      alignItems: "center", backgroundColor: c.surface, borderColor: c.border, borderRadius: radii.md,
+      borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: spacing.md, minHeight: 52,
+      paddingHorizontal: spacing.md, paddingVertical: 10,
+    },
+    manageText: { color: c.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: "800" },
   });
 }
