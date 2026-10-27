@@ -670,6 +670,7 @@ function TrendingTile({
   coverStyle: StyleProp<ImageStyle>;
   onPress: (book: GenreBookResult) => void;
 }) {
+  const c = useColors();
   const { t } = useI18n();
   return (
     <ScalePressable
@@ -686,8 +687,8 @@ function TrendingTile({
           resizeMode="cover"
         />
       ) : (
-        <View style={[coverStyle as StyleProp<ViewStyle>, stylesFallback.trendingPlaceholder]}>
-          <Ionicons name="book-outline" size={24} color="#91A0B8" />
+        <View style={[coverStyle as StyleProp<ViewStyle>, stylesFallback.trendingPlaceholder, { backgroundColor: c.surfaceAlt }]}>
+          <Ionicons name="book-outline" size={24} color={c.muted} />
         </View>
       )}
     </ScalePressable>

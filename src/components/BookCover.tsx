@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { ImageBackground, StyleProp, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { Book, ReadingFormat } from "../types/models";
 import { colors, fonts, radii, shadows } from "../theme/theme";
+import { useColors } from "../theme/ThemeContext";
 import { isAwaitingCopy } from "../data/shelfRules";
 import { statusLabelKey } from "../utils/statusLabels";
 import { useI18n } from "../i18n/LocalizationContext";
@@ -44,10 +45,11 @@ export function FormatBadge({ format, size = 12, style }: {
   size?: number;
   style?: StyleProp<ViewStyle>;
 }) {
+  const c = useColors();
   const icon = formatBadgeIcon(format);
   if (!icon) return null;
   return (
-    <View style={[styles.formatBadge, style]}>
+    <View style={[styles.formatBadge, { backgroundColor: c.teal }, style]}>
       <Ionicons name={icon} size={size} color="#FFFFFF" />
     </View>
   );

@@ -1171,7 +1171,7 @@ function createStyles(c: AppColors, isDark: boolean) {
     },
     tileCoverWrap: {
       aspectRatio: 2 / 3,
-      backgroundColor: "#111827",
+      backgroundColor: c.surfaceAlt,
       borderRadius: 10,
       overflow: "hidden",
       shadowColor: "#000",

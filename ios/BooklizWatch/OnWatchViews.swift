@@ -68,7 +68,7 @@ struct OnWatchPlayerView: View {
 
   var body: some View {
     if let book = player.book {
-      VStack(spacing: 4) {
+      VStack(spacing: 6) {
         VStack(spacing: 0) {
           Text(book.chapterTitle(at: player.positionSec) ?? book.title)
             .font(.system(.headline, design: .rounded))
@@ -84,13 +84,8 @@ struct OnWatchPlayerView: View {
 
         ProgressView(value: book.totalSec > 0 ? min(1, player.positionSec / book.totalSec) : 0)
           .tint(Color.bookliz)
-        HStack {
-          Text(clock(player.positionSec))
-          Spacer()
-          Text("-" + clock(max(0, book.totalSec - player.positionSec)))
-        }
-        .font(.system(size: 12).monospacedDigit())
-        .foregroundStyle(.secondary)
+          .accessibilityValue(tr("\(clock(max(0, book.totalSec - player.positionSec))) left", "Quedan \(clock(max(0, book.totalSec - player.positionSec)))"))
+        Spacer(minLength: 0)
 
         HStack(spacing: 0) {
           transport("gobackward.15", tr("Back 15 seconds", "Atrás 15 segundos")) { player.skip(-15) }
@@ -104,16 +99,18 @@ struct OnWatchPlayerView: View {
                 ProgressView()
               } else {
                 Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                  .font(.system(size: 22, weight: .bold))
+                  .font(.system(size: 28, weight: .bold))
                   .foregroundStyle(.black)
               }
             }
-            .frame(width: 48, height: 48)
+            .frame(width: 64, height: 64)
           }
           .buttonStyle(.plain)
           .accessibilityLabel(player.isPlaying ? tr("Pause", "Pausa") : tr("Play", "Reproducir"))
           transport("goforward.30", tr("Forward 30 seconds", "Adelante 30 segundos")) { player.skip(30) }
         }
+
+        Spacer(minLength: 0)
 
         HStack(spacing: 6) {
           Button {
@@ -157,9 +154,10 @@ struct OnWatchPlayerView: View {
       action()
     } label: {
       Image(systemName: symbol)
-        .font(.system(size: 22, weight: .semibold))
+        .font(.system(size: 26, weight: .semibold))
         .foregroundStyle(.white)
-        .frame(maxWidth: .infinity, minHeight: 44)
+        .frame(maxWidth: .infinity, minHeight: 64)
+        .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .accessibilityLabel(label)

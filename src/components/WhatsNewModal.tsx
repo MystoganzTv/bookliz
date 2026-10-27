@@ -29,20 +29,14 @@ const SECTION_CONFIG = {
   new: {
     emoji: "🆕",
     label: "What's New",
-    bg: "#2563EB",
-    text: "#FFFFFF",
   },
   improved: {
     emoji: "👍",
     label: "Improved",
-    bg: "#FEF3C7",
-    text: "#92400E",
   },
   fixed: {
     emoji: "🔧",
     label: "Fixed",
-    bg: "#DCFCE7",
-    text: "#166534",
   },
 } as const;
 
@@ -179,16 +173,21 @@ function SectionBlock({
   c: AppColors;
 }) {
   const config = SECTION_CONFIG[section.type];
+  // Theme colours, so the notes match whichever theme is on.
+  const tone =
+    section.type === "new" ? { bg: c.teal, text: "#FFFFFF", badge: "rgba(255,255,255,0.22)" }
+    : section.type === "improved" ? { bg: c.gold + "33", text: c.ink, badge: c.gold + "40" }
+    : { bg: c.green + "33", text: c.ink, badge: c.green + "40" };
   return (
     <View style={styles.section}>
       {/* Section header */}
-      <View style={[styles.sectionHeader, { backgroundColor: config.bg }]}>
+      <View style={[styles.sectionHeader, { backgroundColor: tone.bg }]}>
         <Text style={styles.sectionEmoji}>{config.emoji}</Text>
-        <Text style={[styles.sectionLabel, { color: config.text }]}>
+        <Text style={[styles.sectionLabel, { color: tone.text }]}>
           {config.label}
         </Text>
-        <View style={[styles.countBadge, { backgroundColor: config.bg === "#2563EB" ? "#1D4ED8" : "rgba(0,0,0,0.10)" }]}>
-          <Text style={[styles.countText, { color: config.text }]}>
+        <View style={[styles.countBadge, { backgroundColor: tone.badge }]}>
+          <Text style={[styles.countText, { color: tone.text }]}>
             {section.items.length}
           </Text>
         </View>

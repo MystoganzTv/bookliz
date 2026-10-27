@@ -34,6 +34,7 @@ export type IconName = keyof typeof Ionicons.glyphMap;
 // ─── Animated scan line ───────────────────────────────────────────────────────
 
 export function ScanLine() {
+  const c = useColors();
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -54,7 +55,7 @@ export function ScanLine() {
         left: 0,
         right: 0,
         height: 2,
-        backgroundColor: "#14B8A6",
+        backgroundColor: c.teal,
         opacity: 0.85,
         transform: [
           {
@@ -161,7 +162,6 @@ export function CompactLanguageModal({
   onClose: () => void;
 }) {
   const c = useColors();
-  const { isDark } = useTheme();
   const [custom, setCustom] = useState("");
   const { t } = useI18n();
 
@@ -174,40 +174,40 @@ export function CompactLanguageModal({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable accessibilityRole="button" style={styles_modal.backdrop} onPress={onClose} />
-      <View style={[styles_modal.sheet, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
+      <View style={[styles_modal.sheet, { backgroundColor: c.surface }]}>
         <View style={styles_modal.handle} />
-        <Text style={[styles_modal.title, { color: isDark ? "#F1F5F9" : "#0F172A" }]}>{t("scan.language")}</Text>
+        <Text style={[styles_modal.title, { color: c.ink }]}>{t("scan.language")}</Text>
         <ScrollView style={styles_modal.list} showsVerticalScrollIndicator={false}>
           {prioritized.map((lang) => (
             <Pressable accessibilityRole="button"
               key={lang}
-              style={[styles_modal.row, selected === lang && styles_modal.rowActive]}
+              style={[styles_modal.row, selected === lang && { backgroundColor: c.teal + "1F" }]}
               onPress={() => onSelect(lang)}
             >
-              <Text style={[styles_modal.rowText, { color: isDark ? "#F1F5F9" : "#0F172A" }, selected === lang && styles_modal.rowTextActive]}>
+              <Text style={[styles_modal.rowText, { color: c.ink }, selected === lang && [styles_modal.rowTextActive, { color: c.teal }]]}>
                 {lang}
               </Text>
-              {selected === lang ? <Ionicons name="checkmark-outline" size={16} color="#14B8A6" /> : null}
+              {selected === lang ? <Ionicons name="checkmark-outline" size={16} color={c.teal} /> : null}
             </Pressable>
           ))}
           <View style={styles_modal.divider} />
           {MODAL_LANGUAGES.filter((l) => !prioritized.includes(l)).map((lang) => (
             <Pressable accessibilityRole="button"
               key={lang}
-              style={[styles_modal.row, selected === lang && styles_modal.rowActive]}
+              style={[styles_modal.row, selected === lang && { backgroundColor: c.teal + "1F" }]}
               onPress={() => onSelect(lang)}
             >
-              <Text style={[styles_modal.rowText, { color: isDark ? "#CBD5E1" : "#475569" }, selected === lang && styles_modal.rowTextActive]}>
+              <Text style={[styles_modal.rowText, { color: c.muted }, selected === lang && [styles_modal.rowTextActive, { color: c.teal }]]}>
                 {lang}
               </Text>
-              {selected === lang ? <Ionicons name="checkmark-outline" size={16} color="#14B8A6" /> : null}
+              {selected === lang ? <Ionicons name="checkmark-outline" size={16} color={c.teal} /> : null}
             </Pressable>
           ))}
           <View style={styles_modal.divider} />
           <AppTextInput
             placeholder={t("scan.otherLanguage")}
-            placeholderTextColor="#94A3B8"
-            style={[styles_modal.customInput, { color: isDark ? "#F1F5F9" : "#0F172A", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
+            placeholderTextColor={c.muted}
+            style={[styles_modal.customInput, { color: c.ink, borderColor: c.border }]}
             value={custom}
             onChangeText={setCustom}
             onSubmitEditing={() => { if (custom.trim()) onSelect(custom.trim()); }}
@@ -221,14 +221,13 @@ export function CompactLanguageModal({
 
 const styles_modal = StyleSheet.create({  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)" },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: "70%", paddingBottom: 32, paddingHorizontal: 20, paddingTop: 12 },
-  handle: { alignSelf: "center", backgroundColor: "#94A3B8", borderRadius: 2, height: 4, marginBottom: 16, width: 40 },
+  handle: { alignSelf: "center", backgroundColor: "rgba(148,163,184,0.6)", borderRadius: 2, height: 4, marginBottom: 16, width: 40 },
   title: { fontFamily: "Lora-Bold", fontSize: 17, fontWeight: "700", marginBottom: 12 },
   list: { maxHeight: 380 },
   row: { alignItems: "center", borderRadius: 10, flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 13 },
-  rowActive: { backgroundColor: "rgba(20,184,166,0.12)" },
   rowText: { fontSize: 15 },
-  rowTextActive: { color: "#14B8A6", fontWeight: "700" },
-  divider: { backgroundColor: "#E2E8F0", height: 1, marginVertical: 6 },
+  rowTextActive: { fontWeight: "700" },
+  divider: { backgroundColor: "rgba(148,163,184,0.25)", height: 1, marginVertical: 6 },
   customInput: { borderRadius: 10, borderWidth: 1, fontSize: 14, marginTop: 4, paddingHorizontal: 12, paddingVertical: 11 },
 });
 
@@ -258,7 +257,7 @@ export function EditionPickerModal({
   onSelect: (option: BookEditionOption) => void;
   onClose: () => void;
 }) {
-  const { isDark } = useTheme();
+  const c = useColors();
   const isSelected = (o: BookEditionOption) =>
     Boolean((selectedEditionKey && o.editionKey === selectedEditionKey) ||
       (selectedIsbn && o.isbn && o.isbn === selectedIsbn));
@@ -267,15 +266,15 @@ export function EditionPickerModal({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable accessibilityRole="button" style={styles_modal.backdrop} onPress={onClose} />
-      <View style={[styles_modal.sheet, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
+      <View style={[styles_modal.sheet, { backgroundColor: c.surface }]}>
         <View style={styles_modal.handle} />
-        <Text style={[styles_modal.title, { color: isDark ? "#F1F5F9" : "#0F172A" }]}>{t("scan.chooseEdition")}</Text>
+        <Text style={[styles_modal.title, { color: c.ink }]}>{t("scan.chooseEdition")}</Text>
         {loading ? (
           <View style={{ alignItems: "center", paddingVertical: 32 }}>
-            <ActivityIndicator size="small" color="#14B8A6" />
+            <ActivityIndicator size="small" color={c.teal} />
           </View>
         ) : options.length === 0 ? (
-          <Text style={[styles_modal.rowText, { color: isDark ? "#94A3B8" : "#64748B", paddingVertical: 20 }]}>
+          <Text style={[styles_modal.rowText, { color: c.muted, paddingVertical: 20 }]}>
             No alternative editions found for this title.
           </Text>
         ) : (
@@ -285,23 +284,23 @@ export function EditionPickerModal({
               return (
                 <Pressable accessibilityRole="button"
                   key={option.id}
-                  style={[styles_modal.row, active && styles_modal.rowActive]}
+                  style={[styles_modal.row, active && { backgroundColor: c.teal + "1F" }]}
                   onPress={() => onSelect(option)}
                 >
                   <View style={{ flex: 1, paddingRight: 8 }}>
                     <Text
-                      style={[styles_modal.rowText, { color: isDark ? "#F1F5F9" : "#0F172A" }, active && styles_modal.rowTextActive]}
+                      style={[styles_modal.rowText, { color: c.ink }, active && [styles_modal.rowTextActive, { color: c.teal }]]}
                       numberOfLines={2}
                     >
                       {option.label}
                     </Text>
                     {option.isbn ? (
-                      <Text style={{ color: isDark ? "#64748B" : "#94A3B8", fontSize: 12, marginTop: 2 }}>
+                      <Text style={{ color: c.muted, fontSize: 12, marginTop: 2 }}>
                         ISBN {option.isbn}
                       </Text>
                     ) : null}
                   </View>
-                  {active ? <Ionicons name="checkmark-outline" size={16} color="#14B8A6" /> : null}
+                  {active ? <Ionicons name="checkmark-outline" size={16} color={c.teal} /> : null}
                 </Pressable>
               );
             })}

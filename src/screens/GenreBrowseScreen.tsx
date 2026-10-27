@@ -335,7 +335,7 @@ export function GenreBrowseScreen() {
                 key={i}
                 name={i <= fullStars ? "star" : "star-outline"}
                 size={10}
-                color={i <= fullStars ? "#F5A623" : c.muted}
+                color={i <= fullStars ? c.gold : c.muted}
               />
             ))}
             {ratingCount ? (

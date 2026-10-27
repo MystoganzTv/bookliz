@@ -271,10 +271,10 @@ export function BookDetailScreen() {
       <Pressable accessibilityRole="button" style={styles.heroStatusPill} onPress={() => setStatusSheetOpen(true)}>
         <View style={[styles.heroStatusDot, {
           backgroundColor:
-            book.userStatus.status === "read" ? "#7FB069"
-            : book.userStatus.status === "reading" ? "#14B8A6"
-            : book.userStatus.status === "dnf" ? "#D95D47"
-            : "#FFC857",
+            book.userStatus.status === "read" ? c.green
+            : book.userStatus.status === "reading" ? c.teal
+            : book.userStatus.status === "dnf" ? c.danger
+            : c.gold,
         }]} />
         <Text style={styles.heroStatusText}>{statusLabel}</Text>
         {book.userStatus.rating ? (

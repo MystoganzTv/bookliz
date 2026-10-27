@@ -202,7 +202,7 @@ export function AuthorBooksScreen() {
           <View style={styles.ratingRow}>
             {[1,2,3,4,5].map((i) => (
               <Ionicons key={i} name={i <= fullStars ? "star" : "star-outline"} size={10}
-                color={i <= fullStars ? "#F5A623" : c.muted} />
+                color={i <= fullStars ? c.gold : c.muted} />
             ))}
             {ratingCount ? <Text style={styles.ratingCount}>{ratingCount}</Text> : null}
           </View>
@@ -251,7 +251,7 @@ export function AuthorBooksScreen() {
             <View style={[styles.ratingRow, { marginTop: 4 }]}>
               {[1,2,3,4,5].map((i) => (
                 <Ionicons key={i} name={i <= fullStars ? "star" : "star-outline"} size={10}
-                  color={i <= fullStars ? "#F5A623" : c.muted} />
+                  color={i <= fullStars ? c.gold : c.muted} />
               ))}
               {ratingCount ? <Text style={styles.ratingCount}>{ratingCount}</Text> : null}
             </View>

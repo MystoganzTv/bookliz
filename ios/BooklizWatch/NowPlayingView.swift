@@ -1,10 +1,11 @@
 import SwiftUI
 import WatchKit
 
-/// Now playing. No toolbar on purpose: watchOS draws toolbar buttons over this
-/// non-scrolling layout (the title ended up under them) and tints them into
-/// blank discs. Everything sits in our own rows instead: title, progress,
-/// transport, then chapters · sleep · speed · bookmark. The audiobook list is
+/// Now playing — built to be hit while walking: the chapter, a thin progress
+/// line, and three big transport buttons. Chapters, sleep timer, speed and
+/// bookmark live one tap away behind "…" so they can't be hit by mistake.
+/// No toolbar on purpose: watchOS draws toolbar buttons over this
+/// non-scrolling layout and tints them into blank discs. The audiobook list is
 /// the next page of the vertical TabView (Digital Crown).
 struct NowPlayingView: View {
   @EnvironmentObject private var link: PhoneLink
@@ -18,35 +19,25 @@ struct NowPlayingView: View {
       let position = now.position(at: context.date, sentAt: state.sentAt)
       let index = now.chapterIndex(at: position)
       let range = now.bounds(of: index)
-      VStack(spacing: 4) {
-        VStack(spacing: 0) {
+      VStack(spacing: 6) {
+        HStack(spacing: 4) {
+          if link.unreachableNotice {
+            Image(systemName: "iphone.slash").foregroundStyle(.orange)
+          } else if now.sleep != nil {
+            Image(systemName: "moon.zzz.fill").foregroundStyle(Color.bookliz)
+          }
           Text(now.chapterTitle(index))
-            .font(.system(.headline, design: .rounded))
             .lineLimit(1)
-            .minimumScaleFactor(0.75)
-          Text(index == nil ? now.author : now.title)
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
+            .minimumScaleFactor(0.7)
         }
+        .font(.system(.headline, design: .rounded))
         .frame(maxWidth: .infinity)
 
         ProgressView(value: fraction(position - range.start, of: range.end - range.start))
           .tint(Color.bookliz)
-        HStack {
-          Text(clock(position - range.start))
-          Spacer()
-          if link.unreachableNotice {
-            Image(systemName: "iphone.slash").foregroundStyle(.orange)
-          } else if let sleep = now.sleep {
-            Label(sleepText(sleep, at: context.date), systemImage: "moon.zzz.fill")
-              .labelStyle(.titleAndIcon)
-          }
-          Spacer()
-          Text("-" + clock(range.end - position))
-        }
-        .font(.system(size: 12).monospacedDigit())
-        .foregroundStyle(.secondary)
+          .accessibilityValue(tr("\(clock(range.end - position)) left", "Quedan \(clock(range.end - position))"))
+
+        Spacer(minLength: 0)
 
         HStack(spacing: 0) {
           transportButton(symbol: "gobackward.\(state.skipBack)",
@@ -60,59 +51,25 @@ struct NowPlayingView: View {
           }
         }
 
-        HStack(spacing: 6) {
-          NavigationLink {
-            ChaptersView(now: now, current: now.chapterIndex(at: now.position(at: Date(), sentAt: state.sentAt)))
-          } label: {
-            smallIcon("list.bullet")
-          }
-          .buttonStyle(.plain)
-          .disabled(now.chapters.isEmpty)
-          .opacity(now.chapters.isEmpty ? 0.35 : 1)
-          .accessibilityLabel(tr("Chapters", "Capítulos"))
+        Spacer(minLength: 0)
 
-          NavigationLink {
-            SleepView(state: state, now: now)
-          } label: {
-            smallIcon(now.sleep == nil ? "moon.zzz" : "moon.zzz.fill", active: now.sleep != nil)
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel(tr("Sleep timer", "Temporizador"))
-
-          NavigationLink {
-            SpeedView(state: state, now: now)
-          } label: {
-            Text(speedLabel(now.speed))
-              .font(.system(size: 13, weight: .semibold, design: .rounded))
-              .frame(maxWidth: .infinity, minHeight: 32)
-              .background(Circle().fill(Color.white.opacity(0.16)).frame(width: 34, height: 34))
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel(tr("Speed", "Velocidad"))
-
-          Button {
-            WKInterfaceDevice.current().play(.success)
-            link.send("bookmark")
-          } label: {
-            smallIcon("bookmark")
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel(tr("Add bookmark", "Añadir marcador"))
+        NavigationLink {
+          PlayerMoreView(state: state, now: now)
+        } label: {
+          Image(systemName: "ellipsis")
+            .font(.system(size: 16, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: 44, height: 30)
+            .background(Capsule().fill(Color.white.opacity(0.16)))
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel(tr("More options", "Más opciones"))
       }
       .padding(.horizontal, 2)
     }
     .containerBackground(for: .tabView) {
       CoverBackground(url: now.coverUrl)
     }
-  }
-
-  private func smallIcon(_ name: String, active: Bool = false) -> some View {
-    Image(systemName: name)
-      .font(.system(size: 14, weight: .semibold))
-      .foregroundStyle(active ? Color.bookliz : Color.white)
-      .frame(maxWidth: .infinity, minHeight: 32)
-      .background(Circle().fill(Color.white.opacity(0.16)).frame(width: 34, height: 34))
   }
 
   private var playButton: some View {
@@ -126,11 +83,11 @@ struct NowPlayingView: View {
           ProgressView()
         } else {
           Image(systemName: playing ? "pause.fill" : "play.fill")
-            .font(.system(size: 22, weight: .bold))
+            .font(.system(size: 28, weight: .bold))
             .foregroundStyle(.black)
         }
       }
-      .frame(width: 48, height: 48)
+      .frame(width: 64, height: 64)
     }
     .buttonStyle(.plain)
     .accessibilityLabel(playing ? tr("Pause", "Pausa") : tr("Play", "Reproducir"))
@@ -142,9 +99,10 @@ struct NowPlayingView: View {
       action()
     } label: {
       Image(systemName: symbol)
-        .font(.system(size: 22, weight: .semibold))
+        .font(.system(size: 26, weight: .semibold))
         .foregroundStyle(.white)
-        .frame(maxWidth: .infinity, minHeight: 44)
+        .frame(maxWidth: .infinity, minHeight: 64)
+        .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .accessibilityLabel(label)
@@ -153,6 +111,75 @@ struct NowPlayingView: View {
   private func fraction(_ part: Double, of whole: Double) -> Double {
     guard whole > 0 else { return 0 }
     return min(1, max(0, part / whole))
+  }
+}
+
+/// Everything that isn't transport, as a plain list: big rows, easy to hit.
+struct PlayerMoreView: View {
+  @EnvironmentObject private var link: PhoneLink
+  @Environment(\.dismiss) private var dismiss
+  let state: WatchState
+  let now: NowPlaying
+
+  var body: some View {
+    TimelineView(.periodic(from: .now, by: 1)) { context in
+      let position = now.position(at: context.date, sentAt: state.sentAt)
+      let range = now.bounds(of: now.chapterIndex(at: position))
+      List {
+        Section {
+          VStack(alignment: .leading, spacing: 1) {
+            Text(now.title).font(.headline).lineLimit(2)
+            if !now.author.isEmpty {
+              Text(now.author).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            }
+          }
+          HStack {
+            Text(clock(position - range.start))
+            Spacer()
+            Text("-" + clock(range.end - position))
+          }
+          .font(.footnote.monospacedDigit())
+          .foregroundStyle(.secondary)
+        }
+        .listRowBackground(Color.clear)
+
+        if !now.chapters.isEmpty {
+          NavigationLink {
+            ChaptersView(now: now, current: now.chapterIndex(at: position))
+          } label: {
+            Label(tr("Chapters", "Capítulos"), systemImage: "list.bullet")
+          }
+        }
+        NavigationLink {
+          SleepView(state: state, now: now)
+        } label: {
+          HStack {
+            Label(tr("Sleep timer", "Temporizador"), systemImage: now.sleep == nil ? "moon.zzz" : "moon.zzz.fill")
+            Spacer()
+            if let sleep = now.sleep {
+              Text(sleepText(sleep, at: context.date)).font(.footnote.monospacedDigit()).foregroundStyle(Color.bookliz)
+            }
+          }
+        }
+        NavigationLink {
+          SpeedView(state: state, now: now)
+        } label: {
+          HStack {
+            Label(tr("Speed", "Velocidad"), systemImage: "speedometer")
+            Spacer()
+            Text(speedLabel(now.speed)).font(.footnote).foregroundStyle(.secondary)
+          }
+        }
+        Button {
+          WKInterfaceDevice.current().play(.success)
+          link.send("bookmark")
+          dismiss()
+        } label: {
+          Label(tr("Add bookmark", "Añadir marcador"), systemImage: "bookmark")
+        }
+      }
+    }
+    .navigationTitle(tr("Options", "Opciones"))
   }
 
   private func sleepText(_ sleep: Sleep, at date: Date) -> String {

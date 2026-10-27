@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { BookCover } from "./BookCover";
 import { Book, CoreTrackingStatus } from "../types/models";
-import { AppColors, colors, fonts, radii, spacing } from "../theme/theme";
+import { AppColors, fonts, radii, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
 import { useI18n } from "../i18n/LocalizationContext";
 
@@ -135,7 +135,7 @@ export function BookContextMenu({
                     <Ionicons
                       name={action.icon}
                       size={20}
-                      color={action.destructive ? colors.coral : c.muted}
+                      color={action.destructive ? c.danger : c.muted}
                     />
                   </Pressable>
                 ))}
@@ -227,7 +227,7 @@ function createStyles(c: AppColors) {
       fontWeight: "700",
     },
     actionDestructive: {
-      color: colors.coral,
+      color: c.danger,
     },
   });
 }

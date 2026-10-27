@@ -390,7 +390,7 @@ export function BookIntakeScreen() {
     // have merged into an existing copy that already has audio — attachToBook
     // asks before replacing it.)
     if (attaching) {
-      attachToBook(book.id);
+      attachWhenInLibrary(book.id);
       return;
     }
     if (!launchedFromDiscover && fromMatchId && matches.length > 0) {
@@ -493,7 +493,7 @@ export function BookIntakeScreen() {
       // The library may have changed while the edition resolved.
       const dupe = findDuplicateRef.current(draft);
       if (attaching) {
-        attachToBook(dupe ? dupe.id : addBookRef.current(draft).id);
+        attachWhenInLibrary(dupe ? dupe.id : addBookRef.current(draft).id);
         return;
       }
       if (dupe) {
@@ -542,6 +542,26 @@ export function BookIntakeScreen() {
       });
     } else go();
   };
+
+  /**
+   * A book added a moment ago isn't in `books` (nor in the audio engine's view
+   * of the library) until the next render, and the engine refuses to give a
+   * file to a book it can't see — the file stayed in Files and the new book
+   * opened with "Add audio file". So a brand-new book gets its file once it
+   * has landed; one already on the shelf gets it straight away.
+   */
+  const [pendingAttachBookId, setPendingAttachBookId] = useState<string | null>(null);
+  const attachWhenInLibrary = (bookId: string) => {
+    if (books.some((book) => book.id === bookId)) attachToBook(bookId);
+    else setPendingAttachBookId(bookId);
+  };
+  useEffect(() => {
+    if (!pendingAttachBookId || !books.some((book) => book.id === pendingAttachBookId)) return;
+    setPendingAttachBookId(null);
+    attachToBook(pendingAttachBookId);
+    // attachToBook is recreated every render; the book landing is the trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [books, pendingAttachBookId]);
 
   /** The ✓ on a result already on the shelf: open it — or, giving a file its book, give it the file. */
   const openLibraryCopy = (match: BookMatch) => {

@@ -48,13 +48,29 @@ import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
 import { AppColors, darkColors, fonts, radii, spacing } from "../theme/theme";
+import { paintAtmosphere } from "../theme/atmospheres";
+import { useTheme } from "../theme/ThemeContext";
 import { hapticLight, hapticSuccess } from "../utils/haptics";
 
 const SLEEP_MINUTES = [5, 10, 15, 30, 45, 60] as const;
 type SheetName = "list" | "speed" | "sleep" | "more" | null;
 
-/** The player's own palette: the app's dark theme, a shade deeper behind the cover. */
-const P: AppColors = { ...darkColors, bg: "#1C1D22", surface: "#2A2B31", surfaceAlt: "#33343B" };
+/**
+ * The player's own palette: the app's dark theme, a shade deeper behind the
+ * cover — with the accent of the theme in use (its dark variant, since the
+ * player is always dark), so Halloween's player is orange, not Classic teal.
+ */
+function usePlayerPalette(): AppColors {
+  const { edition } = useTheme();
+  return useMemo(() => {
+    const accent = paintAtmosphere(darkColors, edition, true);
+    return {
+      ...darkColors,
+      bg: "#1C1D22", surface: "#2A2B31", surfaceAlt: "#33343B",
+      teal: accent.teal, tealDark: accent.tealDark, gold: accent.gold, coral: accent.coral,
+    };
+  }, [edition]);
+}
 
 export function AudioPlayerScreen() {
   const route = useRoute<RouteProp<RootStackParamList, "AudioPlayer">>();
@@ -63,7 +79,8 @@ export function AudioPlayerScreen() {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
-  const styles = useMemo(() => createStyles(P), []);
+  const P = usePlayerPalette();
+  const styles = useMemo(() => createStyles(P), [P]);
   const dialog = useDialog();
   const attach = useAttachAudio();
   const { getBook, getAuthor } = useBookliz();
@@ -539,6 +556,7 @@ function IconButton({ label, disabled, onPress, children }: React.PropsWithChild
 
 /** A circular arrow with the seconds inside it. */
 function SkipButton({ text, back, label, onPress }: { text: string; back?: boolean; label: string; onPress: () => void }) {
+  const P = usePlayerPalette();
   return (
     <Pressable
       accessibilityRole="button"
@@ -552,12 +570,13 @@ function SkipButton({ text, back, label, onPress }: { text: string; back?: boole
     >
       {/* "restore" turns counter-clockwise, "reload" clockwise — back and forward. */}
       <MaterialCommunityIcons name={back ? "restore" : "reload"} size={74} color={P.teal} />
-      <Text style={pieces.skipText}>{text}</Text>
+      <Text style={[pieces.skipText, { color: P.teal }]}>{text}</Text>
     </Pressable>
   );
 }
 
 function RoundButton({ label, active, onPress, children }: React.PropsWithChildren<{ label: string; active?: boolean; onPress: () => void }>) {
+  const P = usePlayerPalette();
   return (
     <Pressable
       accessibilityRole="button"
@@ -578,7 +597,6 @@ const pieces = StyleSheet.create({
   iconButton: { alignItems: "center", height: 48, justifyContent: "center", width: 48 },
   skip: { alignItems: "center", height: 84, justifyContent: "center", width: 84 },
   skipText: {
-    color: P.teal,
     fontFamily: fonts.body,
     fontSize: 17,
     fontVariant: ["tabular-nums"],
@@ -588,7 +606,7 @@ const pieces = StyleSheet.create({
   },
   round: {
     alignItems: "center",
-    backgroundColor: P.surface,
+    backgroundColor: "#2A2B31", // the player surface (usePlayerPalette)
     borderColor: "rgba(255,255,255,0.08)",
     borderRadius: 30,
     borderWidth: 1,

@@ -108,7 +108,7 @@ export function SeriesCompletionModal() {
         <View style={styles.heroWrap}>
           <View style={styles.glowRing} />
           <Animated.View style={[styles.trophyCircle, { transform: [{ scale: scaleAnim }, { rotate }] }]}>
-            <Ionicons name="trophy" size={52} color="#FFD700" />
+            <Ionicons name="trophy" size={52} color={c.gold} />
           </Animated.View>
         </View>
 
@@ -181,8 +181,8 @@ function createStyles(c: AppColors) {
       marginBottom: spacing.md,
     },
     glowRing: {
-      backgroundColor: "#FFD70022",
-      borderColor: "#FFD70040",
+      backgroundColor: c.gold + "22",
+      borderColor: c.gold + "40",
       borderRadius: 60,
       borderWidth: 2,
       height: 120,

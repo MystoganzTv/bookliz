@@ -7,6 +7,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Image, StyleSheet, Text, View } from "react-native";
 import type { Book } from "../types/models";
 import { fonts } from "../theme/theme";
+import { useColors } from "../theme/ThemeContext";
 
 export function MiniCover({ book, width = 44 }: { book: Book; width?: number }) {
   const size = { width, height: Math.round(width * 1.5) };
@@ -20,10 +21,11 @@ export function MiniCover({ book, width = 44 }: { book: Book; width?: number }) 
       />
     );
   }
+  const c = useColors();
   const initial = book.title.trim().charAt(0).toUpperCase() || "·";
   return (
     <View style={[styles.cover, size]}>
-      <LinearGradient colors={book.coverGradient ?? ["#14B8A6", "#0F172A"]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={book.coverGradient ?? [c.teal, c.navy]} style={StyleSheet.absoluteFill} />
       <Text style={[styles.initial, { fontSize: Math.round(width * 0.45) }]}>{initial}</Text>
     </View>
   );

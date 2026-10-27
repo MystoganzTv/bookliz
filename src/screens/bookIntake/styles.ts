@@ -6,8 +6,8 @@ import { StyleSheet } from "react-native";
 import { AppColors, fonts, radii, shadows, spacing } from "../../theme/theme";
 
 export function createStyles(c: AppColors, isDark: boolean) {
-  const darkInteractiveFill = "rgba(20,184,166,0.16)";
-  const darkInteractiveBorder = "rgba(20,184,166,0.34)";
+  const darkInteractiveFill = c.teal + "29";
+  const darkInteractiveBorder = c.teal + "57";
   const darkInteractiveText = c.ink;
 
   return StyleSheet.create({
@@ -614,7 +614,7 @@ export function createStyles(c: AppColors, isDark: boolean) {
     width: 280,
   },
   corner: {
-    borderColor: "#14B8A6",
+    borderColor: c.teal,
     height: 24,
     position: "absolute",
     width: 24,
@@ -643,7 +643,7 @@ export function createStyles(c: AppColors, isDark: boolean) {
     alignItems: "center",
     alignSelf: "center",
     backgroundColor: "rgba(0,0,0,0.75)",
-    borderColor: "rgba(20,184,166,0.4)",
+    borderColor: c.teal + "66",
     borderRadius: radii.pill,
     borderWidth: 1,
     bottom: 130,
@@ -655,7 +655,7 @@ export function createStyles(c: AppColors, isDark: boolean) {
     zIndex: 20,
   },
   scanFeedbackText: {
-    color: "#14B8A6",
+    color: c.teal,
     fontFamily: fonts.body,
     fontSize: 13,
     fontWeight: "900",
@@ -1662,7 +1662,7 @@ export function createStyles(c: AppColors, isDark: boolean) {
     alignItems: "center",
     alignSelf: "center",
     backgroundColor: "rgba(0,0,0,0.75)",
-    borderColor: "rgba(20,184,166,0.4)",
+    borderColor: c.teal + "66",
     borderRadius: radii.pill,
     borderWidth: 1,
     flexDirection: "row",

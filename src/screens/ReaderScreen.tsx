@@ -53,6 +53,7 @@ import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
 import { usePro } from "../pro/ProContext";
 import { fonts, radii, spacing } from "../theme/theme";
+import { useColors } from "../theme/ThemeContext";
 import { hapticLight } from "../utils/haptics";
 
 type Position = Partial<Pick<Ebook, "progress" | "cfi" | "page" | "pages">>;
@@ -91,6 +92,7 @@ export function ReaderScreen() {
   const ebook = library[route.params.ebookId];
   const book = ebook?.bookId ? getBook(ebook.bookId) : undefined;
   const look = READER_THEMES[prefs.theme];
+  const accent = useColors().teal;
   const [chrome, setChrome] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
@@ -298,7 +300,7 @@ export function ReaderScreen() {
                     ]}
                   >
                     <Text
-                      style={[styles.tocText, { color: current ? "#14B8A6" : look.text, fontWeight: current ? "800" : "600" }]}
+                      style={[styles.tocText, { color: current ? accent : look.text, fontWeight: current ? "800" : "600" }]}
                       numberOfLines={2}
                     >
                       {item.label}
@@ -322,7 +324,7 @@ export function ReaderScreen() {
                   accessibilityRole="button"
                   accessibilityState={{ selected: prefs.theme === key }}
                   onPress={() => setPrefs({ theme: key })}
-                  style={[styles.swatch, { backgroundColor: READER_THEMES[key].bg, borderColor: prefs.theme === key ? "#14B8A6" : READER_THEMES[key].muted + "55" }]}
+                  style={[styles.swatch, { backgroundColor: READER_THEMES[key].bg, borderColor: prefs.theme === key ? accent : READER_THEMES[key].muted + "55" }]}
                 >
                   <Text style={{ color: READER_THEMES[key].text, fontFamily: fonts.body, fontWeight: "800" }}>{t(`reader.theme_${key}`)}</Text>
                 </Pressable>
@@ -364,7 +366,7 @@ export function ReaderScreen() {
                           }
                           setPrefs({ font: f.key });
                         }}
-                        style={[styles.fontChip, { borderColor: active ? "#14B8A6" : look.muted + "55", opacity: locked ? 0.55 : 1 }]}
+                        style={[styles.fontChip, { borderColor: active ? accent : look.muted + "55", opacity: locked ? 0.55 : 1 }]}
                       >
                         <Text style={{ color: look.text, fontFamily: f.family || fonts.body, fontSize: 15 }}>{f.label}</Text>
                         {locked ? <Ionicons name="lock-closed" size={12} color={look.muted} /> : null}
