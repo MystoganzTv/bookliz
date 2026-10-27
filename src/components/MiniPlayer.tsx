@@ -3,13 +3,14 @@
  * bar with play/pause, and the full player behind a tap.
  *
  * Shown on the tabs and on a book's page — not over forms, where it would sit
- * on top of a Save button.
+ * on top of a Save button. Swipe it sideways or down (or tap ×) to stop
+ * listening and put it away; the position is kept.
  */
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useMemo } from "react";
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useRef } from "react";
+import { ActivityIndicator, Animated, Image, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudiobookPlayer, useAudiobookPosition } from "../audio/AudiobookPlayerContext";
 import { chapterIndexAt, formatClock } from "../audio/audiobookModel";
@@ -17,7 +18,7 @@ import { useBookliz } from "../data/BooklizContext";
 import { useReadingTimer } from "../data/ReadingTimerContext";
 import { useI18n } from "../i18n/LocalizationContext";
 import { RootStackParamList } from "../navigation/types";
-import { AppColors, fonts, spacing } from "../theme/theme";
+import { AppColors, fonts, radii, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
 import { hapticLight } from "../utils/haptics";
 
@@ -26,6 +27,9 @@ const SHOWN_ON = new Set([...TAB_ROUTES, "BookDetail"]);
 const TAB_BAR_HEIGHT = 88;
 /** Height of the reading-timer bar plus a gap, so the two stack instead of overlapping. */
 const TIMER_BAR_SPACE = 60;
+/** How far (px) or how fast (px/ms) a swipe has to go before it puts the bar away. */
+const DISMISS_DISTANCE = 90;
+const DISMISS_VELOCITY = 0.6;
 
 export function MiniPlayer({ routeName }: { routeName: string | undefined }) {
   const c = useColors();
@@ -41,6 +45,40 @@ export function MiniPlayer({ routeName }: { routeName: string | undefined }) {
   const bookId = player.activeBookId;
   const book = bookId ? getBook(bookId) : undefined;
   const audiobook = bookId ? player.library[bookId] : undefined;
+
+  // Swipe to put away: sideways or down. Taps still reach the buttons —
+  // the pan only takes over once the finger has clearly moved.
+  const drag = useRef(new Animated.ValueXY()).current;
+  const closeRef = useRef(() => player.engine.close());
+  closeRef.current = () => player.engine.close();
+  const pan = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 || g.dy > 8,
+        onPanResponderMove: (_, g) => drag.setValue({ x: g.dx, y: Math.max(0, g.dy) }),
+        onPanResponderRelease: (_, g) => {
+          const sideways = Math.abs(g.dx) >= Math.abs(g.dy);
+          const gone = sideways
+            ? Math.abs(g.dx) > DISMISS_DISTANCE || Math.abs(g.vx) > DISMISS_VELOCITY
+            : g.dy > DISMISS_DISTANCE * 0.6 || g.vy > DISMISS_VELOCITY;
+          if (!gone) {
+            Animated.spring(drag, { toValue: { x: 0, y: 0 }, useNativeDriver: true, friction: 7 }).start();
+            return;
+          }
+          hapticLight();
+          const to = sideways ? { x: Math.sign(g.dx || 1) * 500, y: 0 } : { x: g.dx, y: 160 };
+          Animated.timing(drag, { toValue: to, duration: 180, useNativeDriver: true }).start(() => closeRef.current());
+        },
+        onPanResponderTerminate: () =>
+          Animated.spring(drag, { toValue: { x: 0, y: 0 }, useNativeDriver: true, friction: 7 }).start(),
+      }),
+    [drag]
+  );
+  // A book starting (again) brings the bar back in place.
+  useEffect(() => {
+    drag.setValue({ x: 0, y: 0 });
+  }, [bookId, drag]);
+
   if (!player.ready || !book || !audiobook || !routeName || !SHOWN_ON.has(routeName)) return null;
 
   const onTabs = TAB_ROUTES.has(routeName);
@@ -52,11 +90,14 @@ export function MiniPlayer({ routeName }: { routeName: string | undefined }) {
     : `${formatClock(position)} / ${formatClock(audiobook.totalSec)}`;
   const progress = Math.min(1, Math.max(0, position / Math.max(1, audiobook.totalSec)));
 
+  const opacity = Animated.add(drag.x.interpolate({ inputRange: [-240, 0, 240], outputRange: [-1, 0, -1], extrapolate: "clamp" }), 1);
+  const fade = Animated.add(opacity, drag.y.interpolate({ inputRange: [0, 140], outputRange: [0, -1], extrapolate: "clamp" }));
+
   return (
-    <View style={[styles.bar, { bottom }]}>
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-      </View>
+    <Animated.View
+      {...pan.panHandlers}
+      style={[styles.bar, { bottom, opacity: fade, transform: [{ translateX: drag.x }, { translateY: drag.y }] }]}
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${t("player.nowPlaying")}: ${book.title}`}
@@ -83,28 +124,32 @@ export function MiniPlayer({ routeName }: { routeName: string | undefined }) {
         accessibilityRole="button"
         accessibilityLabel={player.isPlaying ? t("player.pause") : t("player.play")}
         hitSlop={8}
-        style={styles.playButton}
+        style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
         onPress={() => {
           hapticLight();
           player.engine.toggle();
         }}
       >
         {player.isLoading ? (
-          <ActivityIndicator color={c.navy} size="small" />
+          <ActivityIndicator color="#fff" size="small" />
         ) : (
-          <Ionicons name={player.isPlaying ? "pause" : "play"} size={20} color={c.navy} style={player.isPlaying ? undefined : { marginLeft: 2 }} />
+          <Ionicons name={player.isPlaying ? "pause" : "play"} size={18} color="#fff" style={player.isPlaying ? undefined : { marginLeft: 2 }} />
         )}
       </Pressable>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t("player.stop")}
-        hitSlop={8}
-        style={styles.closeButton}
+        hitSlop={10}
+        style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
         onPress={() => player.engine.close()}
       >
-        <Ionicons name="close" size={18} color="rgba(255,255,255,0.6)" />
+        <Ionicons name="close" size={18} color={c.muted} />
       </Pressable>
-    </View>
+      {/* Progress along the bottom edge, inside the rounded corners */}
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+      </View>
+    </Animated.View>
   );
 }
 
@@ -112,32 +157,37 @@ function createStyles(c: AppColors) {
   return StyleSheet.create({
     bar: {
       alignItems: "center",
-      backgroundColor: c.navy,
-      borderRadius: 14,
-      elevation: 12,
+      backgroundColor: c.surface,
+      borderColor: c.border,
+      borderRadius: radii.md,
+      borderWidth: StyleSheet.hairlineWidth,
+      elevation: 10,
       flexDirection: "row",
-      gap: 8,
+      gap: 10,
       left: spacing.md,
       overflow: "hidden",
-      paddingHorizontal: 10,
-      paddingVertical: 8,
+      paddingBottom: 9,
+      paddingLeft: 8,
+      paddingRight: 6,
+      paddingTop: 8,
       position: "absolute",
       right: spacing.md,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
-      shadowRadius: 12,
+      shadowColor: c.shadow,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.22,
+      shadowRadius: 16,
       zIndex: 998,
     },
-    progressTrack: { backgroundColor: "rgba(255,255,255,0.12)", height: 2, left: 0, position: "absolute", right: 0, top: 0 },
-    progressFill: { backgroundColor: c.teal, height: 2 },
-    body: { alignItems: "center", flex: 1, flexDirection: "row", gap: 10 },
-    art: { borderRadius: 6, height: 38, width: 38 },
+    body: { alignItems: "center", flex: 1, flexDirection: "row", gap: 12 },
+    art: { borderRadius: 8, height: 44, width: 44 },
     artFallback: { alignItems: "center", backgroundColor: c.teal, justifyContent: "center" },
-    text: { flex: 1 },
-    title: { color: "#fff", fontFamily: fonts.body, fontSize: 14, fontWeight: "900" },
-    subtitle: { color: "rgba(255,255,255,0.6)", fontFamily: fonts.body, fontSize: 12, fontWeight: "700" },
-    playButton: { alignItems: "center", backgroundColor: c.gold, borderRadius: 18, height: 36, justifyContent: "center", width: 36 },
-    closeButton: { alignItems: "center", height: 32, justifyContent: "center", width: 28 },
+    text: { flex: 1, gap: 1 },
+    title: { color: c.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: "800" },
+    subtitle: { color: c.muted, fontFamily: fonts.body, fontSize: 12, fontWeight: "600" },
+    playButton: { alignItems: "center", backgroundColor: c.teal, borderRadius: 20, height: 40, justifyContent: "center", width: 40 },
+    closeButton: { alignItems: "center", height: 36, justifyContent: "center", width: 30 },
+    pressed: { opacity: 0.7 },
+    progressTrack: { backgroundColor: c.border, bottom: 0, height: 3, left: 0, position: "absolute", right: 0 },
+    progressFill: { backgroundColor: c.teal, height: 3 },
   });
 }
