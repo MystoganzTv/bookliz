@@ -117,7 +117,9 @@
 				<string>public.aiff-audio</string>
 				<string>com.microsoft.waveform-audio</string>
 				<string>org.xiph.flac</string>
-				<dict>
+			</array>
+		</dict>
+		<dict>
 			<key>CFBundleTypeName</key>
 			<string>Ebook</string>
 			<key>CFBundleTypeRole</key>
@@ -134,8 +136,6 @@
 			</array>
 		</dict>
 	</array>
-		</dict>
-	</array>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
 		<dict>
@@ -147,7 +147,20 @@
 			<array>
 				<string>public.mpeg-4-audio</string>
 				<string>public.audio</string>
-				<dict>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>m4b</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>audio/x-m4b</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
 			<key>UTTypeIdentifier</key>
 			<string>com.mystodev.booklio.cbz</string>
 			<key>UTTypeDescription</key>
@@ -179,19 +192,6 @@
 				<key>public.filename-extension</key>
 				<array>
 					<string>cbr</string>
-				</array>
-			</dict>
-		</dict>
-	</array>
-			<key>UTTypeTagSpecification</key>
-			<dict>
-				<key>public.filename-extension</key>
-				<array>
-					<string>m4b</string>
-				</array>
-				<key>public.mime-type</key>
-				<array>
-					<string>audio/x-m4b</string>
 				</array>
 			</dict>
 		</dict>
