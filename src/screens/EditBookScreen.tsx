@@ -19,10 +19,10 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  Modal,
-  Pressable,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
@@ -30,6 +30,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "../components/AppTextInput";
 import { BookCover } from "../components/BookCover";
 import { Screen } from "../components/Screen";
 import { formatGroupOf, useBookliz } from "../data/BooklizContext";
@@ -455,7 +456,7 @@ export function EditBookScreen() {
             <Ionicons name="camera-outline" size={14} color="#FFFFFF" />
           </View>
         </Pressable>
-        <TextInput
+        <AppTextInput
           value={title}
           onChangeText={setTitle}
           placeholder={t("editBook.titlePlaceholder")}
@@ -464,7 +465,7 @@ export function EditBookScreen() {
           scrollEnabled={false}
           style={styles.heroTitleInput}
         />
-        <TextInput
+        <AppTextInput
           value={authorName}
           onChangeText={setAuthorName}
           placeholder={t("editBook.authorPlaceholder")}
@@ -487,14 +488,14 @@ export function EditBookScreen() {
         <View style={styles.groupRow}>
           <IconTile icon="layers" color={c.teal} styles={styles} />
           <Text style={styles.rowLabel}>{t("editBook.labelSeries")}</Text>
-          <TextInput
+          <AppTextInput
             value={seriesName}
             onChangeText={setSeriesName}
             placeholder={t("editBook.seriesPlaceholder")}
             placeholderTextColor={c.muted}
             style={styles.rowInput}
           />
-          <TextInput
+          <AppTextInput
             value={seriesNumber}
             onChangeText={setSeriesNumber}
             placeholder="#"
@@ -528,7 +529,7 @@ export function EditBookScreen() {
           <View style={[styles.groupRow, styles.groupDivider]}>
             <IconTile icon="time" color={c.gold} styles={styles} />
             <Text style={styles.rowLabel}>{t("editBook.labelDuration")}</Text>
-            <TextInput
+            <AppTextInput
               value={durationHours}
               onChangeText={setDurationHours}
               placeholder="0"
@@ -537,7 +538,7 @@ export function EditBookScreen() {
               style={[styles.rowInput, styles.rowInputNarrow]}
             />
             <Text style={styles.rowUnit}>h</Text>
-            <TextInput
+            <AppTextInput
               value={durationMins}
               onChangeText={setDurationMins}
               placeholder="0"
@@ -551,7 +552,7 @@ export function EditBookScreen() {
           <View style={[styles.groupRow, styles.groupDivider]}>
             <IconTile icon="document-text" color={c.gold} styles={styles} />
             <Text style={styles.rowLabel}>{t("editBook.labelPages")}</Text>
-            <TextInput
+            <AppTextInput
               value={pages}
               onChangeText={setPages}
               placeholder={t("editBook.unknownShort")}
@@ -586,7 +587,7 @@ export function EditBookScreen() {
             </Pressable>
           </View>
           {otherLangOpen ? (
-            <TextInput
+            <AppTextInput
               autoFocus
               value={language}
               onChangeText={setLanguage}
@@ -717,12 +718,12 @@ export function EditBookScreen() {
           <View style={styles.groupRow}>
             <IconTile icon="barcode" color={c.muted} styles={styles} />
             <Text style={styles.rowLabel}>ISBN-13</Text>
-            <TextInput value={isbn13} onChangeText={setIsbn13} placeholder={t("editBook.unknownShort")} placeholderTextColor={c.muted} keyboardType="number-pad" style={styles.rowInput} />
+            <AppTextInput value={isbn13} onChangeText={setIsbn13} placeholder={t("editBook.unknownShort")} placeholderTextColor={c.muted} keyboardType="number-pad" style={styles.rowInput} />
           </View>
           <View style={[styles.groupRow, styles.groupDivider]}>
             <IconTile icon="barcode-outline" color={c.muted} styles={styles} />
             <Text style={styles.rowLabel}>ISBN-10</Text>
-            <TextInput value={isbn10} onChangeText={setIsbn10} placeholder={t("editBook.unknownShort")} placeholderTextColor={c.muted} keyboardType="number-pad" style={styles.rowInput} />
+            <AppTextInput value={isbn10} onChangeText={setIsbn10} placeholder={t("editBook.unknownShort")} placeholderTextColor={c.muted} keyboardType="number-pad" style={styles.rowInput} />
           </View>
           <View style={[styles.groupBlock, styles.groupDivider]}>
             <View style={styles.blockHead}>
@@ -745,7 +746,7 @@ export function EditBookScreen() {
       <Text style={styles.groupHeader}>{t("editBook.sectionNotes")}</Text>
       <View style={styles.group}>
         <View style={styles.groupBlock}>
-          <TextInput
+          <AppTextInput
             value={notes}
             onChangeText={setNotes}
             placeholder={t("editBook.notesPlaceholder")}
@@ -767,7 +768,7 @@ export function EditBookScreen() {
           <View style={styles.coverSheet}>
             <Text style={styles.coverSheetTitle}>{t("editBook.changeCover")}</Text>
             <Text style={styles.groupHint}>{t("editBook.coverHint")}</Text>
-            <TextInput
+            <AppTextInput
               autoFocus
               value={coverDraft}
               onChangeText={setCoverDraft}
@@ -848,7 +849,7 @@ function ChipEditor({
       ))}
 
       {adding ? (
-        <TextInput
+        <AppTextInput
           ref={inputRef}
           autoFocus
           value={draft}
@@ -878,13 +879,15 @@ function createStyles(c: AppColors) {
     headerSave: { paddingHorizontal: 4 },
     headerSaveText: { color: c.tealDark, fontFamily: fonts.body, fontSize: 17, fontWeight: "900" },
     heroDeluxe: { alignItems: "center", gap: spacing.sm, marginBottom: spacing.lg, paddingTop: spacing.sm },
+    // Full width + some height: the tap target is the whole line, not just the
+    // glyphs — a short title used to leave a 24pt-tall sliver to aim at.
     heroTitleInput: {
-      color: c.ink, fontFamily: fonts.display, fontSize: 24, fontWeight: "900", lineHeight: 29,
-      marginTop: spacing.sm, minWidth: 200, paddingVertical: 0, textAlign: "center",
+      alignSelf: "stretch", color: c.ink, fontFamily: fonts.display, fontSize: 24, fontWeight: "900", lineHeight: 29,
+      marginTop: spacing.xs, paddingVertical: 6, textAlign: "center",
     },
     heroAuthorInput: {
-      color: c.muted, fontFamily: fonts.body, fontSize: 16, fontWeight: "700", minWidth: 160,
-      paddingVertical: 0, textAlign: "center",
+      alignSelf: "stretch", color: c.muted, fontFamily: fonts.body, fontSize: 16, fontWeight: "700",
+      paddingVertical: 8, textAlign: "center",
     },
     fetchPill: {
       alignItems: "center", backgroundColor: c.teal + "14", borderColor: c.teal + "33", borderRadius: radii.pill,

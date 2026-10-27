@@ -8,7 +8,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useLayoutEffect, useMemo, useState } from "react";
-import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { AppTextInput } from "../components/AppTextInput";
 import { MiniCover } from "../components/MiniCover";
 import { CreateListSheet } from "../components/CreateListSheet";
 import { useDialog } from "../components/DialogProvider";
@@ -277,7 +278,7 @@ function AddBooksSheet({ open, folderId, folderName, onClose }: { open: boolean;
             <Text style={styles.addDone}>{t("lists.done")}</Text>
           </Pressable>
         </View>
-        <TextInput
+        <AppTextInput
           style={styles.search}
           placeholder={t("library.searchPlaceholder")}
           placeholderTextColor={c.muted}

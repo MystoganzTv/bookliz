@@ -6,6 +6,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { AppTextInput } from "./AppTextInput";
 import { childFolders } from "../data/bookFolders";
 import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
@@ -129,7 +130,7 @@ export function FolderPickerSheet({ open, title, currentId, noneLabel, disabledI
           ) : (
             <>
               <Text style={styles.title}>{t("folders.createTitle")}</Text>
-              <TextInput
+              <AppTextInput
                 ref={inputRef}
                 style={styles.input}
                 placeholder={t("folders.namePlaceholder")}

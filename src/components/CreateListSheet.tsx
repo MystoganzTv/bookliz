@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { AppTextInput } from "./AppTextInput";
 import { useI18n } from "../i18n/LocalizationContext";
 import { AppColors, fonts, radii, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
@@ -71,7 +72,7 @@ export function CreateListSheet({ open, initialName = "", initialEmoji = "📚",
           {/* Name input */}
           <View style={styles.inputWrap}>
             <Text style={styles.selectedEmoji}>{emoji}</Text>
-            <TextInput
+            <AppTextInput
               ref={inputRef}
               style={styles.input}
               placeholder={kind === "folder" ? t("folders.namePlaceholder") : t("listSheet.listName")}

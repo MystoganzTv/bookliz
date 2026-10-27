@@ -11,7 +11,8 @@ import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Paths } from "expo-file-system";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { AppTextInput } from "../components/AppTextInput";
 import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 import { INBOX_IMPORT } from "../audio/audiobookEngine";
 import { AudioImportError, audioFolderSize } from "../audio/audioFiles";
@@ -502,7 +503,7 @@ function RenameSheet({
         <Pressable accessibilityRole="button" accessibilityLabel={t("common.cancel")} style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={[styles.menu, { padding: spacing.lg }]}>
           <Text style={styles.menuTitle}>{t("fileManager.rename")}</Text>
-          <TextInput
+          <AppTextInput
             autoFocus
             style={styles.input}
             value={value}

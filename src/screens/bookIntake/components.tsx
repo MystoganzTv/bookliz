@@ -14,9 +14,9 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
+import { AppTextInput } from "../../components/AppTextInput";
 import { BookMatch } from "../../services/bookLookupService";
 import { formatIsbn13 } from "../../utils/isbnUtils";
 import { matchChips, matchMetaLine } from "./matchLogic";
@@ -131,7 +131,7 @@ export function Field({
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
       {hint ? <Text style={styles.fieldHint}>{hint}</Text> : null}
-      <TextInput
+      <AppTextInput
         autoCapitalize={autoCapitalize}
         keyboardType={keyboardType}
         multiline={multiline}
@@ -204,7 +204,7 @@ export function CompactLanguageModal({
             </Pressable>
           ))}
           <View style={styles_modal.divider} />
-          <TextInput
+          <AppTextInput
             placeholder={t("scan.otherLanguage")}
             placeholderTextColor="#94A3B8"
             style={[styles_modal.customInput, { color: isDark ? "#F1F5F9" : "#0F172A", borderColor: isDark ? "#334155" : "#E2E8F0" }]}

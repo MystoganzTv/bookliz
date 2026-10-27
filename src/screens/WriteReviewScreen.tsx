@@ -6,9 +6,9 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
-  View
+  View,
 } from "react-native";
+import { AppTextInput } from "../components/AppTextInput";
 import { Screen } from "../components/Screen";
 import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
@@ -138,7 +138,7 @@ export function WriteReviewScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>{t("writeReview.titleLabel")}</Text>
-        <TextInput
+        <AppTextInput
           style={styles.input}
           placeholder="Give your review a headline…"
           placeholderTextColor={c.gray}
@@ -151,7 +151,7 @@ export function WriteReviewScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>{t("writeReview.thoughtsLabel")}</Text>
-        <TextInput
+        <AppTextInput
           style={[styles.input, styles.inputMultiline]}
           placeholder="What did you think? What stayed with you?"
           placeholderTextColor={c.gray}

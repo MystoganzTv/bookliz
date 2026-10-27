@@ -3,7 +3,8 @@ import { AtmosphereFill } from "../components/AtmosphereFill";
 import { useNavigation, useScrollToTop } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
-import { FlatList, Image, ListRenderItem, Pressable, ScrollView, StyleSheet, Text, TextInput, View, ViewStyle } from "react-native";
+import { FlatList, Image, ListRenderItem, Pressable, ScrollView, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { AppTextInput } from "../components/AppTextInput";
 import { Badge } from "../components/Badge";
 import { BooklizDialog } from "../components/BooklizDialog";
 import { BookCover, FormatBadge, isMutedBook } from "../components/BookCover";
@@ -356,7 +357,7 @@ export function LibraryScreen() {
 
       {/* ── Search + controls ── */}
       <View style={styles.searchRow}>
-        <TextInput
+        <AppTextInput
           placeholder={t("library.searchPlaceholder")}
           placeholderTextColor={c.gray}
           style={styles.search}

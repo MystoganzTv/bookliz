@@ -4,7 +4,8 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useMemo, useState } from "react";
 import { addFavorites, FAVORITE_GENRE_OPTIONS, favoriteSuggestions, removeFavorite } from "../utils/favorites";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { AppTextInput } from "../components/AppTextInput";
 import { Screen } from "../components/Screen";
 import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
@@ -160,7 +161,7 @@ function FavoritesEditor({
         </View>
       ) : null}
       <View style={styles.addRow}>
-        <TextInput
+        <AppTextInput
           autoCapitalize={autoCapitalize}
           autoCorrect={false}
           blurOnSubmit={false}
@@ -227,7 +228,7 @@ function Field({
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
       {hint ? <Text style={styles.fieldHint}>{hint}</Text> : null}
-      <TextInput
+      <AppTextInput
         autoCapitalize={autoCapitalize}
         keyboardType={keyboardType}
         multiline={multiline}

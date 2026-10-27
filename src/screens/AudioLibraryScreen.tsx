@@ -35,7 +35,6 @@ import { useColors } from "../theme/ThemeContext";
 import { AppColors, fonts, radii, spacing } from "../theme/theme";
 import type { BookFolder } from "../types/models";
 import { hapticLight, hapticSuccess } from "../utils/haptics";
-import { BookPickerSheet } from "../components/BookPickerSheet";
 import { useEbooks } from "../ebook/EbookContext";
 import { EbookImportError, pickEbookFiles } from "../ebook/ebookFiles";
 import { isEbookFileName, isLockedEbookFileName, type Ebook } from "../ebook/ebookModel";
@@ -111,7 +110,6 @@ export function AudioLibraryScreen() {
     | { kind: "createFolder" }
     | { kind: "renameFolder"; folder: BookFolder }
     | { kind: "moveBook"; bookId: string }
-    | { kind: "assignEbook"; ebook: Ebook }
     | null
   >(null);
   // An action picked in the menu runs once the menu's Modal is gone: iOS
@@ -200,7 +198,13 @@ export function AudioLibraryScreen() {
       : menu?.kind === "ebookInbox"
         ? [
             { key: "read", icon: "book-outline", label: t("ebook.read"), run: () => navigation.navigate("Reader", { ebookId: menu.ebook.id }) },
-            { key: "assign", icon: "link-outline", label: t("fileManager.assign"), run: () => setSheet({ kind: "assignEbook", ebook: menu.ebook }) },
+            // Same search as Add book (and as audio), with the shelf first.
+            { key: "find", icon: "search-outline", label: t("fileManager.findBook"), run: () => navigation.navigate("BookIntake", {
+              initialMode: "search",
+              initialQuery: menu.ebook.title,
+              autoRun: Boolean(menu.ebook.title),
+              attachEbookFrom: menu.ebook.id,
+            }) },
             { key: "delete", icon: "trash-outline", label: t("fileManager.delete"), danger: true, run: () => dialog.confirm({
               title: t("fileManager.deleteTitle"),
               body: t("fileManager.deleteBody", { title: menu.ebook.title }),
@@ -468,17 +472,6 @@ export function AudioLibraryScreen() {
         initialName={sheet?.kind === "renameFolder" ? sheet.folder.name : ""}
         initialEmoji={sheet?.kind === "renameFolder" ? sheet.folder.emoji ?? "📁" : "📁"}
         onSave={(name, emoji) => sheet?.kind === "renameFolder" && renameFolder(sheet.folder.id, name, emoji)}
-        onClose={() => setSheet(null)}
-      />
-      <BookPickerSheet
-        open={sheet?.kind === "assignEbook"}
-        title={t("fileManager.assignTitle", { title: sheet?.kind === "assignEbook" ? sheet.ebook.title : "" })}
-        initialQuery={sheet?.kind === "assignEbook" ? sheet.ebook.title : ""}
-        onPick={(bookId) => {
-          if (sheet?.kind !== "assignEbook") return;
-          ebooks.assign(sheet.ebook.id, bookId);
-          hapticSuccess();
-        }}
         onClose={() => setSheet(null)}
       />
       <FolderPickerSheet

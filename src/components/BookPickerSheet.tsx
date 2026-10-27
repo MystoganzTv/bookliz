@@ -5,7 +5,8 @@
  */
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
-import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { AppTextInput } from "./AppTextInput";
 import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
 import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
@@ -62,7 +63,7 @@ export function BookPickerSheet({ open, title, initialQuery = "", onPick, onClos
             <Text style={styles.cancel}>{t("common.cancel")}</Text>
           </Pressable>
         </View>
-        <TextInput
+        <AppTextInput
           style={styles.search}
           placeholder={t("library.searchPlaceholder")}
           placeholderTextColor={c.muted}

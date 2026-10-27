@@ -16,8 +16,10 @@ export type RootStackParamList = {
         initialMode?: "search";
         initialQuery?: string;
         initialSearchIntent?: "auto" | "author" | "series";
-        /** An audio inbox item to give to the book this search ends up adding. */
+        /** An audio inbox item to give to the book this search lands on (new or already on the shelf). */
         attachAudioFrom?: string;
+        /** Same, for an unassigned ebook file. */
+        attachEbookFrom?: string;
         initialBookSelection?: {
           title: string;
           authorName: string;

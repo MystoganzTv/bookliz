@@ -18,9 +18,9 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
-  View
+  View,
 } from "react-native";
+import { AppTextInput } from "../components/AppTextInput";
 import { BookCover } from "../components/BookCover";
 import { useDialog } from "../components/DialogProvider";
 import { Screen } from "../components/Screen";
@@ -358,7 +358,7 @@ function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, o
 
       {pickerOpen ? (
         <View style={styles.card}>
-          <TextInput
+          <AppTextInput
             autoCorrect={false}
             placeholder={t("logSession.searchBooks")}
             placeholderTextColor={c.gray}
@@ -387,7 +387,7 @@ function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, o
           <Text style={styles.cardTitle}>{t("logSession.pageCountTitle")}</Text>
           <Text style={styles.hint}>{t("logSession.pageCountBody")}</Text>
           <View style={styles.inlineRow}>
-            <TextInput
+            <AppTextInput
               inputAccessoryViewID={doneId}
               keyboardType="number-pad"
               placeholder={t("logSession.pageCountPlaceholder")}
@@ -429,7 +429,7 @@ function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, o
               }}
             >
               {audioInputOpen ? (
-                <TextInput
+                <AppTextInput
                   autoFocus
                   inputAccessoryViewID={doneId}
                   keyboardType="number-pad"
@@ -487,7 +487,7 @@ function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, o
               <Ionicons name="remove" size={18} color={c.ink} />
             </Pressable>
             <View style={styles.bigValue}>
-              <TextInput
+              <AppTextInput
                 accessibilityLabel={t("logSession.readUpTo")}
                 autoFocus={!isEditing}
                 inputAccessoryViewID={doneId}
@@ -555,7 +555,7 @@ function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, o
               <View style={styles.divider} />
               <View style={styles.inlineRow}>
                 <Text style={[styles.sectionLabel, styles.inlineLabel]}>{t("logSession.startPageLabel")}</Text>
-                <TextInput
+                <AppTextInput
                   inputAccessoryViewID={doneId}
                   keyboardType="number-pad"
                   maxLength={5}
@@ -603,7 +603,7 @@ function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, o
             </Pressable>
           </View>
           {customPlaceOpen ? (
-            <TextInput
+            <AppTextInput
               autoFocus
               placeholder={t("logSession.locationPlaceholder")}
               placeholderTextColor={c.gray}
@@ -616,7 +616,7 @@ function SessionForm({ book, editingSession, prefillMinutes, prefillStartedAt, o
 
           <View style={styles.divider} />
           <Text style={styles.sectionLabel}>{t("logSession.noteLabel")}</Text>
-          <TextInput
+          <AppTextInput
             multiline
             placeholder={t("logSession.notePlaceholder")}
             placeholderTextColor={c.gray}

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { AppTextInput } from "./AppTextInput";
 import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
 import { AppColors, fonts, radii, spacing } from "../theme/theme";
@@ -147,7 +148,7 @@ export function BookListSheet({ open, bookId, onClose }: Props) {
               {/* Name input */}
               <View style={styles.inputWrap}>
                 <Text style={styles.selectedEmoji}>{newEmoji}</Text>
-                <TextInput
+                <AppTextInput
                   ref={inputRef}
                   style={styles.input}
                   placeholder={t("listSheet.listName")}

@@ -7,8 +7,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
+import { AppTextInput } from "../../components/AppTextInput";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../navigation/types";
@@ -71,7 +72,7 @@ export function OnboardingNameScreen() {
 
         {/* Input */}
         <View style={styles.inputWrap}>
-          <TextInput
+          <AppTextInput
             ref={inputRef}
             style={styles.input}
             value={name}
