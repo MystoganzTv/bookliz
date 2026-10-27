@@ -1154,6 +1154,27 @@ export function createStyles(c: AppColors, isDark: boolean) {
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
   },
+  // ── Giving an audio its book (Audio files › Find its book) ───────────────
+  attachAudioSection: {
+    borderBottomColor: c.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginBottom: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  attachAudioHeader: { alignItems: "center", flexDirection: "row", gap: spacing.xs, marginBottom: spacing.xs },
+  attachAudioTitle: { color: c.ink, flex: 1, fontFamily: fonts.body, fontSize: 15, fontWeight: "800" },
+  attachAudioLabel: {
+    color: c.muted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+    marginTop: spacing.sm,
+    textTransform: "uppercase",
+  },
+  attachAudioRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, paddingVertical: 8 },
+  attachAudioBook: { color: c.ink, fontFamily: fonts.body, fontSize: 15, fontWeight: "800" },
+  attachAudioAuthor: { color: c.muted, fontFamily: fonts.bodyRegular, fontSize: 13, marginTop: 2 },
   addedBannerText: {
     color: c.ink,
     flex: 1,

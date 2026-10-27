@@ -11,13 +11,8 @@ import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
 import { AppColors, fonts, radii, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
+import { rankLibraryRows } from "../utils/libraryQueryMatch";
 import { MiniCover } from "./MiniCover";
-
-const norm = (s: string) =>
-  s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
 
 type Props = {
   open: boolean;
@@ -43,21 +38,19 @@ export function BookPickerSheet({ open, title, initialQuery = "", onPick, onClos
   }
 
   const rows = useMemo(() => {
-    const words = norm(query).split(/\s+/).filter((w) => w.length > 1);
-    const rank = (bookId: string, format: string) => (library[bookId] ? 2 : format === "audiobook" ? 0 : 1);
-    return books
-      .map((book) => ({ book, author: getAuthor(book.authorId)?.name ?? "" }))
-      .filter(({ book, author }) => {
-        if (!words.length) return true;
-        const hay = norm(`${book.title} ${author} ${book.seriesName ?? ""}`);
-        // Any word matching is enough: file names are rough ("Dune Messiah Part" still finds Dune Messiah).
-        return words.some((w) => hay.includes(w));
-      })
-      .map((row) => {
-        const hay = norm(`${row.book.title} ${row.author}`);
-        return { ...row, hits: words.filter((w) => hay.includes(w)).length };
-      })
-      .sort((a, b) => b.hits - a.hits || rank(a.book.id, a.book.format) - rank(b.book.id, b.book.format) || a.book.title.localeCompare(b.book.title));
+    const byId = new Map(books.map((book) => [book.id, book]));
+    // Any word matching is enough: file names are rough ("Dune Messiah Part" still finds Dune Messiah).
+    return rankLibraryRows(
+      books.map((book) => ({
+        id: book.id,
+        title: book.title,
+        author: getAuthor(book.authorId)?.name ?? "",
+        seriesName: book.seriesName,
+        format: book.format,
+        hasAudio: Boolean(library[book.id]),
+      })),
+      query
+    ).map((row) => ({ book: byId.get(row.id)!, author: row.author }));
   }, [books, getAuthor, library, query]);
 
   return (

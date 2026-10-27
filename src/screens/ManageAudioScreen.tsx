@@ -20,7 +20,6 @@ import { CloudEntry } from "../audio/cloudAudio";
 import { useCloudAudio } from "../audio/useCloudAudio";
 import { useWatchAudio } from "../watch/useWatchAudio";
 import { usePro } from "../pro/ProContext";
-import { BookPickerSheet } from "../components/BookPickerSheet";
 import { useDialog } from "../components/DialogProvider";
 import { Screen } from "../components/Screen";
 import { SettingsGroup, SettingsRow } from "../components/settings/SettingsList";
@@ -52,7 +51,6 @@ export function ManageAudioScreen({ asTab = false }: { asTab?: boolean }) {
   // Sizes are read from disk; bump to re-read after a delete.
   const [version, setVersion] = useState(0);
   const [actionsFor, setActionsFor] = useState<AudioInboxItem | null>(null);
-  const [assigning, setAssigning] = useState<AudioInboxItem | null>(null);
   const [renaming, setRenaming] = useState<AudioInboxItem | null>(null);
   // Opened from the Audio tab on an unassigned item: show its actions at once.
   const route = useRoute<RouteProp<RootStackParamList, "ManageAudio">>();
@@ -212,13 +210,15 @@ export function ManageAudioScreen({ asTab = false }: { asTab?: boolean }) {
       },
     });
 
-  const runItemAction = (key: "assign" | "create" | "rename" | "delete", item: AudioInboxItem) => {
+  const runItemAction = (key: "find" | "rename" | "delete", item: AudioInboxItem) => {
     setActionsFor(null);
     // Let the action sheet finish closing before another Modal opens (iOS).
     setTimeout(() => {
-      if (key === "assign") setAssigning(item);
-      else if (key === "rename") setRenaming(item);
-      else if (key === "create") {
+      if (key === "rename") setRenaming(item);
+      else if (key === "find") {
+        // One search for "which book is this audio": the same engine as Add
+        // book, with the reader's own shelf shown first. A row already in the
+        // library takes the audio; a new one is added as an audiobook with it.
         navigation.navigate("BookIntake", {
           initialMode: "search",
           initialQuery: item.title,
@@ -439,8 +439,7 @@ export function ManageAudioScreen({ asTab = false }: { asTab?: boolean }) {
             <Text style={styles.menuTitle} numberOfLines={2}>{actionsFor?.title || t("fileManager.untitled")}</Text>
             {(
               [
-                ["assign", "book-outline", t("fileManager.assign")],
-                ["create", "add-circle-outline", t("fileManager.createBook")],
+                ["find", "search-outline", t("fileManager.findBook")],
                 ["rename", "create-outline", t("fileManager.rename")],
                 ["delete", "trash-outline", t("fileManager.delete")],
               ] as const
@@ -459,35 +458,6 @@ export function ManageAudioScreen({ asTab = false }: { asTab?: boolean }) {
         </Pressable>
       </Modal>
 
-      <BookPickerSheet
-        open={Boolean(assigning)}
-        title={t("fileManager.assignTitle", { title: assigning?.title || t("fileManager.untitled") })}
-        initialQuery={assigning?.title ?? ""}
-        onPick={(bookId) => {
-          if (!assigning) return;
-          const item = assigning;
-          const go = () => {
-            if (engine.assignInboxItem(item.id, bookId)) {
-              hapticSuccess();
-              setVersion((v) => v + 1);
-            }
-          };
-          if (player.library[bookId]) {
-            setTimeout(
-              () =>
-                dialog.confirm({
-                  title: t("fileManager.replaceTitle"),
-                  body: t("fileManager.replaceBody", { title: getBook(bookId)?.title ?? "" }),
-                  confirmLabel: t("fileManager.replaceConfirm"),
-                  destructive: true,
-                  onConfirm: go,
-                }),
-              400
-            );
-          } else go();
-        }}
-        onClose={() => setAssigning(null)}
-      />
 
       <RenameSheet
         item={renaming}

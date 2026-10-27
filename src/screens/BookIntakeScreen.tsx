@@ -79,6 +79,9 @@ import { buildEditionSwitchPatch } from "../utils/editionSwitch";
 import { groupEditionCandidates } from "../utils/editionMatchValidation";
 import { hapticLight, hapticSuccess } from "../utils/haptics";
 import { useAudiobookPlayer } from "../audio/AudiobookPlayerContext";
+import { useDialog } from "../components/DialogProvider";
+import { MiniCover } from "../components/MiniCover";
+import { rankLibraryRows } from "../utils/libraryQueryMatch";
 
 type IntakeMode = "menu" | "isbn" | "manual" | "search" | "matches" | "review";
 
@@ -149,7 +152,7 @@ export function BookIntakeScreen() {
   const styles = useMemo(() => createStyles(c, isDark), [c, isDark]);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<BookIntakeRouteProp>();
-  const { engine: audioEngine } = useAudiobookPlayer();
+  const { engine: audioEngine, library: audioLibrary, inbox: audioInbox } = useAudiobookPlayer();
   const {
     addBook,
     deleteBook,
@@ -157,9 +160,20 @@ export function BookIntakeScreen() {
     updateBookStatus,
     authors,
     books,
+    getAuthor,
     readingSessions,
     userProfile,
   } = useBookliz();
+  const appDialog = useDialog();
+  /**
+   * Opened from Audio files › "Find its book": whichever book this search
+   * lands on — one already on the shelf or a new one — takes that audio. Same
+   * search engine as Add book; the only extras are the reader's own shelf
+   * shown first and new books defaulting to the audiobook format.
+   */
+  const attachAudioId = route.params?.attachAudioFrom;
+  const attachingAudio = Boolean(attachAudioId);
+  const attachAudioItem = attachAudioId ? audioInbox.find((item) => item.id === attachAudioId) ?? null : null;
   const tasteProfile = useMemo(
     () => buildUserTasteProfile({ authors, books, readingSessions, userProfile }),
     [authors, books, readingSessions, userProfile]
@@ -333,6 +347,7 @@ export function BookIntakeScreen() {
       wantToBuy: false,
       format: "physical",
       ...input,
+      ...(attachingAudio ? { format: "audiobook" as const } : {}),
       synopsis: sanitizeSynopsis(input.synopsis),
     };
     if (__DEV__ && draft.wishlist) console.log("[INTAKE] staged onto the wishlist");
@@ -354,11 +369,15 @@ export function BookIntakeScreen() {
   const confirmAndOpen = (input: NewBookInput) => {
     const book = addBook(input);
     hapticSuccess(); // book landed in the library
-    // Came from Audio files › "Create a book with this audio": the new book gets it.
-    const inboxItemId = route.params?.attachAudioFrom;
-    if (inboxItemId) audioEngine.assignInboxItem(inboxItemId, book.id);
     const fromMatchId = reviewMatchIdRef.current;
     reviewMatchIdRef.current = null;
+    // Came from Audio files › "Find its book": the book gets that audio.
+    // (addBook may have merged into an existing copy that already has audio —
+    // attachAudioToBook asks before replacing it.)
+    if (attachingAudio) {
+      attachAudioToBook(book.id);
+      return;
+    }
     if (!launchedFromDiscover && fromMatchId && matches.length > 0) {
       setAddedMatchIds((current) => ({ ...current, [fromMatchId]: book.id }));
       setAddedBanner({ bookId: book.id, title: book.title });
@@ -397,11 +416,18 @@ export function BookIntakeScreen() {
       }
       const isbn = (match.isbn13 ?? match.isbn10 ?? "").replace(/[^0-9X]/gi, "");
       if (!titles.has(match.title.trim().toLowerCase()) && !(isbn && isbns.has(isbn))) continue;
-      const dupe = findDuplicateBook(bookMatchToNewBookInput(match));
+      const input = bookMatchToNewBookInput(match);
+      // Giving audio a book: any copy on the shelf counts (the audiobook copy
+      // first), the way the old library picker let it go to any book.
+      const dupe = attachingAudio
+        ? findDuplicateBook({ ...input, format: "audiobook" }) ??
+          findDuplicateBook({ ...input, format: "paperback" }) ??
+          findDuplicateBook({ ...input, format: "ebook" })
+        : findDuplicateBook(input);
       if (dupe) result[match.id] = dupe.id;
     }
     return result;
-  }, [books, matches, addedMatchIds, findDuplicateBook]);
+  }, [books, matches, addedMatchIds, findDuplicateBook, attachingAudio]);
 
   /** The library copy a result already corresponds to, if any. */
   const libraryBookIdForMatch = (match: BookMatch): string | null => libraryIdByMatch[match.id] ?? null;
@@ -419,7 +445,8 @@ export function BookIntakeScreen() {
     if (addingMatchRef.current.has(match.id)) return;
     const existingId = libraryBookIdForMatch(match);
     if (existingId) {
-      openFromResults(existingId);
+      if (attachingAudio) attachAudioToBook(existingId);
+      else openFromResults(existingId);
       return;
     }
     addingMatchRef.current.add(match.id);
@@ -440,10 +467,15 @@ export function BookIntakeScreen() {
         wantToBuy: false,
         format: "physical",
         ...input,
+        ...(attachingAudio ? { format: "audiobook" as const } : {}),
         synopsis: sanitizeSynopsis(input.synopsis),
       });
       // The library may have changed while the edition resolved.
       const dupe = findDuplicateRef.current(draft);
+      if (attachingAudio) {
+        attachAudioToBook(dupe ? dupe.id : addBookRef.current(draft).id);
+        return;
+      }
       if (dupe) {
         setAddedMatchIds((current) => ({ ...current, [match.id]: dupe.id }));
         setAddedBanner({ bookId: dupe.id, title: dupe.title, already: true });
@@ -461,6 +493,35 @@ export function BookIntakeScreen() {
         return next;
       });
     }
+  };
+
+  /**
+   * Give the audio this search was opened for to a library book, then open
+   * that book. One that already has audio asks first.
+   */
+  const attachAudioToBook = (bookId: string) => {
+    if (!attachAudioId) return;
+    const go = () => {
+      if (audioEngine.assignInboxItem(attachAudioId, bookId)) hapticSuccess();
+      openAddedBook(bookId);
+    };
+    if (audioLibrary[bookId]) {
+      appDialog.confirm({
+        title: t("fileManager.replaceTitle"),
+        body: t("fileManager.replaceBody", { title: books.find((book) => book.id === bookId)?.title ?? "" }),
+        confirmLabel: t("fileManager.replaceConfirm"),
+        destructive: true,
+        onConfirm: go,
+      });
+    } else go();
+  };
+
+  /** The ✓ on a result already on the shelf: open it — or, for audio, give it the audio. */
+  const openLibraryCopy = (match: BookMatch) => {
+    const id = libraryBookIdForMatch(match);
+    if (!id) return;
+    if (attachingAudio) attachAudioToBook(id);
+    else openFromResults(id);
   };
 
   /** Open a library book on top of the results, keeping them for Back. */
@@ -740,6 +801,10 @@ export function BookIntakeScreen() {
    * Stage the chosen BookMatch for review.
    */
   const selectMatch = async (match: BookMatch) => {
+    if (attachingAudio && libraryBookIdForMatch(match)) {
+      openLibraryCopy(match);
+      return;
+    }
     // When the user manually picks a result from the match list they have already
     // made an informed choice — a scary "low-confidence" warning is misleading.
     const insight = "Verify details before adding.";
@@ -1435,6 +1500,24 @@ export function BookIntakeScreen() {
       isAuthorQuery && primaryMatch && authorMatchesQuery(primaryMatch, queryTokens)
         ? primaryMatch.authors[0]
         : null;
+    // Giving audio a book: the reader's own shelf first, matched on the same
+    // query as the catalog rows below (half the words must hit, so a filler
+    // word like "la" doesn't pull in half the library).
+    const shelfHits =
+      attachingAudio && matchLookupLabel.trim().length >= 2
+        ? rankLibraryRows(
+            books.map((book) => ({
+              id: book.id,
+              title: book.title,
+              author: getAuthor(book.authorId)?.name ?? "",
+              seriesName: book.seriesName,
+              format: book.format,
+              hasAudio: Boolean(audioLibrary[book.id]),
+            })),
+            matchLookupLabel,
+            { minShare: 0.5 }
+          ).slice(0, 4)
+        : [];
     const backLabel =
       matchReturnMode === "isbn" ? "Scanner" :
       matchReturnMode === "search" ? "Search" : "Add book";
@@ -1534,6 +1617,43 @@ export function BookIntakeScreen() {
           </Pressable>
           </View>
         </View>
+
+        {attachingAudio ? (
+          <View style={styles.attachAudioSection}>
+            <View style={styles.attachAudioHeader}>
+              <Ionicons name="headset-outline" size={16} color={c.coral} />
+              <Text style={styles.attachAudioTitle} numberOfLines={2}>
+                {t("fileManager.assignTitle", { title: attachAudioItem?.title || t("fileManager.untitled") })}
+              </Text>
+            </View>
+            {shelfHits.length ? (
+              <>
+                <Text style={styles.attachAudioLabel}>{t("catalog.inYourLibrary")}</Text>
+                {shelfHits.map((row) => {
+                  const book = books.find((candidate) => candidate.id === row.id);
+                  if (!book) return null;
+                  return (
+                    <Pressable
+                      key={row.id}
+                      accessibilityRole="button"
+                      style={({ pressed }) => [styles.attachAudioRow, pressed && { opacity: 0.7 }]}
+                      onPress={() => attachAudioToBook(row.id)}
+                    >
+                      <MiniCover book={book} width={36} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.attachAudioBook} numberOfLines={1}>{book.title}</Text>
+                        <Text style={[styles.attachAudioAuthor, row.hasAudio && { color: c.coral }]} numberOfLines={1}>
+                          {row.hasAudio ? t("fileManager.replacesAudio") : row.author}
+                        </Text>
+                      </View>
+                      <Ionicons name="link-outline" size={18} color={c.teal} />
+                    </Pressable>
+                  );
+                })}
+              </>
+            ) : null}
+          </View>
+        ) : null}
 
         {/* Scan again shortcut — only when result came from ISBN scanner */}
         {matchReturnMode === "isbn" && !isBusy && matches.length > 0 ? (
@@ -1676,7 +1796,7 @@ export function BookIntakeScreen() {
                     onSelect={() => void selectMatch(match)}
                     libraryState={libraryStateFor(match)}
                     onQuickAdd={() => void quickAddMatch(match)}
-                    onOpenInLibrary={() => { const id = libraryBookIdForMatch(match); if (id) openFromResults(id); }}
+                    onOpenInLibrary={() => openLibraryCopy(match)}
                   />
                 ))}
               </View>
@@ -1691,7 +1811,7 @@ export function BookIntakeScreen() {
                     onSelect={() => void selectMatch(primaryMatch)}
                     libraryState={libraryStateFor(primaryMatch)}
                     onQuickAdd={() => void quickAddMatch(primaryMatch)}
-                    onOpenInLibrary={() => { const id = libraryBookIdForMatch(primaryMatch); if (id) openFromResults(id); }}
+                    onOpenInLibrary={() => openLibraryCopy(primaryMatch)}
                   />
                 ) : null}
 
@@ -1704,7 +1824,7 @@ export function BookIntakeScreen() {
                     onSelect={() => void selectMatch(match)}
                     libraryState={libraryStateFor(match)}
                     onQuickAdd={() => void quickAddMatch(match)}
-                    onOpenInLibrary={() => { const id = libraryBookIdForMatch(match); if (id) openFromResults(id); }}
+                    onOpenInLibrary={() => openLibraryCopy(match)}
                   />
                 ))}
               </>
