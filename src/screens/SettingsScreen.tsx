@@ -26,6 +26,7 @@ import { SettingsGroup, SettingsRow, SettingsToggleRow } from "../components/set
 import { useBookliz } from "../data/BooklizContext";
 import { findContradictedLanguages } from "../data/languageRepair";
 import { buildDebugInfo, SUPPORT_EMAIL } from "../support/debugInfo";
+import { DEVELOPER_PAGE_URL, openInAppStore, WRITE_REVIEW_URL } from "../support/appStoreLinks";
 import { useI18n } from "../i18n/LocalizationContext";
 import { usePro } from "../pro/ProContext";
 import { RootStackParamList } from "../navigation/types";
@@ -395,6 +396,22 @@ export function SettingsScreen() {
           />
         </SettingsGroup>
       ) : null}
+
+      {/* ── Rate & the maker ─────────────────────────────────────────────
+          A rating is how other readers find Bookliz; the seller page shows
+          the person behind it. Both open the App Store directly. */}
+      <SettingsGroup header={t("support.rateHeader")} footer={t("support.rateFooter")}>
+        <SettingsRow
+          title={t("support.rate")}
+          accessory={<Ionicons name="star" size={18} color={c.gold} />}
+          onPress={() => { void openInAppStore(WRITE_REVIEW_URL); }}
+        />
+        <SettingsRow
+          title={t("support.moreApps")}
+          chevron
+          onPress={() => { void openInAppStore(DEVELOPER_PAGE_URL); }}
+        />
+      </SettingsGroup>
 
       {/* ── Support ──────────────────────────────────────────────────────── */}
       <SettingsGroup header={t("support.header")} footer={t("support.footer")}>

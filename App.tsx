@@ -23,6 +23,7 @@ import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import { ProProvider } from "./src/pro/ProContext";
 import { ThemeIconSync } from "./src/pro/ThemeIconSync";
 import { LinkedAccountProBridge } from "./src/pro/LinkedAccountProBridge";
+import { ReviewPromptObserver } from "./src/support/ReviewPromptObserver";
 
 function Root() {
   const { isDark } = useTheme();
@@ -61,6 +62,7 @@ export default function App() {
               <BooklizProvider>
                 <LinkedAccountProBridge />
                 <ThemeIconSync />
+                <ReviewPromptObserver />
                 <ReadingTimerProvider>
                   <AudiobookPlayerProvider>
                     <EbookProvider>

@@ -325,6 +325,8 @@ PODS:
     - ExpoModulesCore
   - ExpoSecureStore (15.0.8):
     - ExpoModulesCore
+  - ExpoStoreReview (9.0.9):
+    - ExpoModulesCore
   - ExpoWebBrowser (15.0.11):
     - ExpoModulesCore
   - EXUpdatesInterface (2.0.0):
@@ -2936,6 +2938,7 @@ DEPENDENCIES:
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoNetwork (from `../node_modules/expo-network/ios`)
   - ExpoSecureStore (from `../node_modules/expo-secure-store/ios`)
+  - ExpoStoreReview (from `../node_modules/expo-store-review/ios`)
   - ExpoWebBrowser (from `../node_modules/expo-web-browser/ios`)
   - EXUpdatesInterface (from `../node_modules/expo-updates-interface/ios`)
   - fast_float (from `../node_modules/react-native/third-party-podspecs/fast_float.podspec`)
@@ -3095,6 +3098,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-network/ios"
   ExpoSecureStore:
     :path: "../node_modules/expo-secure-store/ios"
+  ExpoStoreReview:
+    :path: "../node_modules/expo-store-review/ios"
   ExpoWebBrowser:
     :path: "../node_modules/expo-web-browser/ios"
   EXUpdatesInterface:
@@ -3265,7 +3270,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   AirPlayButton: 5f4ff65b8c70ecb3163a7f99c4ffe3644ea551f7
-  AppAuth: 1c1a8afa7e12f2ec3a294d9882dfa5ab7d3cb063
+  AppAuth: 3147509b510313b43ce49b34af43c5bded8d2ee7
   AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
   AppIcon: 381197770d829b2dd184949eba93f60f513ba629
   boost: 7e761d76ca2ce687f7cc98e698152abd03a18f90
@@ -3296,6 +3301,7 @@ SPEC CHECKSUMS:
   ExpoModulesCore: 20899b4dd703e10a543ff4c50ee1543e47d90082
   ExpoNetwork: ee1fb67b0de59ab7f36794caf8242955dd8ae046
   ExpoSecureStore: d32f751874a2ceb5aaeebeb3578e165c1ba2b24a
+  ExpoStoreReview: 32bb43b6fae9c8db3e33cad69996dff3785eef5f
   ExpoWebBrowser: 970dd4c64c29c955c3af664c8058ba768a4c9187
   EXUpdatesInterface: 5adf50cb41e079c861da6d9b4b954c3db9a50734
   fast_float: b32c788ed9c6a8c584d114d0047beda9664e7cc6
@@ -3303,9 +3309,9 @@ SPEC CHECKSUMS:
   FileBackup: 7afb03ad8a561f969737e862515febaf28d81765
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
-  GoogleSignIn: fcee2257188d5eda57a5e2b6a715550ffff9206d
+  GoogleSignIn: ddc94fbec7fcc7422d470b8febd1b3b54d34ee39
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
-  GTMAppAuth: 217a876b249c3c585a54fd6f73e6b58c4f5c4238
+  GTMAppAuth: 9566e1a3451fd6967b58188fa15286fb6ae7914f
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
   hermes-engine: 9f4dfe93326146a1c99eb535b1cb0b857a3cd172
   ICloudAudio: 2e210fd51ce544a24f834d8708f9de5ba0ea1c7a
