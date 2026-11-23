@@ -9,10 +9,24 @@
  * This catches it, shows something honest, and offers a retry that remounts the
  * subtree without needing an app restart. It deliberately uses no theme or i18n
  * context: if a provider is what crashed, consuming it here would crash the
- * fallback too.
+ * fallback too. Its copy is read straight from the translation table in the
+ * device's language instead.
  */
 import React, { Component, ErrorInfo, PropsWithChildren, ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { detectDeviceLocale } from "../i18n/LocalizationContext";
+import { translations } from "../i18n/translations";
+
+type FallbackCopy = { title: string; body: string; retry: string };
+
+function fallbackCopy(): FallbackCopy {
+  const read = (locale: "en" | "es") => (translations[locale] as Record<string, unknown>).errorBoundary as FallbackCopy | undefined;
+  try {
+    return read(detectDeviceLocale()) ?? (read("en") as FallbackCopy);
+  } catch {
+    return read("en") as FallbackCopy;
+  }
+}
 
 type Props = PropsWithChildren<{
   /** Optional custom fallback. Receives the error and a reset callback. */
@@ -45,16 +59,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
     if (this.props.fallback) return this.props.fallback(error, this.reset);
 
+    const copy = fallbackCopy();
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Something went wrong</Text>
-        <Text style={styles.body}>
-          Bookliz hit an unexpected error and stopped this screen. Your library is saved on this
-          device and has not been affected.
-        </Text>
+        <Text style={styles.title}>{copy.title}</Text>
+        <Text style={styles.body}>{copy.body}</Text>
         {__DEV__ ? <Text style={styles.debug}>{error.message}</Text> : null}
         <Pressable style={styles.button} onPress={this.reset} accessibilityRole="button">
-          <Text style={styles.buttonText}>Try again</Text>
+          <Text style={styles.buttonText}>{copy.retry}</Text>
         </Pressable>
       </View>
     );

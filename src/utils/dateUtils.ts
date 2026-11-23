@@ -35,3 +35,38 @@ export const shiftDateKey = (key: string, days: number): string => {
   date.setDate(date.getDate() + days);
   return localDateKey(date);
 };
+
+/** BCP-47 tag for the app's two languages, for toLocaleDateString. */
+export const dateLocaleTag = (locale: "en" | "es"): string => (locale === "es" ? "es-ES" : "en-US");
+
+/**
+ * A stored "YYYY-MM-DD" (or full ISO) date as people read it: "Nov 16, 2026" /
+ * "16 nov 2026". Anything that is not a date comes back unchanged.
+ */
+export const formatDateKey = (
+  value: string,
+  locale: "en" | "es",
+  options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" }
+): string => {
+  const date = parseDateKey(value.slice(0, 10));
+  return date ? date.toLocaleDateString(dateLocaleTag(locale), options) : value;
+};
+
+const EN_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const ES_MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+const EN_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const ES_WEEKDAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+/**
+ * The stats are computed with English short labels ("Nov", "Mon"); these turn
+ * them into the reader's language at render time. Unknown labels pass through.
+ */
+export const localizeMonthLabel = (label: string, locale: "en" | "es"): string => {
+  const index = EN_MONTHS.indexOf(label);
+  return locale === "es" && index >= 0 ? ES_MONTHS[index] : label;
+};
+
+export const localizeWeekdayLabel = (label: string, locale: "en" | "es"): string => {
+  const index = EN_WEEKDAYS.indexOf(label);
+  return locale === "es" && index >= 0 ? ES_WEEKDAYS[index] : label;
+};

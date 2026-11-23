@@ -234,7 +234,7 @@ export function ProfileScreen() {
         <Text style={styles.goalHint}>
           {goalPct >= 100
             ? t("profile.annualReached")
-            : t("profile.annualRemaining", { count: Math.max(0, userProfile.yearlyGoal - overallStats.booksReadThisYear) })}
+            : t("profile.annualRemaining", { count: Math.max(0, userProfile.yearlyGoal - overallStats.booksReadThisYear), year: new Date().getFullYear() })}
         </Text>
       </View>
 

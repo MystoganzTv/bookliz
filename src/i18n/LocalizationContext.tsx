@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { NativeModules, Platform } from "react-native";
+import { interpolate, TranslationVars } from "./interpolate";
 import { AppLocale, translations } from "./translations";
 
 const STORAGE_KEY = "@bookliz/locale";
@@ -11,7 +12,7 @@ const STORAGE_KEY = "@bookliz/locale";
  * (No expo-localization dependency — Intl covers Hermes, native settings are
  * a guarded fallback.)
  */
-function detectDeviceLocale(): AppLocale {
+export function detectDeviceLocale(): AppLocale {
   const candidates: unknown[] = [];
   // Native settings first: Hermes' Intl can answer "en-US" for a Spanish
   // device when the JS engine locale data is minimal.
@@ -34,7 +35,6 @@ function detectDeviceLocale(): AppLocale {
   return typeof match === "string" && match.toLowerCase().startsWith("es") ? "es" : "en";
 }
 
-type TranslationVars = Record<string, string | number>;
 
 type LocalizationContextValue = {
   locale: AppLocale;
@@ -69,14 +69,6 @@ function resolveKey(locale: AppLocale, key: string): string {
   }
 
   return key;
-}
-
-function interpolate(template: string, vars?: TranslationVars) {
-  if (!vars) return template;
-  return Object.entries(vars).reduce(
-    (result, [name, value]) => result.replaceAll(`{${name}}`, String(value)),
-    template
-  );
 }
 
 export function LocalizationProvider({ children }: PropsWithChildren) {

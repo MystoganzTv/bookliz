@@ -657,6 +657,7 @@ function NoMatchState({
   c: AppColors;
   onClear: () => void;
 }) {
+  const { t } = useI18n();
   const hasQuery = query.trim().length > 0;
   return (
     <View style={styles.noMatchWrap}>
@@ -676,16 +677,16 @@ function NoMatchState({
         </View>
       </View>
 
-      <Text style={styles.noMatchTitle}>Sin resultados</Text>
+      <Text style={styles.noMatchTitle}>{t("library.noMatchTitle")}</Text>
       <Text style={styles.noMatchSub}>
         {hasQuery
-          ? `No encontramos libros para "${query.trim()}"`
-          : "Los filtros activos no tienen coincidencias"}
+          ? t("library.noMatchQuery", { query: query.trim() })
+          : t("library.noMatchFilters")}
       </Text>
 
       <Pressable accessibilityRole="button" style={styles.noMatchClearBtn} onPress={onClear}>
         <Ionicons name="refresh-outline" size={14} color={c.teal} />
-        <Text style={styles.noMatchClearText}>Limpiar búsqueda y filtros</Text>
+        <Text style={styles.noMatchClearText}>{t("library.noMatchClear")}</Text>
       </Pressable>
     </View>
   );
@@ -812,12 +813,12 @@ function LibraryRowCard({
         ) : isRead ? (
           <View style={styles.rowStatusPill}>
             <Ionicons name="checkmark-circle" size={11} color={c.teal} />
-            <Text style={styles.rowStatusFinished}>Finished</Text>
+            <Text style={styles.rowStatusFinished}>{t("library.rowFinished")}</Text>
           </View>
         ) : isDnf ? (
           <View style={styles.rowStatusPill}>
             <Ionicons name="close-circle" size={11} color={c.danger} />
-            <Text style={styles.rowStatusDnf}>Did not finish</Text>
+            <Text style={styles.rowStatusDnf}>{t("library.rowDnf")}</Text>
           </View>
         ) : null}
       </View>

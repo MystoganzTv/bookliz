@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Screen } from "../components/Screen";
 import { useBookliz } from "../data/BooklizContext";
 import { useI18n } from "../i18n/LocalizationContext";
+import { formatDateKey } from "../utils/dateUtils";
 import { Achievement } from "../types/models";
 import { getAchievementIconSource } from "../utils/achievementIcons";
 import { AppColors, fonts, palette, radii, shadows, spacing } from "../theme/theme";
@@ -92,7 +93,7 @@ function AchievementEmoji({
 }
 
 function UnlockedCard({ achievement, styles, c }: { achievement: Achievement; styles: ReturnType<typeof createStyles>; c: AppColors }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return (
     <View style={[styles.unlockedCard, { borderLeftColor: TIER_COLOR[achievement.tier] }]}>
       <View style={styles.unlockedTop}>
@@ -111,7 +112,7 @@ function UnlockedCard({ achievement, styles, c }: { achievement: Achievement; st
         <Ionicons name="checkmark-circle" size={14} color={c.green} />
         <Text style={styles.unlockedDate}>
           {achievement.unlockedAt
-            ? `${t("achievements.unlockedOn")} ${new Date(`${achievement.unlockedAt}T00:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
+            ? `${t("achievements.unlockedOn")} ${formatDateKey(achievement.unlockedAt, locale, { month: "long", day: "numeric", year: "numeric" })}`
             : t("achievements.unlockedOn")}
         </Text>
       </View>

@@ -410,13 +410,11 @@ export function HomeScreen() {
       ) : personalizedNetworkError ? (
         <View style={styles.personalizedNetworkError}>
           <Ionicons name="wifi-outline" size={20} color={c.muted} />
-          <Text style={styles.personalizedNetworkErrorText}>
-            Connection lost. Please check your internet and try again.
-          </Text>
+          <Text style={styles.personalizedNetworkErrorText}>{t("home.connectionLost")}</Text>
         </View>
       ) : personalizedSections.length > 0 ? (
         <>
-          <SectionHeader title="Picked for you" />
+          <SectionHeader title={t("home.pickedForYou")} />
           {personalizedSections.map((section) => (
             <View key={section.id} style={styles.personalizedBlock}>
               <View style={styles.personalizedHeaderRow}>
@@ -463,7 +461,7 @@ export function HomeScreen() {
       {showGenreSuggestions ? (
         <>
           <SectionHeader
-            title="Based on your interests"
+            title={t("home.basedOnInterests")}
             actionLabel={t("common.browse")}
             onAction={() =>
               navigation.navigate("GenreBrowse", { genre: userProfile.favoriteGenres[0]! })

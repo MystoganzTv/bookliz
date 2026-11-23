@@ -15,6 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { RELEASE_NOTES, ReleaseSection } from "../data/releaseNotes";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useColors } from "../theme/ThemeContext";
+import { useI18n } from "../i18n/LocalizationContext";
 
 export const WHATS_NEW_KEY = "@bookliz/whatsNewLastVersion";
 const STORAGE_KEY = WHATS_NEW_KEY;
@@ -28,15 +29,15 @@ const APP_VERSION =
 const SECTION_CONFIG = {
   new: {
     emoji: "🆕",
-    label: "What's New",
+    labelKey: "whatsNew.sectionNew",
   },
   improved: {
     emoji: "👍",
-    label: "Improved",
+    labelKey: "whatsNew.sectionImproved",
   },
   fixed: {
     emoji: "🔧",
-    label: "Fixed",
+    labelKey: "whatsNew.sectionFixed",
   },
 } as const;
 
@@ -45,6 +46,7 @@ const booklizIcon = require("../../assets/brand/bookliz-icon.png");
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function WhatsNewModal() {
+  const { t } = useI18n();
   const c = useColors();
   const styles = useMemo(() => createStyles(c), [c]);
   const [visible, setVisible] = useState(false);
@@ -153,7 +155,7 @@ export function WhatsNewModal() {
         {/* CTA */}
         <View style={styles.footer}>
           <Pressable accessibilityRole="button" style={styles.ctaButton} onPress={dismiss}>
-            <Text style={styles.ctaButtonText}>Got it!</Text>
+            <Text style={styles.ctaButtonText}>{t("whatsNew.gotIt")}</Text>
           </Pressable>
         </View>
       </Animated.View>
@@ -172,6 +174,7 @@ function SectionBlock({
   styles: ReturnType<typeof createStyles>;
   c: AppColors;
 }) {
+  const { t } = useI18n();
   const config = SECTION_CONFIG[section.type];
   // Theme colours, so the notes match whichever theme is on.
   const tone =
@@ -184,7 +187,7 @@ function SectionBlock({
       <View style={[styles.sectionHeader, { backgroundColor: tone.bg }]}>
         <Text style={styles.sectionEmoji}>{config.emoji}</Text>
         <Text style={[styles.sectionLabel, { color: tone.text }]}>
-          {config.label}
+          {t(config.labelKey)}
         </Text>
         <View style={[styles.countBadge, { backgroundColor: tone.badge }]}>
           <Text style={[styles.countText, { color: tone.text }]}>

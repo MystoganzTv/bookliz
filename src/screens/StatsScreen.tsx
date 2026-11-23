@@ -13,14 +13,14 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/types";
 import { usePro } from "../pro/ProContext";
-import { localDateKey } from "../utils/dateUtils";
+import { dateLocaleTag, localDateKey, localizeMonthLabel, localizeWeekdayLabel } from "../utils/dateUtils";
 
 type Tab = "books" | "pages" | "minutes";
 type StatsStyles = ReturnType<typeof createStyles>;
 
 export function StatsScreen() {
   const c = useColors();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const dialog = useDialog();
   const styles = useMemo(() => createStyles(c), [c]);
   const { books, overallStats, userProfile, readingSessions } = useBookliz();
@@ -34,9 +34,9 @@ export function StatsScreen() {
   const goalPct = Math.min(100, Math.round((overallStats.booksReadThisYear / userProfile.yearlyGoal) * 100));
 
   const chartData: Record<Tab, { label: string; value: number }[]> = {
-    books: overallStats.monthly.map((m) => ({ label: m.label, value: m.booksFinished })),
-    pages: overallStats.monthly.map((m) => ({ label: m.label, value: m.pages })),
-    minutes: overallStats.monthly.map((m) => ({ label: m.label, value: m.minutes }))
+    books: overallStats.monthly.map((m) => ({ label: localizeMonthLabel(m.label, locale), value: m.booksFinished })),
+    pages: overallStats.monthly.map((m) => ({ label: localizeMonthLabel(m.label, locale), value: m.pages })),
+    minutes: overallStats.monthly.map((m) => ({ label: localizeMonthLabel(m.label, locale), value: m.minutes }))
   };
 
   const topGenre = overallStats.genreCounts[0]?.label ?? "—";
@@ -50,7 +50,7 @@ export function StatsScreen() {
   const hoursRead = Math.round(overallStats.minutesRead / 60);
   const bestDay = overallStats.bestReadingDay === "No sessions yet"
     ? "—"
-    : new Date(`${overallStats.bestReadingDay}T00:00:00`).toLocaleDateString("en-US", {
+    : new Date(`${overallStats.bestReadingDay}T00:00:00`).toLocaleDateString(dateLocaleTag(locale), {
         month: "short",
         day: "numeric"
       });
@@ -60,11 +60,11 @@ export function StatsScreen() {
     const text = [
       `📚 ${t("stats.shareText").replace("{{year}}", String(year))}`,
       "",
-      `${overallStats.booksReadThisYear} ${t("stats.shareBooks")}`,
-      overallStats.rereadsCompleted > 0 ? `${overallStats.rereadsCompleted} ${t("stats.shareRereads")}` : null,
-      `${overallStats.pagesRead.toLocaleString()} ${t("stats.sharePages")}`,
-      `${hoursRead} ${t("stats.shareHours")}`,
-      `${overallStats.longestStreak}${t("stats.shareStreak")}`,
+      t("stats.shareBooks", { count: overallStats.booksReadThisYear }),
+      overallStats.rereadsCompleted > 0 ? t("stats.shareRereads", { count: overallStats.rereadsCompleted }) : null,
+      t("stats.sharePages", { count: overallStats.pagesRead.toLocaleString(dateLocaleTag(locale)) }),
+      t("stats.shareHours", { count: hoursRead }),
+      t("stats.shareStreak", { count: overallStats.longestStreak }),
       topGenre !== "—" ? `${t("stats.shareFavGenre")} ${topGenre}` : null,
       topAuthor !== "—" ? `${t("stats.shareMostRead")} ${topAuthor}` : null,
       overallStats.averageRating > 0 ? `${t("stats.shareAvgRating")} ${overallStats.averageRating} ★` : null
@@ -161,13 +161,13 @@ export function StatsScreen() {
           <Text style={[styles.streakVal, { color: overallStats.currentStreak > 0 ? c.coral : c.muted }]}>
             {overallStats.currentStreak}d
           </Text>
-          <Text style={styles.streakLbl}>Current streak</Text>
+          <Text style={styles.streakLbl}>{t("stats.streakCurrent")}</Text>
         </View>
         <View style={styles.streakDivider} />
         <View style={styles.streakCol}>
           <Text style={styles.streakFire}>🏆</Text>
           <Text style={[styles.streakVal, { color: c.gold }]}>{overallStats.longestStreak}d</Text>
-          <Text style={styles.streakLbl}>Best streak</Text>
+          <Text style={styles.streakLbl}>{t("stats.streakBest")}</Text>
         </View>
       </View>
 
@@ -194,14 +194,14 @@ export function StatsScreen() {
 
       {/* ── READING HEATMAP ── */}
       <View style={styles.chartCard}>
-        <Text style={[styles.sectionTitle, { marginBottom: spacing.sm }]}>Reading activity</Text>
+        <Text style={[styles.sectionTitle, { marginBottom: spacing.sm }]}>{t("stats.readingActivity")}</Text>
         <ReadingHeatmap sessions={readingSessions} c={c} />
         <View style={styles.heatmapLegend}>
-          <Text style={styles.heatmapLegendLabel}>Less</Text>
+          <Text style={styles.heatmapLegendLabel}>{t("stats.heatmapLess")}</Text>
           {["00", "50", "80", "B0", "FF"].map((a) => (
             <View key={a} style={[styles.heatmapLegendCell, { backgroundColor: a === "00" ? c.border : c.teal + a }]} />
           ))}
-          <Text style={styles.heatmapLegendLabel}>More</Text>
+          <Text style={styles.heatmapLegendLabel}>{t("stats.heatmapMore")}</Text>
         </View>
       </View>
 
@@ -210,7 +210,7 @@ export function StatsScreen() {
         <View style={styles.insightsGrid}>
           <InsightTile styles={styles} icon="compass-outline" label={t("stats.topGenre")} value={topGenre} color={c.teal} />
           <InsightTile styles={styles} icon="person-outline" label={t("stats.topAuthor")} value={topAuthor} color={c.gold} />
-          <InsightTile styles={styles} icon="speedometer-outline" label={t("stats.avgSpeed")} value={`${avgSpeed} pp/h`} color="#7C83FD" />
+          <InsightTile styles={styles} icon="speedometer-outline" label={t("stats.avgSpeed")} value={t("stats.speedValue", { count: avgSpeed })} color="#7C83FD" />
           <InsightTile styles={styles} icon="calendar-outline" label={t("stats.bestDay")} value={bestDay} color={c.green} />
           <InsightTile styles={styles} icon="star-outline" label={t("stats.avgRating")} value={`${overallStats.averageRating.toFixed(1)} ★`} color={c.coral} />
           <InsightTile styles={styles} icon="close-circle-outline" label={t("stats.unfinished")} value={unfinishedCount.toString()} color={c.muted} />
@@ -222,7 +222,7 @@ export function StatsScreen() {
         <View style={styles.collectorGrid}>
           <CollectorTile styles={styles} label={t("stats.trackedBooks")} value={overallStats.booksTracked.toString()} sub={`${overallStats.completionRate}${t("stats.completedSuffix")}`} accent={c.tealDark} />
           <CollectorTile styles={styles} label={t("stats.ownedShelf")} value={overallStats.ownedCount.toString()} sub={`${overallStats.wishlistCount} ${t("stats.wishlistSuffix")}`} accent={c.gold} />
-          <CollectorTile styles={styles} label={t("stats.wantToBuy")} value={overallStats.wantToBuyCount.toString()} sub={`${overallStats.completedSeriesCount} ${t("stats.sagasDone")}`} accent={c.coral} />
+          <CollectorTile styles={styles} label={t("stats.wantToBuy")} value={overallStats.wantToBuyCount.toString()} sub={t("stats.sagasDone", { count: overallStats.completedSeriesCount })} accent={c.coral} />
           <CollectorTile styles={styles} label={t("stats.avgLength")} value={`${overallStats.averageBookLength}`} sub={t("stats.pagesPerBook")} accent={c.ink} />
         </View>
       </View>
@@ -241,15 +241,15 @@ export function StatsScreen() {
 
       {overallStats.mostActiveDays.length > 0 && (
         <View style={styles.chartCard}>
-          <Text style={styles.sectionTitle}>Most active days</Text>
-          <BarChart data={overallStats.mostActiveDays} />
+          <Text style={styles.sectionTitle}>{t("stats.mostActiveDays")}</Text>
+          <BarChart data={overallStats.mostActiveDays.map((d) => ({ ...d, label: localizeWeekdayLabel(d.label, locale) }))} />
         </View>
       )}
 
       {overallStats.speedOverTime.length > 1 && (
         <View style={styles.chartCard}>
-          <Text style={styles.sectionTitle}>Reading speed trend</Text>
-          <BarChart data={overallStats.speedOverTime} />
+          <Text style={styles.sectionTitle}>{t("stats.speedTrend")}</Text>
+          <BarChart data={overallStats.speedOverTime.map((d) => ({ ...d, label: localizeMonthLabel(d.label, locale) }))} />
         </View>
       )}
 
@@ -398,6 +398,7 @@ function YearMeta({
 // ── Reading heatmap ───────────────────────────────────────────────────────────
 
 function ReadingHeatmap({ sessions, c }: { sessions: ReadingSession[]; c: AppColors }) {
+  const { locale } = useI18n();
   const WEEKS = 52;
   const CELL = 10;
   const GAP = 2;
@@ -424,7 +425,7 @@ function ReadingHeatmap({ sessions, c }: { sessions: ReadingSession[]; c: AppCol
       for (let d = 0; d < 7; d++) {
         const ds = localDateKey(cur);
         if (d === 0 && cur.getMonth() !== lastMonth) {
-          labels.push({ label: cur.toLocaleDateString("en-US", { month: "short" }), col: w });
+          labels.push({ label: cur.toLocaleDateString(dateLocaleTag(locale), { month: "short" }), col: w });
           lastMonth = cur.getMonth();
         }
         week.push({ mins: map[ds] ?? 0, future: ds > todayStr });

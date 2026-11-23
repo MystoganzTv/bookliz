@@ -140,7 +140,7 @@ export function WriteReviewScreen() {
         <Text style={styles.sectionLabel}>{t("writeReview.titleLabel")}</Text>
         <AppTextInput
           style={styles.input}
-          placeholder="Give your review a headline…"
+          placeholder={t("writeReview.titlePlaceholder")}
           placeholderTextColor={c.gray}
           value={title}
           onChangeText={setTitle}
@@ -153,7 +153,7 @@ export function WriteReviewScreen() {
         <Text style={styles.sectionLabel}>{t("writeReview.thoughtsLabel")}</Text>
         <AppTextInput
           style={[styles.input, styles.inputMultiline]}
-          placeholder="What did you think? What stayed with you?"
+          placeholder={t("writeReview.thoughtsPlaceholder")}
           placeholderTextColor={c.gray}
           value={body}
           onChangeText={setBody}

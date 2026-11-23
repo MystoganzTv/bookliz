@@ -42,6 +42,7 @@ import { RootStackParamList } from "../navigation/types";
 import { AppColors, fonts, radii, shadows, spacing } from "../theme/theme";
 import { useTheme } from "../theme/ThemeContext";
 import { useI18n } from "../i18n/LocalizationContext";
+import { formatDateKey } from "../utils/dateUtils";
 import { hapticMedium } from "../utils/haptics";
 import { isPlaceholderText, resolveBookMetadata } from "../utils/bookMetadata";
 import { isSameLanguage } from "../utils/languageUtils";
@@ -411,8 +412,8 @@ export function BookDetailScreen() {
               }]} />
             </View>
             <View style={styles.progressDates}>
-              {book.userStatus.startDate ? <Text style={styles.mutedSm}>{t("bookDetail.started")} {book.userStatus.startDate}</Text> : null}
-              {book.userStatus.finishDate ? <Text style={styles.mutedSm}>{t("bookDetail.finished")} {book.userStatus.finishDate}</Text> : null}
+              {book.userStatus.startDate ? <Text style={styles.mutedSm}>{t("bookDetail.started")} {formatDateKey(book.userStatus.startDate, locale)}</Text> : null}
+              {book.userStatus.finishDate ? <Text style={styles.mutedSm}>{t("bookDetail.finished")} {formatDateKey(book.userStatus.finishDate, locale)}</Text> : null}
             </View>
           </View>
         ) : null}
