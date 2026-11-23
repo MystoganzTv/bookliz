@@ -8,6 +8,8 @@ public class AppDelegate: ExpoAppDelegate {
 
   var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
   var reactNativeFactory: RCTReactNativeFactory?
+  /// Kept for SceneDelegate, which starts React Native in the scene's window.
+  var launchOptions: [UIApplication.LaunchOptionsKey: Any]?
 
   public override func application(
     _ application: UIApplication,
@@ -21,7 +23,12 @@ public class AppDelegate: ExpoAppDelegate {
     reactNativeFactory = factory
     bindReactNativeFactory(factory)
 
-#if os(iOS) || os(tvOS)
+    // The iOS 27 SDK requires the UIScene life cycle, so the window belongs to
+    // SceneDelegate. Release builds create it there. Debug builds create it
+    // here as before, because expo-dev-launcher (debug only) looks for the
+    // window during didFinishLaunching; the scene then adopts this window.
+    self.launchOptions = launchOptions
+#if DEBUG
     window = UIWindow(frame: UIScreen.main.bounds)
     factory.startReactNative(
       withModuleName: "main",

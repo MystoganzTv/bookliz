@@ -27,6 +27,7 @@ import { useBookliz } from "../data/BooklizContext";
 import { findContradictedLanguages } from "../data/languageRepair";
 import { buildDebugInfo, SUPPORT_EMAIL } from "../support/debugInfo";
 import { DEVELOPER_PAGE_URL, openInAppStore, WRITE_REVIEW_URL } from "../support/appStoreLinks";
+import { ScreenshotSeedRow } from "../dev/ScreenshotSeedRow";
 import { useI18n } from "../i18n/LocalizationContext";
 import { usePro } from "../pro/ProContext";
 import { RootStackParamList } from "../navigation/types";
@@ -422,6 +423,7 @@ export function SettingsScreen() {
       {__DEV__ ? (
         <SettingsGroup header="Developer" footer="Development builds only: unlocks every Pro feature without buying, to test them.">
           <SettingsToggleRow title="Pretend Pro is active" value={pro.debugPro} onValueChange={pro.setDebugPro} />
+          <ScreenshotSeedRow />
         </SettingsGroup>
       ) : null}
 

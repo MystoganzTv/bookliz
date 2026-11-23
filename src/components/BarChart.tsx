@@ -15,8 +15,10 @@ export function BarChart({ data, max }: BarChartProps) {
 
   return (
     <View style={styles.wrap}>
-      {data.map((item) => (
-        <View key={`${item.label}-${item.value}`} style={styles.row}>
+      {/* Position is the identity: two rows can share a label and a value
+          (two weeks at the same pace), which made label-value keys collide. */}
+      {data.map((item, index) => (
+        <View key={`${index}-${item.label}`} style={styles.row}>
           <Text numberOfLines={1} style={styles.label}>
             {item.label}
           </Text>
