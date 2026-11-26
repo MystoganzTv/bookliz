@@ -18,6 +18,7 @@ const FORMAT_KEYS: Partial<Record<ReadingFormat, string>> = {
   "graphic-novel": "editBook.fmtGraphicNovel",
   manga: "editBook.fmtManga",
   magazine: "editBook.fmtMagazine",
+  physical: "logSession.formatPhysical",
 };
 
 export function formatLabel(format: string, t: (key: string) => string): string {

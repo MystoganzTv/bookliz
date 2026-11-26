@@ -507,9 +507,6 @@ const formatWeekday = (date: string) => {
   return parsed.toLocaleDateString("en-US", { weekday: "short" });
 };
 
-const formatLabel = (value: string) =>
-  value.charAt(0).toUpperCase() + value.slice(1);
-
 const daysBetween = (a: Date, b: Date) => Math.round((a.getTime() - b.getTime()) / 86400000);
 
 const calculateStreaks = (sessions: ReadingSession[]) => {
@@ -821,7 +818,8 @@ const buildOverallStats = (books: Book[], sessions: ReadingSession[], authors: A
       .map(([authorId, value]) => ({ label: authors.find((author) => author.id === authorId)?.name ?? authorId, value }))
       .sort((a, b) => b.value - a.value),
     statusCounts,
-    formatCounts: Object.entries(formatMap).map(([label, value]) => ({ label: formatLabel(label), value })).sort((a, b) => b.value - a.value),
+    // Raw format ids ("audiobook"); the Stats screen turns them into words in the reader's language.
+    formatCounts: Object.entries(formatMap).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value),
     locationCounts: Object.entries(locationMap).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value),
     speedOverTime: sessions
       .filter((session) => session.minutesRead > 0)

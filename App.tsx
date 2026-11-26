@@ -22,6 +22,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import { ProProvider } from "./src/pro/ProContext";
 import { ThemeIconSync } from "./src/pro/ThemeIconSync";
+import { ReminderLanguageSync } from "./src/components/ReminderLanguageSync";
 import { LinkedAccountProBridge } from "./src/pro/LinkedAccountProBridge";
 import { ReviewPromptObserver } from "./src/support/ReviewPromptObserver";
 
@@ -62,6 +63,7 @@ export default function App() {
               <BooklizProvider>
                 <LinkedAccountProBridge />
                 <ThemeIconSync />
+                <ReminderLanguageSync />
                 <ReviewPromptObserver />
                 <ReadingTimerProvider>
                   <AudiobookPlayerProvider>

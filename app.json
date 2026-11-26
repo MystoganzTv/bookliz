@@ -119,10 +119,24 @@
         "android.permission.CAMERA"
       ]
     },
+    "locales": {
+      "es": "./locales/es.json"
+    },
     "plugins": [
-      "expo-camera",
+      [
+        "expo-camera",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
       "expo-apple-authentication",
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
       [
         "expo-notifications",
         {
@@ -137,7 +151,13 @@
           "iosUrlScheme": "com.googleusercontent.apps.167166673441-1m9fio2dlddt0a053ip2o8b6tan85pdb"
         }
       ],
-      "expo-audio"
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "extra": {
       "googleAuth": {

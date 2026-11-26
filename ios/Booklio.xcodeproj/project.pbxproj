@@ -32,6 +32,7 @@
 		5CE4E5D1A2B34C5D9E8F0A12 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CE4E5D1A2B34C5D9E8F0A11 /* SceneDelegate.swift */; };
 		F196DF7DC0EE19E9E7405AFD /* NowPlayingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1EADB57D33E8DFC4BFFFFF /* NowPlayingView.swift */; };
 		F8ABCA94997067B1BC47AB55 /* ChaptersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE4203D7653498D028D2E878 /* ChaptersView.swift */; };
+		5DD4B69E419F4F2D97430F1D /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 88468FDB1375435ABE282996 /* InfoPlist.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -90,6 +91,7 @@
 		5CE4E5D1A2B34C5D9E8F0A11 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = Booklio/SceneDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Booklio-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Booklio-Bridging-Header.h"; path = "Booklio/Booklio-Bridging-Header.h"; sourceTree = "<group>"; };
 		FE4203D7653498D028D2E878 /* ChaptersView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChaptersView.swift; sourceTree = "<group>"; };
+		88468FDB1375435ABE282996 /* InfoPlist.strings */ = {isa = PBXFileReference; name = "InfoPlist.strings"; path = "es.lproj/InfoPlist.strings"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = text.plist.strings; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -221,10 +223,20 @@
 			isa = PBXGroup;
 			children = (
 				BB2F792C24A3F905000567C9 /* Expo.plist */,
+				287F86C21A4C41FA9A18336C /* es.lproj */,
 			);
 			name = Supporting;
 			path = Booklio/Supporting;
 			sourceTree = "<group>";
+		};
+		287F86C21A4C41FA9A18336C /* es.lproj */ = {
+			isa = "PBXGroup";
+			children = (
+				88468FDB1375435ABE282996 /* InfoPlist.strings */,
+			);
+			name = es.lproj;
+			sourceTree = "<group>";
+			path = "";
 		};
 /* End PBXGroup section */
 
@@ -298,6 +310,7 @@
 			knownRegions = (
 				en,
 				Base,
+				es,
 			);
 			mainGroup = 83CBB9F61A601CBA00E9B192;
 			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
@@ -319,6 +332,7 @@
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
 				057628BCD826EFBA6993CEB4 /* PrivacyInfo.xcprivacy in Resources */,
+				5DD4B69E419F4F2D97430F1D /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

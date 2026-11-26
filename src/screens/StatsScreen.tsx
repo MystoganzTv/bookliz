@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/types";
 import { usePro } from "../pro/ProContext";
 import { dateLocaleTag, localDateKey, localizeMonthLabel, localizeWeekdayLabel } from "../utils/dateUtils";
+import { formatLabel } from "../utils/formatLabels";
 
 type Tab = "books" | "pages" | "minutes";
 type StatsStyles = ReturnType<typeof createStyles>;
@@ -42,7 +43,8 @@ export function StatsScreen() {
   const topGenre = overallStats.genreCounts[0]?.label ?? "—";
   const topAuthor = overallStats.authorCounts[0]?.label ?? "—";
   const topLocation = overallStats.locationCounts[0]?.label ?? "—";
-  const topFormat = overallStats.formatCounts[0]?.label ?? "—";
+  const formatCounts = overallStats.formatCounts.map((d) => ({ ...d, label: formatLabel(d.label, t) }));
+  const topFormat = formatCounts[0]?.label ?? "—";
   const avgSpeed = Math.round(
     overallStats.speedOverTime.reduce((s, d) => s + d.value, 0) /
     (overallStats.speedOverTime.length || 1)
@@ -270,7 +272,7 @@ export function StatsScreen() {
       {overallStats.formatCounts.length > 0 && (
         <View style={styles.chartCard}>
           <Text style={styles.sectionTitle}>{t("stats.byFormat")}</Text>
-          <BarChart data={overallStats.formatCounts} />
+          <BarChart data={formatCounts} />
         </View>
       )}
 

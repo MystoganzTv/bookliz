@@ -5,10 +5,15 @@
  * these are all local (device-only) notifications.
  *
  * Storage key: @bookliz/notificationPrefs
- * Schema: { enabled: boolean; hour: number; minute: number }
+ * Schema: { enabled: boolean; hour: number; minute: number; locale?: "en" | "es" }
+ *
+ * iOS stores a scheduled notification's text when it is scheduled, so the
+ * reminder is written in the app's language at that moment and rescheduled by
+ * syncReminderLanguage when the language changes.
  */
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppLocale, translations } from "../i18n/translations";
 
 export const NOTIFICATION_PREFS_KEY = "@bookliz/notificationPrefs";
 const PREFS_KEY = NOTIFICATION_PREFS_KEY;
@@ -19,6 +24,8 @@ export type NotificationPrefs = {
   enabled: boolean;
   hour: number;   // 0–23
   minute: number; // 0–59
+  /** Language the scheduled reminder was written in. */
+  locale?: AppLocale;
 };
 
 const DEFAULT_PREFS: NotificationPrefs = {
@@ -71,18 +78,28 @@ export async function ensureNotificationChannel(): Promise<void> {
 
 // ─── Schedule / cancel ────────────────────────────────────────────────────────
 
+const REMINDER_COUNT = 4;
+
+/** The reminder texts in one language, read from the translation table. */
+export function reminderMessages(locale: AppLocale): { title: string; body: string }[] {
+  const table = (translations[locale] ?? translations.en).notifications as Record<string, string>;
+  const fallback = translations.en.notifications as Record<string, string>;
+  return Array.from({ length: REMINDER_COUNT }, (_, index) => {
+    const n = index + 1;
+    return {
+      title: table[`reminder${n}Title`] ?? fallback[`reminder${n}Title`],
+      body: table[`reminder${n}Body`] ?? fallback[`reminder${n}Body`],
+    };
+  });
+}
+
 /** Schedule (or re-schedule) the daily reading reminder for the given time. */
-export async function scheduleDailyReminder(hour: number, minute: number): Promise<void> {
+export async function scheduleDailyReminder(hour: number, minute: number, locale: AppLocale = "en"): Promise<void> {
   // Cancel any existing instance first
   await cancelDailyReminder();
 
   // Pick a random message each scheduling cycle
-  const messages = [
-    { title: "📚 Time to read!", body: "Your reading streak is waiting. Open a book." },
-    { title: "📖 Reading time", body: "A few pages a day builds a library of a lifetime." },
-    { title: "📚 Don't break the streak!", body: "Log a session and keep your momentum going." },
-    { title: "📖 Bookliz reminder", body: "Your current book is waiting for you." },
-  ];
+  const messages = reminderMessages(locale);
   const msg = messages[Math.floor(Math.random() * messages.length)];
 
   await Notifications.scheduleNotificationAsync({
@@ -119,7 +136,8 @@ export async function cancelDailyReminder(): Promise<void> {
 export async function setReminderEnabled(
   enabled: boolean,
   hour = DEFAULT_PREFS.hour,
-  minute = DEFAULT_PREFS.minute
+  minute = DEFAULT_PREFS.minute,
+  locale: AppLocale = "en"
 ): Promise<{ prefs: NotificationPrefs; permissionGranted: boolean }> {
   if (enabled) {
     const granted = await requestNotificationPermission();
@@ -127,8 +145,8 @@ export async function setReminderEnabled(
       return { prefs: { enabled: false, hour, minute }, permissionGranted: false };
     }
     await ensureNotificationChannel();
-    await scheduleDailyReminder(hour, minute);
-    const prefs: NotificationPrefs = { enabled: true, hour, minute };
+    await scheduleDailyReminder(hour, minute, locale);
+    const prefs: NotificationPrefs = { enabled: true, hour, minute, locale };
     await saveNotificationPrefs(prefs);
     return { prefs, permissionGranted: true };
   } else {
@@ -136,6 +154,23 @@ export async function setReminderEnabled(
     const prefs: NotificationPrefs = { enabled: false, hour, minute };
     await saveNotificationPrefs(prefs);
     return { prefs, permissionGranted: true };
+  }
+}
+
+/**
+ * Rewrites a standing reminder in the app's current language. Does nothing
+ * when reminders are off, already in that language, or no longer permitted.
+ * Reminders scheduled before this existed have no locale and get rewritten once.
+ */
+export async function syncReminderLanguage(locale: AppLocale): Promise<void> {
+  try {
+    const prefs = await loadNotificationPrefs();
+    if (!prefs.enabled || prefs.locale === locale) return;
+    if ((await getNotificationPermissionStatus()) !== "granted") return;
+    await scheduleDailyReminder(prefs.hour, prefs.minute, locale);
+    await saveNotificationPrefs({ ...prefs, locale });
+  } catch {
+    // Best effort: the old reminder keeps firing in its old language.
   }
 }
 

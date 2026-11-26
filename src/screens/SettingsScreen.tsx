@@ -98,12 +98,12 @@ export function SettingsScreen() {
   );
 
   const handleToggleNotification = useCallback(async (value: boolean) => {
-    const { prefs, permissionGranted } = await setReminderEnabled(value, notifPrefs.hour, notifPrefs.minute);
+    const { prefs, permissionGranted } = await setReminderEnabled(value, notifPrefs.hour, notifPrefs.minute, locale);
     setNotifPrefs(prefs);
     if (!permissionGranted) {
       dialog.alert(t("notifications.permissionDenied"), t("notifications.permissionDeniedBody"));
     }
-  }, [dialog, notifPrefs.hour, notifPrefs.minute, t]);
+  }, [dialog, locale, notifPrefs.hour, notifPrefs.minute, t]);
 
   // ── Books the old "default to English" left mislabelled ─────────────────
   // Evidence-based and memoised: only books whose ISBN registration group
